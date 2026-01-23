@@ -1,11 +1,18 @@
-export default function Sidebar() {
+import { NavLink } from "react-router-dom";
+
+export default function Sidebar({ isOpen, onClose }) {
   return (
-    <aside className="sidebar">
-      <h2>Menú</h2>
+    <aside className={`sidebar ${isOpen ? "is-open" : ""}`}>
+      <div className="sidebar-header">
+        <h2>Menú</h2>
+        <button type="button" className="sidebar-close" onClick={onClose}>
+          ✕
+        </button>
+      </div>
       <nav>
-        <a href="#admin">Admin</a>
-        <a href="#recetas">Recetas</a>
-        <a href="#pedidos">Pedidos</a>
+        <NavLink to="/admin">Admin</NavLink>
+        <NavLink to="/recetas">Recetas</NavLink>
+        <NavLink to="/pedidos">Pedidos</NavLink>
       </nav>
     </aside>
   );

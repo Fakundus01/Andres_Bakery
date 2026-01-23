@@ -1,3 +1,16 @@
+const initialRecipes = [
+  {
+    id: "receta-empanadas",
+    name: "Empanadas veggie",
+    status: "Publicada",
+  },
+  {
+    id: "receta-budin",
+    name: "Budín cítrico",
+    status: "Borrador",
+  },
+];
+
 export default function Admin() {
   return (
     <section className="section admin">
@@ -31,11 +44,14 @@ export default function Admin() {
           </button>
         </form>
         <div className="admin-note">
-          <h3>Tips de la admin</h3>
+          <h3>Recetas activas</h3>
           <ul>
-            <li>Agregá recetas de temporada cada semana.</li>
-            <li>Destacá ingredientes locales y orgánicos.</li>
-            <li>Mantené el catálogo vivo para los usuarios.</li>
+            {initialRecipes.map((recipe) => (
+              <li key={recipe.id}>
+                <strong>{recipe.name}</strong>
+                <span>{recipe.status}</span>
+              </li>
+            ))}
           </ul>
         </div>
       </div>
