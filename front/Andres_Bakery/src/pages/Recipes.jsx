@@ -1,34 +1,32 @@
-import { useCart } from "../components/CartContext.jsx";
+import { useEffect, useState } from "react";
 
-const recipes = [
-  {
-    id: "receta-empanadas",
-    title: "Empanadas veggie",
-    text: "Calabaza, choclo y queso cremoso con masa casera.",
-    tag: "Salado",
-  },
-  {
-    id: "receta-budin",
-    title: "Budín cítrico",
-    text: "Limón y naranja con glaseado de vainilla.",
-    tag: "Dulce",
-  },
-  {
-    id: "receta-sopa",
-    title: "Sopa de calabaza",
-    text: "Con croutons, crema y semillas tostadas.",
-    tag: "Calentito",
-  },
-  {
-    id: "receta-tartas",
-    title: "Tartas mini",
-    text: "Frutas de estación con masa sableé.",
-    tag: "Estación",
-  },
-];
+import { RecipesApi } from "../../api/recipesApi.js";
+import { useCart } from "../components/CartContext.jsx";
 
 export default function Recipes() {
   const { addItem } = useCart();
+  const [recipes, setRecipes] = useState([]);
+  const [status, setStatus] = useState("loading");
+
+  useEffect(() => {
+    let isMounted = true;
+    RecipesApi.list()
+      .then((data) => {
+        if (isMounted) {
+          setRecipes(data);
+          setStatus("ready");
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setStatus("error");
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <section className="section">
@@ -36,12 +34,16 @@ export default function Recipes() {
         <h2>Recetas del pueblo</h2>
         <p>Explorá nuestras favoritas para desayunos, meriendas y cenas.</p>
       </div>
+       {status === "loading" && <p>Cargando recetas...</p>}
+      {status === "error" && (
+        <p>No pudimos cargar las recetas. Intentá más tarde.</p>
+      )}
       <div className="grid">
         {recipes.map((recipe) => (
           <article className="card" key={recipe.id}>
             <h3>{recipe.title}</h3>
-            <p>{recipe.text}</p>
-            <span className="tag">{recipe.tag}</span>
+            <p>{recipe.summary}</p>
+            <span className="tag">{recipe.category}</span>
             <button
               className="primary button-small"
               type="button"
@@ -49,7 +51,7 @@ export default function Recipes() {
                 addItem({
                   id: recipe.id,
                   name: recipe.title,
-                  category: recipe.tag,
+                  category: recipe.category,
                 })
               }
             >

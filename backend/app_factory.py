@@ -3,7 +3,7 @@ from flask import Flask, jsonify
 from .config import Config
 from .extensions import db, jwt, mail
 from .models import User
-from .routes import auth, mailer, orders, payments, products
+from .routes import auth, mailer, orders, payments, products, recipes
 
 
 def create_app() -> Flask:
@@ -19,6 +19,7 @@ def create_app() -> Flask:
     app.register_blueprint(orders.bp)
     app.register_blueprint(mailer.bp)
     app.register_blueprint(payments.bp)
+    app.register_blueprint(recipes.bp)
 
     @app.get("/api/health")
     def health_check():
@@ -27,6 +28,18 @@ def create_app() -> Flask:
     @app.errorhandler(404)
     def not_found(error):
         return jsonify({"error": "not found"}), 404
+
+    @app.after_request
+    def add_cors_headers(response):
+        origin = app.config.get("FRONTEND_ORIGIN", "*")
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        return response
+
+    @app.route("/api/<path:path>", methods=["OPTIONS"])
+    def cors_preflight(path):
+        return ("", 204)
 
     with app.app_context():
         db.create_all()

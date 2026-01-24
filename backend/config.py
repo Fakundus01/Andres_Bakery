@@ -16,6 +16,8 @@ class Config:
     STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
     STRIPE_CURRENCY = os.getenv("STRIPE_CURRENCY", "usd")
 
+    FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "*")
+
     ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@bakery.local")
     ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
     ADMIN_NAME = os.getenv("ADMIN_NAME", "Admin")
