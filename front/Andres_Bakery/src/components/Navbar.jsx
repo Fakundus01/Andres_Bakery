@@ -8,14 +8,6 @@ export default function Navbar({ onToggleSidebar, isSidebarOpen }) {
   return (
     <header className="navbar">
       <div className="navbar-left">
-        <button
-          type="button"
-          className={`sidebar-toggle ${isSidebarOpen ? "is-open" : ""}`}
-          onClick={onToggleSidebar}
-          aria-label="Abrir o cerrar menú"
-        >
-          <span aria-hidden>➤</span>
-        </button>
         <div className="navbar-brand">
           <span className="logo-pixel">AB</span>
           <div>
