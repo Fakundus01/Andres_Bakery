@@ -1,5 +1,5 @@
-from flask_jwt_extended import JWTManager  #type: ignore
-from flask_mail import Mail #type: ignore
+from flask_jwt_extended import JWTManager
+from flask_mail import Mail
 from flask_sqlalchemy import SQLAlchemy
 
 

@@ -13,4 +13,4 @@ npm run dev
 
 ## Backend (Flask)
 
-El backend vive en la carpeta `backend` y expone APIs para autenticación, productos, órdenes, contacto por correo y pagos con tarjeta. Revisa `backend/README.md` para la configuración completa
+El backend vive en la carpeta `backend` y expone APIs para autenticación, productos, órdenes, contacto por correo y pagos con tarjeta. Revisa `backend/README.md` para la configuración completa.
