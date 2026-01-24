@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
 
-export default function Navbar({ onToggleSidebar, isSidebarOpen }) {
+export default function Navbar() {
   const { isLoggedIn } = useAuth();
   const profileImage = import.meta.env.VITE_PROFILE_DEFAULT;
 

@@ -7,6 +7,7 @@ import { CartProvider } from "./components/CartContext.jsx";
 import { AuthProvider } from "./auth/AuthContext.jsx";
 import Home from "./pages/Home.jsx";
 import Recipes from "./pages/Recipes.jsx";
+import DailyRecipes from "./pages/DailyRecipes.jsx";
 import Orders from "./pages/Orders.jsx";
 import Admin from "./pages/Admin.jsx";
 import About from "./pages/About.jsx";
@@ -42,6 +43,7 @@ export default function App() {
                   <Route path="/" element={<Navigate to="/home" replace />} />
                   <Route path="/home" element={<Home />} />
                   <Route path="/recetas" element={<Recipes />} />
+                  <Route path="/recetas-del-dia" element={<DailyRecipes />} />
                   <Route path="/pedidos" element={<Orders />} />
                   <Route path="/admin" element={<Admin />} />
                   <Route path="/sobre-nosotros" element={<About />} />
