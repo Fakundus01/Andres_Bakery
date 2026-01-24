@@ -30,9 +30,13 @@ export default function App() {
       <AuthProvider>
         <CartProvider>
           <div className="app">
-            <Navbar onToggleSidebar={toggleSidebar} />
-            <div className="layout">
-              <Sidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
+            <Navbar onToggleSidebar={toggleSidebar} isSidebarOpen={isSidebarOpen} />
+            <div className={`layout ${isSidebarOpen ? "sidebar-open" : ""}`}>
+              <Sidebar
+                isOpen={isSidebarOpen}
+                onClose={closeSidebar}
+                onToggle={toggleSidebar}
+              />
               <main className="content">
                 <Routes>
                   <Route path="/" element={<Navigate to="/home" replace />} />

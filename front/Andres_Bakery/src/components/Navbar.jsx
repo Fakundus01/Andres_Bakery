@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
 
-export default function Navbar({ onToggleSidebar }) {
+export default function Navbar({ onToggleSidebar, isSidebarOpen }) {
   const { isLoggedIn } = useAuth();
   const profileImage = import.meta.env.VITE_PROFILE_DEFAULT;
 
@@ -10,7 +10,7 @@ export default function Navbar({ onToggleSidebar }) {
       <div className="navbar-left">
         <button
           type="button"
-          className="sidebar-toggle"
+          className={`sidebar-toggle ${isSidebarOpen ? "is-open" : ""}`}
           onClick={onToggleSidebar}
           aria-label="Abrir o cerrar menú"
         >
