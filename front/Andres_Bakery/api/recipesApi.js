@@ -8,9 +8,11 @@ export const RecipesApi = {
     return backendRequest(`/api/recipes/${id}`);
   },
   create(data, token) {
+    ensureAdminToken(token);
     return backendRequest("/api/recipes", { method: "POST", body: data, token });
   },
   update(id, data, token) {
+    ensureAdminToken(token);
     return backendRequest(`/api/recipes/${id}`, {
       method: "PUT",
       body: data,
@@ -18,6 +20,13 @@ export const RecipesApi = {
     });
   },
   remove(id, token) {
+    ensureAdminToken(token);
     return backendRequest(`/api/recipes/${id}`, { method: "DELETE", token });
   },
+}
+
+  const ensureAdminToken = (token) => {
+  if (!token) {
+    throw new Error("Necesitás pegar el token de admin para esta acción.");
+  }
 };

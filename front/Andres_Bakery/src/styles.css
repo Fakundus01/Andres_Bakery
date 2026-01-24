@@ -536,6 +536,11 @@ textarea:focus {
   gap: 20px;
 }
 
+.admin-form-stack {
+  display: grid;
+  gap: 20px;
+}
+
 .admin-note {
   background: var(--sun);
   padding: 24px;

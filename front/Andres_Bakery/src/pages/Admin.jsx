@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { AuthApi } from "../../api/authApi.js";
 import { RecipesApi } from "../../api/recipesApi.js";
 
 const initialFormState = {
@@ -21,6 +22,8 @@ export default function Admin() {
   const [token, setToken] = useState(
     localStorage.getItem("ab_admin_token") || "",
   );
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
 
   const isEditing = useMemo(() => editingId !== null, [editingId]);
 
@@ -46,14 +49,30 @@ export default function Admin() {
     setFormState((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleTokenChange = (event) => {
-    const value = event.target.value;
-    setToken(value);
-    if (value) {
-      localStorage.setItem("ab_admin_token", value);
-    } else {
-      localStorage.removeItem("ab_admin_token");
+  const handleAdminLogin = async (event) => {
+    event.preventDefault();
+    setError("");
+
+    try {
+      const response = await AuthApi.login(loginEmail, loginPassword);
+      const accessToken = response.access_token;
+      const profile = await AuthApi.me(accessToken);
+      if (!profile.is_admin) {
+        setError("Tu usuario no tiene permisos de admin.");
+        return;
+      }
+      setToken(accessToken);
+      localStorage.setItem("ab_admin_token", accessToken);
+      setLoginEmail("");
+      setLoginPassword("");
+    } catch (err) {
+      setError(err.message);
     }
+  };
+
+  const handleTokenReset = () => {
+    setToken("");
+    localStorage.removeItem("ab_admin_token");
   };
 
   const handleSubmit = async (event) => {
@@ -104,16 +123,80 @@ export default function Admin() {
         <p>La admin puede subir, editar y borrar recetas nuevas.</p>
       </div>
       <div className="admin-grid">
-        <form className="admin-form" onSubmit={handleSubmit}>
-          <label>
-            Token de admin (JWT)
-            <input
-              type="password"
-              placeholder="Pegá el token del login"
-              value={token}
-              onChange={handleTokenChange}
-            />
-          </label>
+          <form className="admin-form" onSubmit={handleAdminLogin}>
+            <h3>Login admin</h3>
+            <p>
+              Necesitás un usuario con rol admin. El login demo no crea tokens
+              reales.
+            </p>
+            <label>
+              Email
+              <input
+                type="email"
+                value={loginEmail}
+                onChange={(event) => setLoginEmail(event.target.value)}
+                placeholder="admin@email.com"
+                required
+              />
+            </label>
+            <label>
+              Contraseña
+              <input
+                type="password"
+                value={loginPassword}
+                onChange={(event) => setLoginPassword(event.target.value)}
+                placeholder="******"
+                required
+              />
+            </label>
+            <button type="submit" className="secondary">
+              Obtener token
+            </button>
+          </form>
+          <div className="admin-form-stack">
+          <form className="admin-form" onSubmit={handleAdminLogin}>
+            <h3>Login admin</h3>
+            <p>
+              Necesitás un usuario con rol admin. El login demo no crea tokens
+              reales.
+            </p>
+            <label>
+              Email
+              <input
+                type="email"
+                value={loginEmail}
+                onChange={(event) => setLoginEmail(event.target.value)}
+                placeholder="admin@email.com"
+                required
+              />
+            </label>
+            <label>
+              Contraseña
+              <input
+                type="password"
+                value={loginPassword}
+                onChange={(event) => setLoginPassword(event.target.value)}
+                placeholder="******"
+                required
+              />
+            </label>
+            <button type="submit" className="secondary">
+              Obtener token
+            </button>
+            {token && (
+              <div>
+                <p>Token guardado ✅</p>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={handleTokenReset}
+                >
+                  Borrar token
+                </button>
+              </div>
+            )}
+          </form>
+          <form className="admin-form" onSubmit={handleSubmit}>        
           <label>
             Título de la receta
             <input
@@ -201,7 +284,8 @@ export default function Admin() {
             </button>
           )}
           {error && <p>{error}</p>}
-        </form>
+          </form>
+          </div>
         <div className="admin-note">
           <h3>Recetas activas</h3>
           {status === "loading" && <p>Cargando...</p>}
