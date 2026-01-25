@@ -824,3 +824,69 @@ textarea:focus {
   gap: 16px;
   margin-top: auto;
 }
+
+.admin-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.admin-section {
+  display: grid;
+  gap: 16px;
+}
+
+.admin-note {
+  background: var(--sun);
+  padding: 24px;
+  border-radius: 18px;
+  border: 2px dashed var(--pink);
+}
+
+.admin-note ul {
+  margin-top: 16px;
+  padding-left: 18px;
+  display: grid;
+  gap: 8px;
+}
+
+.admin-note li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.admin-note li div {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.ingredient-picker {
+  display: grid;
+  gap: 10px;
+  border: 1px dashed var(--lavender);
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.ingredient-list {
+  display: grid;
+  gap: 8px;
+  max-height: 140px;
+  overflow-y: auto;
+}
+

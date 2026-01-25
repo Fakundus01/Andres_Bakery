@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Navigate } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext.jsx";
 import { BackendIngredientsApi } from "../../api/backendIngredientsApi.js";
@@ -67,6 +68,14 @@ export default function Admin() {
     () => productEditingId !== null,
     [productEditingId]
   );
+
+  if (!isLoggedIn) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!user?.is_admin) {
+    return <Navigate to="/home" replace />;
+  }
 
   const loadRecipes = () => {
     setStatus("loading");
