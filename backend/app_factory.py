@@ -2,8 +2,8 @@ from flask import Flask, jsonify
 
 from .config import Config
 from .extensions import db, jwt, mail
-from .models import User
-from .routes import auth, mailer, orders, payments, products, recipes
+from .models import SiteContent, User
+from .routes import auth, ingredients, mailer, orders, payments, products, recipes, site, users
 
 
 def create_app() -> Flask:
@@ -17,6 +17,9 @@ def create_app() -> Flask:
     app.register_blueprint(auth.bp)
     app.register_blueprint(products.bp)
     app.register_blueprint(orders.bp)
+    app.register_blueprint(ingredients.bp)
+    app.register_blueprint(users.bp)
+    app.register_blueprint(site.bp)
     app.register_blueprint(mailer.bp)
     app.register_blueprint(payments.bp)
     app.register_blueprint(recipes.bp)
@@ -44,6 +47,7 @@ def create_app() -> Flask:
     with app.app_context():
         db.create_all()
         _ensure_admin(app)
+        _ensure_site_content()
 
     return app
 
@@ -62,3 +66,16 @@ def _ensure_admin(app: Flask) -> None:
     else:
         admin.is_admin = True
     db.session.commit()
+
+
+def _ensure_site_content() -> None:
+    if not SiteContent.query.get("about"):
+        about = SiteContent(
+            key="about",
+            content=(
+                "Somos un emprendimiento familiar que cocina con ingredientes frescos y "
+                "recetas con amor de hogar."
+            ),
+        )
+        db.session.add(about)
+        db.session.commit()

@@ -5,6 +5,18 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from .extensions import db
 
 
+product_ingredients = db.Table(
+    "product_ingredients",
+    db.Column("product_id", db.Integer, db.ForeignKey("product.id"), primary_key=True),
+    db.Column(
+        "ingredient_id",
+        db.Integer,
+        db.ForeignKey("ingredient.id"),
+        primary_key=True,
+    ),
+)
+
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
@@ -32,6 +44,26 @@ class Product(db.Model):
     available = db.Column(db.Boolean, default=True)
 
     order_items = db.relationship("OrderItem", back_populates="product", lazy=True)
+    ingredients = db.relationship(
+        "Ingredient",
+        secondary=product_ingredients,
+        back_populates="products",
+        lazy=True,
+    )
+
+
+class Ingredient(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False, unique=True)
+    unit = db.Column(db.String(40))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    products = db.relationship(
+        "Product",
+        secondary=product_ingredients,
+        back_populates="ingredients",
+        lazy=True,
+    )
 
 
 class Recipe(db.Model):
@@ -80,3 +112,9 @@ class Payment(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     order = db.relationship("Order", back_populates="payments")
+
+
+class SiteContent(db.Model):
+    key = db.Column(db.String(120), primary_key=True)
+    content = db.Column(db.Text, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

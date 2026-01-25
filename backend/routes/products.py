@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 
 from ..extensions import db
-from ..models import Product
+from ..models import Ingredient, Product
 from .utils import admin_required
 
 
@@ -13,15 +13,7 @@ def list_products():
     products = Product.query.all()
     return jsonify(
         [
-            {
-                "id": product.id,
-                "name": product.name,
-                "description": product.description,
-                "price": float(product.price),
-                "category": product.category,
-                "image_url": product.image_url,
-                "available": product.available,
-            }
+            _serialize_product(product)
             for product in products
         ]
     )
@@ -45,6 +37,9 @@ def create_product():
         image_url=data.get("image_url"),
         available=data.get("available", True),
     )
+    ingredient_ids = data.get("ingredient_ids", [])
+    if ingredient_ids:
+        product.ingredients = _resolve_ingredients(ingredient_ids)
     db.session.add(product)
     db.session.commit()
 
@@ -54,17 +49,7 @@ def create_product():
 @bp.get("/<int:product_id>")
 def get_product(product_id: int):
     product = Product.query.get_or_404(product_id)
-    return jsonify(
-        {
-            "id": product.id,
-            "name": product.name,
-            "description": product.description,
-            "price": float(product.price),
-            "category": product.category,
-            "image_url": product.image_url,
-            "available": product.available,
-        }
-    )
+    return jsonify(_serialize_product(product))
 
 
 @bp.put("/<int:product_id>")
@@ -79,6 +64,8 @@ def update_product(product_id: int):
 
     if "price" in data:
         product.price = data["price"]
+    if "ingredient_ids" in data:
+        product.ingredients = _resolve_ingredients(data["ingredient_ids"])
 
     db.session.commit()
     return jsonify({"status": "updated"})
@@ -91,3 +78,25 @@ def delete_product(product_id: int):
     db.session.delete(product)
     db.session.commit()
     return jsonify({"status": "deleted"})
+
+
+def _resolve_ingredients(ingredient_ids: list[int]) -> list[Ingredient]:
+    if not ingredient_ids:
+        return []
+    return Ingredient.query.filter(Ingredient.id.in_(ingredient_ids)).all()
+
+
+def _serialize_product(product: Product) -> dict:
+    return {
+        "id": product.id,
+        "name": product.name,
+        "description": product.description,
+        "price": float(product.price),
+        "category": product.category,
+        "image_url": product.image_url,
+        "available": product.available,
+        "ingredients": [
+            {"id": ingredient.id, "name": ingredient.name, "unit": ingredient.unit}
+            for ingredient in product.ingredients
+        ],
+    }
