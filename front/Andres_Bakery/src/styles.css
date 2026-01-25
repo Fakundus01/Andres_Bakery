@@ -91,6 +91,17 @@ body {
   border-color: var(--lavender);
 }
 
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile p {
+  margin: 0 0 6px;
+  font-weight: 700;
+}
+
 .profile img {
   width: 40px;
   height: 40px;

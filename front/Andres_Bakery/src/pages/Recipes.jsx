@@ -34,29 +34,40 @@ export default function Recipes() {
         <h2>Recetas del pueblo</h2>
         <p>Explorá nuestras favoritas para desayunos, meriendas y cenas.</p>
       </div>
-       {status === "loading" && <p>Cargando recetas...</p>}
+      {status === "loading" && <p>Cargando recetas...</p>}
       {status === "error" && (
         <p>No pudimos cargar las recetas. Intentá más tarde.</p>
       )}
       <div className="grid">
         {recipes.map((recipe) => (
-          <article className="card" key={recipe.id}>
-            <h3>{recipe.title}</h3>
-            <p>{recipe.summary}</p>
-            <span className="tag">{recipe.category}</span>
-            <button
-              className="primary button-small"
-              type="button"
-              onClick={() =>
-                addItem({
-                  id: recipe.id,
-                  name: recipe.title,
-                  category: recipe.category,
-                })
-              }
-            >
-              Agregar al carrito
-            </button>
+          <article className="recipe-card" key={recipe.id}>
+            {recipe.image_url && (
+              <div className="recipe-card__media">
+                <img src={recipe.image_url} alt={recipe.title} />
+              </div>
+            )}
+            <div className="recipe-card__content">
+              <header>
+                <h3>{recipe.title}</h3>
+                <p>{recipe.summary}</p>
+              </header>
+              <div className="recipe-card__tags">
+                <span>{recipe.category}</span>
+              </div>
+              <button
+                className="primary button-small"
+                type="button"
+                onClick={() =>
+                  addItem({
+                    id: recipe.id,
+                    name: recipe.title,
+                    category: recipe.category,
+                  })
+                }
+              >
+                Agregar al carrito
+              </button>
+            </div>
           </article>
         ))}
       </div>

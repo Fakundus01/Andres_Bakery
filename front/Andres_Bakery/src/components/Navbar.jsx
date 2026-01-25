@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
 
 export default function Navbar() {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, user, logout } = useAuth();
   const profileImage = import.meta.env.VITE_PROFILE_DEFAULT;
 
   return (
@@ -20,12 +20,22 @@ export default function Navbar() {
         <NavLink to="/home">Home</NavLink>
         <NavLink to="/sobre-nosotros">Sobre nosotros</NavLink>
         <NavLink to="/contactanos">Contactanos</NavLink>
-        <NavLink to="/login">Login</NavLink>
-        <NavLink to="/signup">Sign up</NavLink>
+        {!isLoggedIn && (
+          <>
+            <NavLink to="/login">Login</NavLink>
+            <NavLink to="/signup">Sign up</NavLink>
+          </>
+        )}
       </nav>
       {isLoggedIn && (
         <div className="profile">
           <img src={profileImage} alt="Perfil" />
+          <div>
+            <p>{user?.name || "Perfil"}</p>
+            <button type="button" className="secondary" onClick={logout}>
+              Salir
+            </button>
+          </div>
         </div>
       )}
     </header>

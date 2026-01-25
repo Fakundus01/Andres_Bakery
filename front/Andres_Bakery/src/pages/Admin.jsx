@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-
 import { AuthApi } from "../../api/authApi.js";
+import { useAuth } from "../auth/AuthContext.jsx";
 import { RecipesApi } from "../../api/recipesApi.js";
 
 const initialFormState = {
@@ -19,11 +19,7 @@ export default function Admin() {
   const [error, setError] = useState("");
   const [formState, setFormState] = useState(initialFormState);
   const [editingId, setEditingId] = useState(null);
-  const [token, setToken] = useState(
-    localStorage.getItem("ab_admin_token") || "",
-  );
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
+  const { isLoggedIn, token, user } = useAuth();
 
   const isEditing = useMemo(() => editingId !== null, [editingId]);
 
@@ -49,35 +45,17 @@ export default function Admin() {
     setFormState((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleAdminLogin = async (event) => {
-    event.preventDefault();
-    setError("");
-
-    try {
-      const response = await AuthApi.login(loginEmail, loginPassword);
-      const accessToken = response.access_token;
-      const profile = await AuthApi.me(accessToken);
-      if (!profile.is_admin) {
-        setError("Tu usuario no tiene permisos de admin.");
-        return;
-      }
-      setToken(accessToken);
-      localStorage.setItem("ab_admin_token", accessToken);
-      setLoginEmail("");
-      setLoginPassword("");
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  const handleTokenReset = () => {
-    setToken("");
-    localStorage.removeItem("ab_admin_token");
-  };
-
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
+    if (!isLoggedIn) {
+      setError("Iniciá sesión para administrar recetas.");
+      return;
+    }
+    if (!user?.is_admin) {
+      setError("Tu usuario no tiene permisos de admin.");
+      return;
+    }
 
     try {
       if (isEditing) {
@@ -108,6 +86,14 @@ export default function Admin() {
 
   const handleDelete = async (recipeId) => {
     setError("");
+    if (!isLoggedIn) {
+      setError("Iniciá sesión para administrar recetas.");
+      return;
+    }
+    if (!user?.is_admin) {
+      setError("Tu usuario no tiene permisos de admin.");
+      return;
+    }
     try {
       await RecipesApi.remove(recipeId, token);
       loadRecipes();
@@ -123,80 +109,13 @@ export default function Admin() {
         <p>La admin puede subir, editar y borrar recetas nuevas.</p>
       </div>
       <div className="admin-grid">
-          <form className="admin-form" onSubmit={handleAdminLogin}>
-            <h3>Login admin</h3>
-            <p>
-              Necesitás un usuario con rol admin. El login demo no crea tokens
-              reales.
-            </p>
-            <label>
-              Email
-              <input
-                type="email"
-                value={loginEmail}
-                onChange={(event) => setLoginEmail(event.target.value)}
-                placeholder="admin@email.com"
-                required
-              />
-            </label>
-            <label>
-              Contraseña
-              <input
-                type="password"
-                value={loginPassword}
-                onChange={(event) => setLoginPassword(event.target.value)}
-                placeholder="******"
-                required
-              />
-            </label>
-            <button type="submit" className="secondary">
-              Obtener token
-            </button>
-          </form>
-          <div className="admin-form-stack">
-          <form className="admin-form" onSubmit={handleAdminLogin}>
-            <h3>Login admin</h3>
-            <p>
-              Necesitás un usuario con rol admin. El login demo no crea tokens
-              reales.
-            </p>
-            <label>
-              Email
-              <input
-                type="email"
-                value={loginEmail}
-                onChange={(event) => setLoginEmail(event.target.value)}
-                placeholder="admin@email.com"
-                required
-              />
-            </label>
-            <label>
-              Contraseña
-              <input
-                type="password"
-                value={loginPassword}
-                onChange={(event) => setLoginPassword(event.target.value)}
-                placeholder="******"
-                required
-              />
-            </label>
-            <button type="submit" className="secondary">
-              Obtener token
-            </button>
-            {token && (
-              <div>
-                <p>Token guardado ✅</p>
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={handleTokenReset}
-                >
-                  Borrar token
-                </button>
-              </div>
-            )}
-          </form>
-          <form className="admin-form" onSubmit={handleSubmit}>        
+          <form className="admin-form" onSubmit={handleSubmit}>
+            {!isLoggedIn && (
+            <p>Iniciá sesión para administrar recetas.</p>
+          )}
+          {isLoggedIn && !user?.is_admin && (
+            <p>Tu usuario no tiene permisos de admin.</p>
+          )}      
           <label>
             Título de la receta
             <input
@@ -206,6 +125,7 @@ export default function Admin() {
               onChange={handleChange}
               placeholder="Tarta de frutillas"
               required
+              disabled={!isLoggedIn || !user?.is_admin}
             />
           </label>
           <label>
@@ -216,7 +136,8 @@ export default function Admin() {
               value={formState.summary}
               onChange={handleChange}
               placeholder="Contanos lo especial de esta receta"
-            required
+              required
+              disabled={!isLoggedIn || !user?.is_admin}
             />
           </label>
           <label>
@@ -228,6 +149,7 @@ export default function Admin() {
               onChange={handleChange}
               placeholder="Harina, azúcar, frutillas..."
               required
+              disabled={!isLoggedIn || !user?.is_admin}
             />
           </label>
           <label>
@@ -239,6 +161,7 @@ export default function Admin() {
               onChange={handleChange}
               placeholder="Mezclar, hornear 30 min..."
               required
+              disabled={!isLoggedIn || !user?.is_admin}
             />
           </label>
           <label>
@@ -249,6 +172,7 @@ export default function Admin() {
               value={formState.image_url}
               onChange={handleChange}
               placeholder="https://"
+              disabled={!isLoggedIn || !user?.is_admin}
             />
           </label>
           <label>
@@ -259,16 +183,26 @@ export default function Admin() {
               value={formState.category}
               onChange={handleChange}
               placeholder="Dulce, Salado..."
+              disabled={!isLoggedIn || !user?.is_admin}
             />
           </label>
           <label>
             Estado
-            <select name="status" value={formState.status} onChange={handleChange}>
+            <select
+              name="status"
+              value={formState.status}
+              onChange={handleChange}
+              disabled={!isLoggedIn || !user?.is_admin}
+            >
               <option value="published">Publicada</option>
               <option value="draft">Borrador</option>
             </select>
           </label>
-          <button type="submit" className="secondary">
+          <button
+            type="submit"
+            className="secondary"
+            disabled={!isLoggedIn || !user?.is_admin}
+          >
             {isEditing ? "Actualizar receta" : "Subir receta"}
           </button>
           {isEditing && (
@@ -285,7 +219,6 @@ export default function Admin() {
           )}
           {error && <p>{error}</p>}
           </form>
-          </div>
         <div className="admin-note">
           <h3>Recetas activas</h3>
           {status === "loading" && <p>Cargando...</p>}
@@ -302,6 +235,7 @@ export default function Admin() {
                     type="button"
                     className="secondary button-small"
                     onClick={() => handleEdit(recipe)}
+                    disabled={!isLoggedIn || !user?.is_admin}
                   >
                     Editar
                   </button>
@@ -309,6 +243,7 @@ export default function Admin() {
                     type="button"
                     className="secondary button-small"
                     onClick={() => handleDelete(recipe.id)}
+                    disabled={!isLoggedIn || !user?.is_admin}
                   >
                     Eliminar
                   </button>
@@ -319,5 +254,5 @@ export default function Admin() {
         </div>
       </div>
     </section>
-  );
+  )
 }

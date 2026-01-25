@@ -1,25 +1,48 @@
 import { createContext, useContext, useMemo, useState } from "react";
 
 const AuthContext = createContext(null);
+const AUTH_STORAGE_KEY = "ab_auth";
 
 export function AuthProvider({ children }) {
-  const [isLoggedIn, setIsLoggedIn] = useState(
-    Boolean(localStorage.getItem("ab_logged_in"))
-  );
+  const [auth, setAuth] = useState(() => {
+    const stored = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!stored) {
+      return null;
+    }
+    try {
+      return JSON.parse(stored);
+    } catch {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+      return null;
+    }
+  });
 
-  const login = () => {
-    localStorage.setItem("ab_logged_in", "true");
-    setIsLoggedIn(true);
+  const setSession = (token, user) => {
+    const payload = { token, user };
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(payload));
+    localStorage.removeItem("ab_admin_token");
+    localStorage.removeItem("ab_logged_in");
+    setAuth(payload);
   };
 
   const logout = () => {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    localStorage.removeItem("ab_admin_token");
     localStorage.removeItem("ab_logged_in");
-    setIsLoggedIn(false);
+    setAuth(null);
   };
 
+  const isLoggedIn = Boolean(auth?.token);
+
   const value = useMemo(
-    () => ({ isLoggedIn, login, logout }),
-    [isLoggedIn]
+    () => ({
+      isLoggedIn,
+      token: auth?.token || "",
+      user: auth?.user || null,
+      setSession,
+      logout,
+    }),
+    [auth, isLoggedIn]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
