@@ -1,8 +1,8 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from pathlib import Path
-import tempfile
 import unittest
+from uuid import uuid4
 from unittest.mock import patch
 
 from backend.app_factory import create_app
@@ -38,8 +38,10 @@ class FakeMercadoPagoClient:
 
 class BackendApiTestCase(unittest.TestCase):
     def setUp(self) -> None:
-        self.temp_dir = tempfile.TemporaryDirectory()
-        database_path = Path(self.temp_dir.name) / "test.db"
+        tmp_root = Path(__file__).resolve().parent / ".tmp"
+        tmp_root.mkdir(parents=True, exist_ok=True)
+        self.database_path = tmp_root / f"api-{uuid4().hex}.db"
+        database_path = self.database_path.resolve()
         self.app = create_app(
             {
                 "TESTING": True,
@@ -60,7 +62,8 @@ class BackendApiTestCase(unittest.TestCase):
         with self.app.app_context():
             db.session.remove()
             db.drop_all()
-        self.temp_dir.cleanup()
+            for engine in db.engines.values():
+                engine.dispose()
 
     def auth_headers(self, token: str) -> dict[str, str]:
         return {"Authorization": f"Bearer {token}"}
@@ -95,7 +98,7 @@ class BackendApiTestCase(unittest.TestCase):
                 "method": "delivery",
                 "address": "Calle 123",
                 "neighborhood": neighborhood,
-                "city": "General San Martín",
+                "city": "General San Martin",
                 "notes": "Timbre 2",
             },
             "payment_method": "visa",
