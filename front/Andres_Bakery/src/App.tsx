@@ -94,20 +94,20 @@ const heroFallback: Slide[] = [
   },
   {
     eyebrow: "Pedidos guiados",
-    title: "Comprá online y terminá el pago con Mercado Pago, Visa o Mastercard",
+    title: "Comprï¿½ online y terminï¿½ el pago con Mercado Pago, Visa o Mastercard",
     description:
       "El flujo de compra queda orientado a carrito, checkout y seguimiento, sin una UI improvisada ni pasos sueltos.",
     image:
       "https://images.unsplash.com/photo-1481391032119-d89fee407e44?auto=format&fit=crop&w=1400&q=80",
-    accent: "Checkout claro, historial y mails automáticos",
+    accent: "Checkout claro, historial y mails automï¿½ticos",
     ctaLabel: "Ir al checkout",
     ctaTo: "/checkout",
   },
   {
     eyebrow: "Panel admin",
-    title: "Gestioná recetas, productos y pedidos desde un dashboard visual",
+    title: "Gestionï¿½ recetas, productos y pedidos desde un dashboard visual",
     description:
-      "Alta, edición y baja de dulces, control de ventas y contenido del sitio desde una sola vista con foco comercial.",
+      "Alta, ediciï¿½n y baja de dulces, control de ventas y contenido del sitio desde una sola vista con foco comercial.",
     image:
       "https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=1400&q=80",
     accent: "Dashboard bonito y pensado para operar el negocio",
@@ -125,12 +125,12 @@ const paymentOptions: Array<{ id: PaymentMethod; title: string; description: str
   {
     id: "visa",
     title: "Visa",
-    description: "Pagás con Visa dentro del checkout seguro de Mercado Pago.",
+    description: "Pagï¿½s con Visa dentro del checkout seguro de Mercado Pago.",
   },
   {
     id: "mastercard",
     title: "Mastercard",
-    description: "Pagás con Mastercard dentro del checkout seguro de Mercado Pago.",
+    description: "Pagï¿½s con Mastercard dentro del checkout seguro de Mercado Pago.",
   },
 ];
 
@@ -148,17 +148,17 @@ const supportReplies = [
   {
     label: "Envios en Villa Maipu",
     answer:
-      "Hacemos entregas dentro de Villa Maipu. En el checkout podés elegir envío local o retiro por el punto de entrega.",
+      "Hacemos entregas dentro de Villa Maipu. En el checkout podï¿½s elegir envï¿½o local o retiro por el punto de entrega.",
   },
   {
     label: "Medios de pago",
     answer:
-      "Trabajamos con Mercado Pago. Desde ahí podés completar con saldo, Visa o Mastercard, según la opción que elijas al comprar.",
+      "Trabajamos con Mercado Pago. Desde ahï¿½ podï¿½s completar con saldo, Visa o Mastercard, segï¿½n la opciï¿½n que elijas al comprar.",
   },
   {
     label: "Pedidos personalizados",
     answer:
-      "Si querés una caja regalo o una torta especial, dejá el detalle en el chat y lo derivamos al mail de soporte para seguimiento.",
+      "Si querï¿½s una caja regalo o una torta especial, dejï¿½ el detalle en el chat y lo derivamos al mail de soporte para seguimiento.",
   },
 ];
 
@@ -299,7 +299,7 @@ function SiteHeader() {
             {isLoggedIn ? (
               <button className="btn-secondary" type="button" onClick={logout}>
                 <LogOut className="h-4 w-4" />
-                Cerrar sesión
+                Cerrar sesiï¿½n
               </button>
             ) : (
               <Link to="/ingresar" className="btn-primary" onClick={() => setMobileOpen(false)}>
@@ -387,7 +387,7 @@ function HomePage() {
             <p className="text-xs uppercase tracking-[0.3em] text-stone-500">Soporte</p>
             <h3 className="mt-3 font-display text-2xl font-semibold text-stone-950">Chat guiado abajo a la derecha</h3>
             <p className="mt-3 text-sm leading-6 text-stone-600">
-              Resuelve dudas de envío, medios de pago y pedidos personalizados sin sacar al cliente del flujo de compra.
+              Resuelve dudas de envï¿½o, medios de pago y pedidos personalizados sin sacar al cliente del flujo de compra.
             </p>
           </div>
         </div>
@@ -401,8 +401,8 @@ function HomePage() {
 
       <SectionHeading
         eyebrow="Lo mas pedido"
-        title="Un catalogo visual que ahora sí parece una tienda"
-        description="Cada tarjeta prioriza decisión de compra: foto, categoría, precio, disponibilidad y acción directa al carrito."
+        title="Un catalogo visual que ahora sï¿½ parece una tienda"
+        description="Cada tarjeta prioriza decisiï¿½n de compra: foto, categorï¿½a, precio, disponibilidad y acciï¿½n directa al carrito."
       />
       {error ? <ErrorBanner message={error} /> : null}
       <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -415,11 +415,11 @@ function HomePage() {
         <div className="glass-panel p-7">
           <p className="text-xs uppercase tracking-[0.32em] text-stone-500">Historia</p>
           <h2 className="mt-4 font-display text-4xl font-semibold leading-tight text-stone-950">
-            Una pastelería digital con tono cálido y venta real.
+            Una pastelerï¿½a digital con tono cï¿½lido y venta real.
           </h2>
           <p className="mt-4 text-base leading-7 text-stone-600">
             {about ||
-              "Una tienda orientada a dulces hechos por la admin, con recetas publicadas como contenido editorial y una estética más boutique."}
+              "Una tienda orientada a dulces hechos por la admin, con recetas publicadas como contenido editorial y una estï¿½tica mï¿½s boutique."}
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link to="/tienda" className="btn-primary">
@@ -436,8 +436,8 @@ function HomePage() {
         <div>
           <SectionHeading
             eyebrow="Recetas publicadas"
-            title="Contenido que acompaña la venta"
-            description="La tienda vende dulces, pero el sitio también posiciona a la marca con recetas cuidadas y visuales fuertes."
+            title="Contenido que acompaï¿½a la venta"
+            description="La tienda vende dulces, pero el sitio tambiï¿½n posiciona a la marca con recetas cuidadas y visuales fuertes."
           />
           <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {featuredRecipes.map((recipe) => (
@@ -498,8 +498,8 @@ function ShopPage() {
     <div className="space-y-10 pb-10">
       <SectionHeading
         eyebrow="Tienda"
-        title="Vendé mejor con una grilla clara, rápida y con mejor jerarquía visual"
-        description="El catálogo ahora tiene filtros, búsqueda, CTA consistente y una estética menos improvisada y más boutique."
+        title="Vendï¿½ mejor con una grilla clara, rï¿½pida y con mejor jerarquï¿½a visual"
+        description="El catï¿½logo ahora tiene filtros, bï¿½squeda, CTA consistente y una estï¿½tica menos improvisada y mï¿½s boutique."
       />
 
       <section className="glass-panel grid gap-4 p-5 md:grid-cols-[1fr_220px]">
@@ -514,7 +514,7 @@ function ShopPage() {
           />
         </div>
         <div>
-          <label className="text-sm font-semibold text-stone-700" htmlFor="category-products">Categoría</label>
+          <label className="text-sm font-semibold text-stone-700" htmlFor="category-products">Categorï¿½a</label>
           <select
             id="category-products"
             className="field mt-2"
@@ -529,12 +529,12 @@ function ShopPage() {
         </div>
       </section>
 
-      {loading ? <LoadingPanel label="Cargando catálogo" /> : null}
+      {loading ? <LoadingPanel label="Cargando catï¿½logo" /> : null}
       {error ? <ErrorBanner message={error} /> : null}
       {!loading && !error && filteredProducts.length === 0 ? (
         <EmptyState
           title="No encontramos productos con ese filtro"
-          description="Probá cambiar la categoría o limpiar la búsqueda para ver todo el catálogo cargado por la admin."
+          description="Probï¿½ cambiar la categorï¿½a o limpiar la bï¿½squeda para ver todo el catï¿½logo cargado por la admin."
         />
       ) : null}
 
@@ -581,12 +581,12 @@ function CheckoutPage() {
     setSuccess("");
 
     if (!isLoggedIn) {
-      setError("Necesitás iniciar sesión para completar la compra.");
+      setError("Necesitï¿½s iniciar sesiï¿½n para completar la compra.");
       return;
     }
 
     if (!items.length) {
-      setError("Tu carrito está vacío.");
+      setError("Tu carrito estï¿½ vacï¿½o.");
       return;
     }
 
@@ -621,7 +621,7 @@ function CheckoutPage() {
         return;
       }
 
-      setSuccess("El pedido fue creado, pero no recibimos una URL de checkout. Revisá la configuración de Mercado Pago.");
+      setSuccess("El pedido fue creado, pero no recibimos una URL de checkout. Revisï¿½ la configuraciï¿½n de Mercado Pago.");
     } catch (reason: unknown) {
       setError(getErrorMessage(reason));
     } finally {
@@ -632,8 +632,8 @@ function CheckoutPage() {
   if (!items.length) {
     return (
       <EmptyState
-        title="Tu checkout todavía no tiene productos"
-        description="Agregá dulces desde la tienda y después volvé para elegir envío por Villa Maipu y completar el pago."
+        title="Tu checkout todavï¿½a no tiene productos"
+        description="Agregï¿½ dulces desde la tienda y despuï¿½s volvï¿½ para elegir envï¿½o por Villa Maipu y completar el pago."
         action={<Link to="/tienda" className="btn-primary">Ir a la tienda</Link>}
       />
     );
@@ -650,7 +650,7 @@ function CheckoutPage() {
 
         {!isLoggedIn ? (
           <div className="mt-6 rounded-3xl border border-amber-300 bg-amber-50 p-5 text-sm text-amber-900">
-            Necesitás una cuenta para comprar. <Link className="font-semibold underline" to="/ingresar">Ingresá acá</Link> o registrate antes de seguir.
+            Necesitï¿½s una cuenta para comprar. <Link className="font-semibold underline" to="/ingresar">Ingresï¿½ acï¿½</Link> o registrate antes de seguir.
           </div>
         ) : null}
 
@@ -664,19 +664,19 @@ function CheckoutPage() {
             </Field>
           </div>
 
-          <Field label="Teléfono">
+          <Field label="Telï¿½fono">
             <input className="field" value={form.phone} onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))} placeholder="WhatsApp para coordinar el pedido" />
           </Field>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <ChoiceCard active={deliveryMethod === "delivery"} icon={<Truck className="h-5 w-5" />} title="Envío Villa Maipu" description="Entrega local con fee fijo y validación de zona." onClick={() => setDeliveryMethod("delivery")} />
-            <ChoiceCard active={deliveryMethod === "pickup"} icon={<MapPin className="h-5 w-5" />} title="Retiro" description="Sin costo de envío, ideal para coordinar por mensaje." onClick={() => setDeliveryMethod("pickup")} />
+            <ChoiceCard active={deliveryMethod === "delivery"} icon={<Truck className="h-5 w-5" />} title="Envï¿½o Villa Maipu" description="Entrega local con fee fijo y validaciï¿½n de zona." onClick={() => setDeliveryMethod("delivery")} />
+            <ChoiceCard active={deliveryMethod === "pickup"} icon={<MapPin className="h-5 w-5" />} title="Retiro" description="Sin costo de envï¿½o, ideal para coordinar por mensaje." onClick={() => setDeliveryMethod("pickup")} />
           </div>
 
           {deliveryMethod === "delivery" ? (
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Dirección">
-                <input className="field" value={form.address} onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))} placeholder="Calle, número y piso" required />
+              <Field label="Direcciï¿½n">
+                <input className="field" value={form.address} onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))} placeholder="Calle, nï¿½mero y piso" required />
               </Field>
               <Field label="Barrio">
                 <input className="field" value={form.neighborhood} onChange={(event) => setForm((current) => ({ ...current, neighborhood: event.target.value }))} placeholder="Villa Maipu" required />
@@ -685,11 +685,11 @@ function CheckoutPage() {
           ) : null}
 
           <Field label="Notas para el pedido">
-            <textarea className="field min-h-28" value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Aclaraciones, dedicatorias o coordinación de entrega" />
+            <textarea className="field min-h-28" value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Aclaraciones, dedicatorias o coordinaciï¿½n de entrega" />
           </Field>
 
           <div>
-            <p className="text-sm font-semibold text-stone-700">Cómo querés pagar</p>
+            <p className="text-sm font-semibold text-stone-700">Cï¿½mo querï¿½s pagar</p>
             <div className="mt-3 grid gap-3 md:grid-cols-3">
               {paymentOptions.map((option) => (
                 <ChoiceCard key={option.id} active={paymentMethod === option.id} icon={<CreditCard className="h-5 w-5" />} title={option.title} description={option.description} onClick={() => setPaymentMethod(option.id)} />
@@ -722,11 +722,11 @@ function CheckoutPage() {
         </div>
         <dl className="mt-6 space-y-3 text-sm text-stone-600">
           <div className="flex items-center justify-between"><dt>Subtotal</dt><dd className="font-semibold text-stone-900">{formatCurrency(subtotal)}</dd></div>
-          <div className="flex items-center justify-between"><dt>Envío</dt><dd className="font-semibold text-stone-900">{formatCurrency(shippingAmount)}</dd></div>
+          <div className="flex items-center justify-between"><dt>Envï¿½o</dt><dd className="font-semibold text-stone-900">{formatCurrency(shippingAmount)}</dd></div>
           <div className="flex items-center justify-between border-t border-stone-200 pt-3 text-base"><dt className="font-semibold text-stone-900">Total</dt><dd className="font-semibold text-stone-900">{formatCurrency(total)}</dd></div>
         </dl>
         <div className="mt-6 rounded-3xl bg-stone-900 px-5 py-4 text-sm text-white">
-          Vas a ser redirigido a Mercado Pago para completar el pago con la opción que elijas.
+          Vas a ser redirigido a Mercado Pago para completar el pago con la opciï¿½n que elijas.
         </div>
       </aside>
     </div>
@@ -758,8 +758,8 @@ function OrdersPage() {
   if (!isLoggedIn) {
     return (
       <EmptyState
-        title="Iniciá sesión para ver tu historial"
-        description="Desde acá vas a poder revisar pedidos, estados de pago y seguimiento de la compra."
+        title="Iniciï¿½ sesiï¿½n para ver tu historial"
+        description="Desde acï¿½ vas a poder revisar pedidos, estados de pago y seguimiento de la compra."
         action={<Link to="/ingresar" className="btn-primary">Ingresar</Link>}
       />
     );
@@ -772,7 +772,7 @@ function OrdersPage() {
       {loading ? <LoadingPanel label="Cargando pedidos" /> : null}
       {error ? <ErrorBanner message={error} /> : null}
       {!loading && !error && orders.length === 0 ? (
-        <EmptyState title="Todavía no hay pedidos" description="Cuando completes una compra, el detalle va a aparecer acá junto con los datos de pago y entrega." action={<Link to="/tienda" className="btn-secondary">Ver tienda</Link>} />
+        <EmptyState title="Todavï¿½a no hay pedidos" description="Cuando completes una compra, el detalle va a aparecer acï¿½ junto con los datos de pago y entrega." action={<Link to="/tienda" className="btn-secondary">Ver tienda</Link>} />
       ) : null}
       <section className="grid gap-5 xl:grid-cols-2">
         {orders.map((order) => (
@@ -796,7 +796,7 @@ function OrdersPage() {
             {order.delivery ? (
               <div className="mt-5 rounded-3xl bg-stone-100/90 p-4 text-sm text-stone-600">
                 <p className="font-semibold text-stone-900">Entrega</p>
-                <p className="mt-2">{order.delivery.delivery_method === "delivery" ? "Envío local" : "Retiro"} · {order.delivery.neighborhood}</p>
+                <p className="mt-2">{order.delivery.delivery_method === "delivery" ? "Envï¿½o local" : "Retiro"} ï¿½ {order.delivery.neighborhood}</p>
                 <p>{order.delivery.address || "Retiro coordinado"}</p>
                 <p className="mt-2">Pago elegido: {labelForPaymentMethod(order.delivery.payment_method)}</p>
               </div>
@@ -805,7 +805,7 @@ function OrdersPage() {
               <div className="mt-5 flex flex-wrap gap-2">
                 {order.payments.map((payment) => (
                   <span key={payment.id} className="rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-semibold text-stone-600">
-                    {payment.provider} · {payment.status}
+                    {payment.provider} ï¿½ {payment.status}
                   </span>
                 ))}
               </div>
@@ -971,12 +971,12 @@ function AdminPage() {
 
   return (
     <div className="space-y-8 pb-10">
-      <SectionHeading eyebrow="Dashboard" title="Un panel admin mucho más comercial y menos improvisado" description="Métricas, gestión del catálogo, recetas publicadas, pedidos y contenido institucional desde una misma superficie." />
+      <SectionHeading eyebrow="Dashboard" title="Un panel admin mucho mï¿½s comercial y menos improvisado" description="Mï¿½tricas, gestiï¿½n del catï¿½logo, recetas publicadas, pedidos y contenido institucional desde una misma superficie." />
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="Facturación total" value={formatCurrency(metrics.revenue)} detail="Suma de pedidos creados" />
+        <StatCard title="Facturaciï¿½n total" value={formatCurrency(metrics.revenue)} detail="Suma de pedidos creados" />
         <StatCard title="Pedidos pagos" value={String(metrics.paidOrders)} detail="Pagos confirmados" />
         <StatCard title="Clientes" value={String(metrics.customers)} detail="Usuarios no admin" />
-        <StatCard title="Productos" value={String(metrics.catalog)} detail="Dulces cargados en catálogo" />
+        <StatCard title="Productos" value={String(metrics.catalog)} detail="Dulces cargados en catï¿½logo" />
       </section>
       <div className="flex flex-wrap gap-3">
         {[
@@ -1004,7 +1004,7 @@ function AdminPage() {
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="font-semibold text-stone-900">Pedido #{order.id}</p>
-                      <p className="text-sm text-stone-500">{order.user?.name} · {formatDate(order.created_at)}</p>
+                      <p className="text-sm text-stone-500">{order.user?.name} ï¿½ {formatDate(order.created_at)}</p>
                     </div>
                     <StatusPill status={order.status} />
                   </div>
@@ -1032,10 +1032,10 @@ function AdminPage() {
           <form className="glass-panel space-y-4 p-6" onSubmit={handleProductSubmit}>
             <h3 className="font-display text-3xl font-semibold text-stone-950">{editingProductId ? "Editar producto" : "Nuevo producto"}</h3>
             <Field label="Nombre"><input className="field" value={productForm.name} onChange={(event) => setProductForm((current) => ({ ...current, name: event.target.value }))} required /></Field>
-            <Field label="Descripción"><textarea className="field min-h-28" value={productForm.description} onChange={(event) => setProductForm((current) => ({ ...current, description: event.target.value }))} /></Field>
+            <Field label="Descripciï¿½n"><textarea className="field min-h-28" value={productForm.description} onChange={(event) => setProductForm((current) => ({ ...current, description: event.target.value }))} /></Field>
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Precio"><input className="field" type="number" min="0" step="0.01" value={productForm.price} onChange={(event) => setProductForm((current) => ({ ...current, price: event.target.value }))} required /></Field>
-              <Field label="Categoría"><input className="field" value={productForm.category} onChange={(event) => setProductForm((current) => ({ ...current, category: event.target.value }))} /></Field>
+              <Field label="Categorï¿½a"><input className="field" value={productForm.category} onChange={(event) => setProductForm((current) => ({ ...current, category: event.target.value }))} /></Field>
             </div>
             <Field label="Imagen"><input className="field" value={productForm.image_url} onChange={(event) => setProductForm((current) => ({ ...current, image_url: event.target.value }))} placeholder="https://..." /></Field>
             <label className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-stone-700">
@@ -1078,12 +1078,12 @@ function AdminPage() {
         <section className="grid gap-6 xl:grid-cols-[0.82fr_1.18fr]">
           <form className="glass-panel space-y-4 p-6" onSubmit={handleRecipeSubmit}>
             <h3 className="font-display text-3xl font-semibold text-stone-950">{editingRecipeId ? "Editar receta" : "Nueva receta"}</h3>
-            <Field label="Título"><input className="field" value={recipeForm.title} onChange={(event) => setRecipeForm((current) => ({ ...current, title: event.target.value }))} required /></Field>
+            <Field label="Tï¿½tulo"><input className="field" value={recipeForm.title} onChange={(event) => setRecipeForm((current) => ({ ...current, title: event.target.value }))} required /></Field>
             <Field label="Resumen"><textarea className="field min-h-24" value={recipeForm.summary} onChange={(event) => setRecipeForm((current) => ({ ...current, summary: event.target.value }))} required /></Field>
             <Field label="Ingredientes"><textarea className="field min-h-24" value={recipeForm.ingredients} onChange={(event) => setRecipeForm((current) => ({ ...current, ingredients: event.target.value }))} required /></Field>
             <Field label="Pasos"><textarea className="field min-h-32" value={recipeForm.steps} onChange={(event) => setRecipeForm((current) => ({ ...current, steps: event.target.value }))} required /></Field>
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Categoría"><input className="field" value={recipeForm.category} onChange={(event) => setRecipeForm((current) => ({ ...current, category: event.target.value }))} /></Field>
+              <Field label="Categorï¿½a"><input className="field" value={recipeForm.category} onChange={(event) => setRecipeForm((current) => ({ ...current, category: event.target.value }))} /></Field>
               <Field label="Estado"><select className="field" value={recipeForm.status} onChange={(event) => setRecipeForm((current) => ({ ...current, status: event.target.value }))}><option value="published">Publicado</option><option value="draft">Borrador</option></select></Field>
             </div>
             <Field label="Imagen"><input className="field" value={recipeForm.image_url} onChange={(event) => setRecipeForm((current) => ({ ...current, image_url: event.target.value }))} placeholder="https://..." /></Field>
@@ -1118,7 +1118,7 @@ function AdminPage() {
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-xs uppercase tracking-[0.28em] text-stone-500">Pedido #{order.id}</p>
-                  <h3 className="mt-2 font-display text-2xl font-semibold text-stone-950">{order.user?.name} · {formatCurrency(order.total_amount)}</h3>
+                  <h3 className="mt-2 font-display text-2xl font-semibold text-stone-950">{order.user?.name} ï¿½ {formatCurrency(order.total_amount)}</h3>
                   <p className="mt-2 text-sm text-stone-500">{formatDate(order.created_at)}</p>
                 </div>
                 <select className="field min-w-48" value={order.status} onChange={(event) => void handleUpdateOrderStatus(order.id, event.target.value)}>
@@ -1132,7 +1132,7 @@ function AdminPage() {
                 </div>
                 <div className="rounded-3xl bg-stone-100/90 p-4 text-sm text-stone-600">
                   <p className="font-semibold text-stone-900">Entrega y pago</p>
-                  <p className="mt-3">{order.delivery?.delivery_method === "delivery" ? "Envío local" : "Retiro"}</p>
+                  <p className="mt-3">{order.delivery?.delivery_method === "delivery" ? "Envï¿½o local" : "Retiro"}</p>
                   <p>{order.delivery?.address || "Retiro coordinado"}</p>
                   <p className="mt-2">{labelForPaymentMethod(order.delivery?.payment_method)}</p>
                 </div>
@@ -1146,7 +1146,7 @@ function AdminPage() {
         <section className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
           <div className="glass-panel p-6">
             <h3 className="font-display text-3xl font-semibold text-stone-950">Texto institucional</h3>
-            <p className="mt-3 text-sm leading-6 text-stone-600">Editá la narrativa de la marca para que el home acompañe mejor el posicionamiento del ecommerce.</p>
+            <p className="mt-3 text-sm leading-6 text-stone-600">Editï¿½ la narrativa de la marca para que el home acompaï¿½e mejor el posicionamiento del ecommerce.</p>
             <textarea className="field mt-5 min-h-72" value={aboutContent} onChange={(event) => setAboutContent(event.target.value)} />
             <button className="btn-primary mt-4" type="button" onClick={() => void handleSaveStory()}>Guardar contenido</button>
           </div>
@@ -1154,7 +1154,7 @@ function AdminPage() {
             <h3 className="font-display text-3xl font-semibold text-stone-950">Preview editorial</h3>
             <div className="mt-5 rounded-[32px] bg-stone-900 p-6 text-stone-100">
               <p className="text-xs uppercase tracking-[0.32em] text-stone-400">Manifiesto</p>
-              <p className="mt-4 font-display text-3xl font-semibold leading-tight">{aboutContent || "Tu historia de marca va a aparecer acá."}</p>
+              <p className="mt-4 font-display text-3xl font-semibold leading-tight">{aboutContent || "Tu historia de marca va a aparecer acï¿½."}</p>
             </div>
           </div>
         </section>
@@ -1185,10 +1185,10 @@ function LoginPage() {
   };
 
   return (
-    <AuthLayout eyebrow="Acceso" title="Ingresá para comprar, seguir pedidos o administrar la tienda" description="La cuenta habilita historial de compras, checkout y dashboard para la admin." alternate={<Link to="/registro" className="font-semibold text-stone-900 underline">Crear cuenta</Link>}>
+    <AuthLayout eyebrow="Acceso" title="Ingresï¿½ para comprar, seguir pedidos o administrar la tienda" description="La cuenta habilita historial de compras, checkout y dashboard para la admin." alternate={<Link to="/registro" className="font-semibold text-stone-900 underline">Crear cuenta</Link>}>
       <form className="space-y-4" onSubmit={handleSubmit}>
         <Field label="Email"><input className="field" type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} required /></Field>
-        <Field label="Contraseña"><input className="field" type="password" value={form.password} onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))} required /></Field>
+        <Field label="Contraseï¿½a"><input className="field" type="password" value={form.password} onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))} required /></Field>
         {error ? <ErrorBanner message={error} /> : null}
         <button className="btn-primary w-full justify-center" type="submit" disabled={isLoading}>{isLoading ? "Ingresando..." : "Ingresar"}</button>
       </form>
@@ -1218,11 +1218,11 @@ function RegisterPage() {
   };
 
   return (
-    <AuthLayout eyebrow="Cuenta nueva" title="Creá tu cuenta para comprar y recibir confirmaciones" description="El registro conecta carrito, historial y mails de confirmación de compra en un mismo recorrido." alternate={<Link to="/ingresar" className="font-semibold text-stone-900 underline">Ya tengo cuenta</Link>}>
+    <AuthLayout eyebrow="Cuenta nueva" title="Creï¿½ tu cuenta para comprar y recibir confirmaciones" description="El registro conecta carrito, historial y mails de confirmaciï¿½n de compra en un mismo recorrido." alternate={<Link to="/ingresar" className="font-semibold text-stone-900 underline">Ya tengo cuenta</Link>}>
       <form className="space-y-4" onSubmit={handleSubmit}>
         <Field label="Nombre"><input className="field" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required /></Field>
         <Field label="Email"><input className="field" type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} required /></Field>
-        <Field label="Contraseña"><input className="field" type="password" value={form.password} onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))} required /></Field>
+        <Field label="Contraseï¿½a"><input className="field" type="password" value={form.password} onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))} required /></Field>
         {error ? <ErrorBanner message={error} /> : null}
         <button className="btn-primary w-full justify-center" type="submit" disabled={isLoading}>{isLoading ? "Creando cuenta..." : "Crear cuenta"}</button>
       </form>
@@ -1327,7 +1327,7 @@ function CartDrawer() {
             </div>
             <div className="mt-6 flex-1 space-y-4 overflow-y-auto">
               {items.length === 0 ? (
-                <EmptyState title="Todavía no agregaste productos" description="Sumá un box, torta o cookies desde la tienda para iniciar el checkout." />
+                <EmptyState title="Todavï¿½a no agregaste productos" description="Sumï¿½ un box, torta o cookies desde la tienda para iniciar el checkout." />
               ) : (
                 items.map((item) => (
                   <div key={item.id} className="rounded-3xl border border-stone-200/70 bg-stone-50 p-4">
@@ -1367,7 +1367,7 @@ function CartDrawer() {
 function SupportChat() {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([{ role: "bot", text: "Hola, soy el asistente de Andres Bakery. Puedo ayudarte con envíos en Villa Maipu, pagos o pedidos personalizados." }]);
+  const [messages, setMessages] = useState<ChatMessage[]>([{ role: "bot", text: "Hola, soy el asistente de Andres Bakery. Puedo ayudarte con envï¿½os en Villa Maipu, pagos o pedidos personalizados." }]);
   const [form, setForm] = useState({ name: user?.name ?? "", email: user?.email ?? "", message: "" });
   const [sending, setSending] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -1423,7 +1423,7 @@ function SupportChat() {
             <form className="mt-4 space-y-3" onSubmit={handleSend}>
               <input className="field" placeholder="Tu nombre" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} />
               <input className="field" placeholder="Tu email" type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} />
-              <textarea className="field min-h-24" placeholder="Escribí tu consulta" value={form.message} onChange={(event) => setForm((current) => ({ ...current, message: event.target.value }))} required />
+              <textarea className="field min-h-24" placeholder="Escribï¿½ tu consulta" value={form.message} onChange={(event) => setForm((current) => ({ ...current, message: event.target.value }))} required />
               {feedback ? <p className="text-xs text-stone-500">{feedback}</p> : null}
               <button className="btn-primary w-full justify-center" type="submit" disabled={sending}><Send className="h-4 w-4" />{sending ? "Enviando..." : "Enviar consulta"}</button>
             </form>
@@ -1448,7 +1448,7 @@ function SiteFooter() {
         </div>
         <div className="flex flex-wrap gap-4">
           <span>Mercado Pago, Visa y Mastercard</span>
-          <span>Pedidos con mail automático</span>
+          <span>Pedidos con mail automï¿½tico</span>
           <span>Dashboard admin</span>
         </div>
       </div>
@@ -1515,9 +1515,9 @@ function StatusPill({ status, compact = false }: { status: string; compact?: boo
 
 function PaymentBanner({ paymentState }: { paymentState: string }) {
   const messageMap: Record<string, string> = {
-    approved: "Pago aprobado. El pedido ya quedó registrado en tu historial.",
-    pending: "El pago quedó pendiente. En cuanto Mercado Pago responda, el estado va a actualizarse.",
-    failure: "El pago no se pudo completar. Podés volver a intentar desde un nuevo pedido.",
+    approved: "Pago aprobado. El pedido ya quedï¿½ registrado en tu historial.",
+    pending: "El pago quedï¿½ pendiente. En cuanto Mercado Pago responda, el estado va a actualizarse.",
+    failure: "El pago no se pudo completar. Podï¿½s volver a intentar desde un nuevo pedido.",
   };
   return <div className="rounded-3xl border border-stone-200 bg-white/90 px-5 py-4 text-sm text-stone-700 shadow-sm">{messageMap[paymentState] ?? "Estado de pago actualizado."}</div>;
 }
@@ -1569,7 +1569,7 @@ function getErrorMessage(reason: unknown) {
   if (reason instanceof Error) {
     return reason.message;
   }
-  return "Ocurrió un error inesperado.";
+  return "Ocurriï¿½ un error inesperado.";
 }
 
 function getStatusTone(status: string) {
@@ -1593,9 +1593,9 @@ function getStatusTone(status: string) {
 function labelForPaymentMethod(paymentMethod?: string | null) {
   switch (paymentMethod) {
     case "visa":
-      return "Visa vía Mercado Pago";
+      return "Visa vï¿½a Mercado Pago";
     case "mastercard":
-      return "Mastercard vía Mercado Pago";
+      return "Mastercard vï¿½a Mercado Pago";
     case "mercado_pago":
       return "Mercado Pago";
     default:
