@@ -1,4 +1,4 @@
-import os
+﻿import os
 
 
 class Config:
@@ -15,22 +15,16 @@ class Config:
 
     MERCADO_PAGO_ACCESS_TOKEN = os.getenv("MERCADO_PAGO_ACCESS_TOKEN")
     MERCADO_PAGO_PUBLIC_KEY = os.getenv("MERCADO_PAGO_PUBLIC_KEY")
-    MERCADO_PAGO_API_BASE_URL = os.getenv(
-        "MERCADO_PAGO_API_BASE_URL",
-        "https://api.mercadopago.com",
-    )
+    MERCADO_PAGO_API_BASE_URL = os.getenv("MERCADO_PAGO_API_BASE_URL", "https://api.mercadopago.com")
     PAYMENT_CURRENCY = os.getenv("PAYMENT_CURRENCY", "ars")
 
-    FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
+    FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:5174")
     BACKEND_PUBLIC_URL = os.getenv("BACKEND_PUBLIC_URL", "")
 
     ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@bakery.local")
     ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
     ADMIN_NAME = os.getenv("ADMIN_NAME", "Admin")
     SUPPORT_EMAIL = os.getenv("SUPPORT_EMAIL", "support@bakery.local")
-    DELIVERY_ZONE_NAME = os.getenv("DELIVERY_ZONE_NAME", "Villa Maipu")
+    DELIVERY_ZONE_NAME = os.getenv("DELIVERY_ZONE_NAME", "Villa Maip\u00fa")
     DELIVERY_FEE = os.getenv("DELIVERY_FEE", "2500")
-    PICKUP_ADDRESS = os.getenv(
-        "PICKUP_ADDRESS",
-        "Andres Bakery, Villa Maipu, General San Martin",
-    )
+    PICKUP_ADDRESS = os.getenv("PICKUP_ADDRESS", "Andres Bakery, Villa Maip\u00fa, General San Mart\u00edn")

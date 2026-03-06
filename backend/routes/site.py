@@ -1,31 +1,20 @@
-from flask import Blueprint, jsonify, request
+﻿from flask import Blueprint, request
 
-from ..extensions import db
-from ..models import SiteContent
-from .utils import admin_required
+from ..services.site_service import site_service
+from .utils import admin_required, json_endpoint
 
 
 bp = Blueprint("site", __name__, url_prefix="/api/site")
 
 
 @bp.get("/about")
+@json_endpoint
 def get_about():
-    content = SiteContent.query.get("about")
-    if not content:
-        return jsonify({"content": ""})
-    return jsonify({"content": content.content})
+    return site_service.get_about()
 
 
 @bp.put("/about")
 @admin_required
+@json_endpoint
 def update_about():
-    data = request.get_json(silent=True) or {}
-    content_text = data.get("content", "")
-    content = SiteContent.query.get("about")
-    if not content:
-        content = SiteContent(key="about", content=content_text)
-        db.session.add(content)
-    else:
-        content.content = content_text
-    db.session.commit()
-    return jsonify({"status": "updated"})
+    return site_service.update_about(request.get_json(silent=True) or {})

@@ -1,92 +1,40 @@
-from flask import Blueprint, jsonify, request
+﻿from flask import Blueprint, request
 
-from ..extensions import db
-from ..models import Recipe
-from .utils import admin_required
+from ..services.catalog_service import recipe_service
+from .utils import admin_required, json_endpoint
 
 
 bp = Blueprint("recipes", __name__, url_prefix="/api/recipes")
 
 
 @bp.get("")
+@json_endpoint
 def list_recipes():
-    recipes = Recipe.query.order_by(Recipe.created_at.desc()).all()
-    return jsonify([_serialize(recipe) for recipe in recipes])
+    return recipe_service.list()
 
 
 @bp.get("/<int:recipe_id>")
+@json_endpoint
 def get_recipe(recipe_id: int):
-    recipe = Recipe.query.get_or_404(recipe_id)
-    return jsonify(_serialize(recipe))
+    return recipe_service.get(recipe_id)
 
 
 @bp.post("")
 @admin_required
+@json_endpoint
 def create_recipe():
-    data = request.get_json(silent=True) or {}
-    title = data.get("title")
-    summary = data.get("summary")
-    ingredients = data.get("ingredients")
-    steps = data.get("steps")
-
-    if not title or not summary or not ingredients or not steps:
-        return jsonify({"error": "title, summary, ingredients and steps are required"}), 400
-
-    recipe = Recipe(
-        title=title,
-        summary=summary,
-        ingredients=ingredients,
-        steps=steps,
-        image_url=data.get("image_url"),
-        category=data.get("category", "general"),
-        status=data.get("status", "published"),
-    )
-    db.session.add(recipe)
-    db.session.commit()
-
-    return jsonify({"id": recipe.id}), 201
+    return recipe_service.create(request.get_json(silent=True) or {}), 201
 
 
 @bp.put("/<int:recipe_id>")
 @admin_required
+@json_endpoint
 def update_recipe(recipe_id: int):
-    recipe = Recipe.query.get_or_404(recipe_id)
-    data = request.get_json(silent=True) or {}
-
-    for field in [
-        "title",
-        "summary",
-        "ingredients",
-        "steps",
-        "image_url",
-        "category",
-        "status",
-    ]:
-        if field in data:
-            setattr(recipe, field, data[field])
-
-    db.session.commit()
-    return jsonify({"status": "updated"})
+    return recipe_service.update(recipe_id, request.get_json(silent=True) or {})
 
 
 @bp.delete("/<int:recipe_id>")
 @admin_required
+@json_endpoint
 def delete_recipe(recipe_id: int):
-    recipe = Recipe.query.get_or_404(recipe_id)
-    db.session.delete(recipe)
-    db.session.commit()
-    return jsonify({"status": "deleted"})
-
-
-def _serialize(recipe: Recipe) -> dict:
-    return {
-        "id": recipe.id,
-        "title": recipe.title,
-        "summary": recipe.summary,
-        "ingredients": recipe.ingredients,
-        "steps": recipe.steps,
-        "image_url": recipe.image_url,
-        "category": recipe.category,
-        "status": recipe.status,
-        "created_at": recipe.created_at.isoformat(),
-    }
+    return recipe_service.delete(recipe_id)

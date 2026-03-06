@@ -1,65 +1,27 @@
-from flask import Blueprint, jsonify, request
-from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required #type: ignore
+﻿from flask import Blueprint, request
+from flask_jwt_extended import get_jwt_identity, jwt_required  # type: ignore
 
-from ..extensions import db
-from ..models import User
+from ..services.auth_service import auth_service
+from .utils import json_endpoint
 
 
 bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
 
 @bp.post("/register")
+@json_endpoint
 def register():
-    data = request.get_json(silent=True) or {}
-    name = data.get("name")
-    email = data.get("email")
-    password = data.get("password")
-
-    if not name or not email or not password:
-        return jsonify({"error": "name, email and password are required"}), 400
-
-    if User.query.filter_by(email=email).first():
-        return jsonify({"error": "email already registered"}), 400
-
-    user = User(name=name, email=email)
-    user.set_password(password)
-    db.session.add(user)
-    db.session.commit()
-
-    token = create_access_token(identity=str(user.id))
-    return jsonify({"access_token": token, "user_id": user.id}), 201
+    return auth_service.register(request.get_json(silent=True) or {}), 201
 
 
 @bp.post("/login")
+@json_endpoint
 def login():
-    data = request.get_json(silent=True) or {}
-    email = data.get("email")
-    password = data.get("password")
-
-    if not email or not password:
-        return jsonify({"error": "email and password are required"}), 400
-
-    user = User.query.filter_by(email=email).first()
-    if not user or not user.check_password(password):
-        return jsonify({"error": "invalid credentials"}), 401
-
-    token = create_access_token(identity=str(user.id))
-    return jsonify({"access_token": token, "user_id": user.id})
+    return auth_service.login(request.get_json(silent=True) or {})
 
 
 @bp.get("/me")
 @jwt_required()
+@json_endpoint
 def me():
-    user_id = get_jwt_identity()
-    user = User.query.get(user_id)
-    if not user:
-        return jsonify({"error": "user not found"}), 404
-
-    return jsonify(
-        {
-            "id": user.id,
-            "name": user.name,
-            "email": user.email,
-            "is_admin": user.is_admin,
-        }
-    )
+    return auth_service.get_profile(get_jwt_identity())

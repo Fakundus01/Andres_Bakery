@@ -1,7 +1,7 @@
-from flask import Blueprint, jsonify
+﻿from flask import Blueprint
 
-from ..models import User
-from .utils import admin_required
+from ..services.auth_service import auth_service
+from .utils import admin_required, json_endpoint
 
 
 bp = Blueprint("users", __name__, url_prefix="/api/users")
@@ -9,17 +9,6 @@ bp = Blueprint("users", __name__, url_prefix="/api/users")
 
 @bp.get("")
 @admin_required
+@json_endpoint
 def list_users():
-    users = User.query.order_by(User.created_at.desc()).all()
-    return jsonify(
-        [
-            {
-                "id": user.id,
-                "name": user.name,
-                "email": user.email,
-                "is_admin": user.is_admin,
-                "created_at": user.created_at.isoformat(),
-            }
-            for user in users
-        ]
-    )
+    return auth_service.list_users()

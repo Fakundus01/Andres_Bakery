@@ -1,63 +1,34 @@
-from flask import Blueprint, jsonify, request
+﻿from flask import Blueprint, request
 
-from ..extensions import db
-from ..models import Ingredient
-from .utils import admin_required
+from ..services.catalog_service import ingredient_service
+from .utils import admin_required, json_endpoint
 
 
 bp = Blueprint("ingredients", __name__, url_prefix="/api/ingredients")
 
 
 @bp.get("")
+@json_endpoint
 def list_ingredients():
-    ingredients = Ingredient.query.order_by(Ingredient.name.asc()).all()
-    return jsonify([_serialize_ingredient(ingredient) for ingredient in ingredients])
+    return ingredient_service.list()
 
 
 @bp.post("")
 @admin_required
+@json_endpoint
 def create_ingredient():
-    data = request.get_json(silent=True) or {}
-    name = data.get("name")
-    if not name:
-        return jsonify({"error": "name is required"}), 400
-
-    ingredient = Ingredient(
-        name=name.strip(),
-        unit=data.get("unit"),
-    )
-    db.session.add(ingredient)
-    db.session.commit()
-    return jsonify({"id": ingredient.id}), 201
+    return ingredient_service.create(request.get_json(silent=True) or {}), 201
 
 
 @bp.put("/<int:ingredient_id>")
 @admin_required
+@json_endpoint
 def update_ingredient(ingredient_id: int):
-    ingredient = Ingredient.query.get_or_404(ingredient_id)
-    data = request.get_json(silent=True) or {}
-
-    if "name" in data and data["name"]:
-        ingredient.name = data["name"].strip()
-    if "unit" in data:
-        ingredient.unit = data["unit"]
-
-    db.session.commit()
-    return jsonify({"status": "updated"})
+    return ingredient_service.update(ingredient_id, request.get_json(silent=True) or {})
 
 
 @bp.delete("/<int:ingredient_id>")
 @admin_required
+@json_endpoint
 def delete_ingredient(ingredient_id: int):
-    ingredient = Ingredient.query.get_or_404(ingredient_id)
-    db.session.delete(ingredient)
-    db.session.commit()
-    return jsonify({"status": "deleted"})
-
-
-def _serialize_ingredient(ingredient: Ingredient) -> dict:
-    return {
-        "id": ingredient.id,
-        "name": ingredient.name,
-        "unit": ingredient.unit,
-    }
+    return ingredient_service.delete(ingredient_id)
