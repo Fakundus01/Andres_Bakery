@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Fraunces", serif;
+  --font-sans: "Manrope", sans-serif;
+  --animate-spin-slow: spin 2.5s linear infinite;
+}
+
+:root {
+  color: #1c1917;
+  background: #fff8f3;
+  font-family: var(--font-sans);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+  background: transparent;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+img {
+  display: block;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+@layer components {
+  .glass-panel {
+    @apply rounded-[32px] border border-white/70 bg-white/80 shadow-xl shadow-orange-950/5 backdrop-blur-xl;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center gap-2 rounded-full bg-stone-900 px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-700 transition hover:-translate-y-0.5 hover:border-stone-300 hover:bg-stone-100;
+  }
+
+  .field {
+    @apply w-full rounded-[22px] border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-orange-400 focus:ring-4 focus:ring-orange-100;
+  }
+}

@@ -1,8 +1,8 @@
 # Backend Andres Bakery (Flask)
 
-Backend API para la p√°gina de reposter√≠a. Incluye autenticaci√≥n JWT, cat√°logo de productos, √≥rdenes, env√≠o de correos de contacto y pagos con tarjeta v√≠a Stripe.
+Backend API para la p·gina de reposterÌa. Incluye autenticaciÛn JWT, cat·logo de productos, Ûrdenes con datos de entrega, envÌo de correos y checkout con Mercado Pago.
 
-## Instalaci√≥n
+## InstalaciÛn
 
 ```bash
 python -m venv .venv
@@ -19,7 +19,11 @@ pip install -r requirements.txt
 - `ADMIN_NAME` (default: `Admin`)
 - `MAIL_SERVER`, `MAIL_PORT`, `MAIL_USE_TLS`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_DEFAULT_SENDER`
 - `SUPPORT_EMAIL` (default: `support@bakery.local`)
-- `STRIPE_SECRET_KEY`, `STRIPE_CURRENCY`
+- `MERCADO_PAGO_ACCESS_TOKEN`, `MERCADO_PAGO_PUBLIC_KEY`
+- `PAYMENT_CURRENCY`
+- `BACKEND_PUBLIC_URL`
+- `FRONTEND_ORIGIN`
+- `DELIVERY_ZONE_NAME`, `DELIVERY_FEE`, `PICKUP_ADDRESS`
 
 ## Levantar el servidor
 
@@ -27,7 +31,7 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Tambi√©n pod√©s usar:
+TambiÈn podÈs usar:
 
 ```bash
 python -m backend.app
@@ -41,7 +45,9 @@ python -m backend.app
 - `GET /api/products`
 - `POST /api/products` (admin)
 - `POST /api/orders`
-- `POST /api/payments/intent`
+- `GET /api/orders`
+- `POST /api/payments/checkout`
+- `POST /api/payments/webhook`
 - `POST /api/contact`
 
-Al iniciar la app se crea autom√°ticamente el usuario admin usando las variables de entorno correspondientes.
+Al iniciar la app se crea autom·ticamente el usuario admin usando las variables de entorno correspondientes y, si el cat·logo est· vacÌo, se siembran productos y recetas iniciales para el storefront.

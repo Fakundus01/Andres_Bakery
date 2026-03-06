@@ -35,8 +35,12 @@ export function CartProvider({ children }) {
     );
   };
 
+  const clearCart = () => {
+    setItems([]);
+  };
+
   const value = useMemo(
-    () => ({ items, addItem, removeItem, updateQuantity }),
+    () => ({ items, addItem, removeItem, updateQuantity, clearCart }),
     [items]
   );
 

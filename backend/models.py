@@ -88,6 +88,13 @@ class Order(db.Model):
     user = db.relationship("User", back_populates="orders")
     items = db.relationship("OrderItem", back_populates="order", lazy=True)
     payments = db.relationship("Payment", back_populates="order", lazy=True)
+    delivery = db.relationship(
+        "OrderDelivery",
+        back_populates="order",
+        uselist=False,
+        lazy=True,
+        cascade="all, delete-orphan",
+    )
 
 
 class OrderItem(db.Model):
@@ -104,14 +111,31 @@ class OrderItem(db.Model):
 class Payment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey("order.id"), nullable=False)
-    provider = db.Column(db.String(50), default="stripe")
+    provider = db.Column(db.String(50), default="mercado_pago")
     provider_payment_id = db.Column(db.String(255))
     amount = db.Column(db.Numeric(10, 2), nullable=False)
-    currency = db.Column(db.String(10), default="usd")
+    currency = db.Column(db.String(10), default="ars")
     status = db.Column(db.String(50), default="pending")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     order = db.relationship("Order", back_populates="payments")
+
+
+class OrderDelivery(db.Model):
+    order_id = db.Column(db.Integer, db.ForeignKey("order.id"), primary_key=True)
+    customer_name = db.Column(db.String(120), nullable=False)
+    customer_email = db.Column(db.String(255), nullable=False)
+    customer_phone = db.Column(db.String(50))
+    delivery_method = db.Column(db.String(50), default="delivery")
+    address = db.Column(db.String(255))
+    neighborhood = db.Column(db.String(120))
+    city = db.Column(db.String(120))
+    shipping_amount = db.Column(db.Numeric(10, 2), default=0)
+    notes = db.Column(db.Text)
+    payment_method = db.Column(db.String(50), default="mercado_pago")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    order = db.relationship("Order", back_populates="delivery")
 
 
 class SiteContent(db.Model):

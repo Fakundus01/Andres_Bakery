@@ -890,3 +890,31 @@ textarea:focus {
   overflow-y: auto;
 }
 
+.order-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 24px;
+}
+
+.order-cart {
+  background: var(--white);
+  border-radius: 20px;
+  padding: 20px;
+  border: 2px solid var(--lavender);
+  height: fit-content;
+}
+
+.order-summary {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 2px dashed var(--lavender);
+}
+
+.order-message {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--mint);
+  font-weight: 600;
+}
+
+
