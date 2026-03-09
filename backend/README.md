@@ -1,8 +1,8 @@
 # Backend Andres Bakery (Flask)
 
-Backend API para la página de repostería. Incluye autenticación JWT, catálogo de productos, órdenes con datos de entrega, envío de correos y checkout con Mercado Pago.
+Backend API para la pagina de reposteria. Incluye autenticacion JWT, catalogo de productos, ordenes con datos de entrega, envio de correos y checkout con Mercado Pago.
 
-## Instalación
+## Instalacion
 
 ```bash
 python -m venv .venv
@@ -23,6 +23,8 @@ pip install -r requirements.txt
 - `PAYMENT_CURRENCY`
 - `BACKEND_PUBLIC_URL`
 - `FRONTEND_ORIGIN`
+  - acepta uno o varios origins separados por coma
+  - ejemplo: `http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174`
 - `DELIVERY_ZONE_NAME`, `DELIVERY_FEE`, `PICKUP_ADDRESS`
 
 ## Levantar el servidor
@@ -31,7 +33,7 @@ pip install -r requirements.txt
 python app.py
 ```
 
-También podés usar:
+Tambien podes usar:
 
 ```bash
 python -m backend.app
@@ -50,4 +52,4 @@ python -m backend.app
 - `POST /api/payments/webhook`
 - `POST /api/contact`
 
-Al iniciar la app se crea automáticamente el usuario admin usando las variables de entorno correspondientes y, si el catálogo está vacío, se siembran productos y recetas iniciales para el storefront.
+Al iniciar la app se crea automaticamente el usuario admin usando las variables de entorno correspondientes y, si el catalogo esta vacio, se siembran productos y recetas iniciales para el storefront.

@@ -51,7 +51,7 @@ class BackendApiTestCase(unittest.TestCase):
                 "ADMIN_PASSWORD": "admin123",
                 "ADMIN_NAME": "Admin Test",
                 "MAIL_SERVER": None,
-                "FRONTEND_ORIGIN": "http://localhost:5174",
+                "FRONTEND_ORIGIN": "http://localhost:5173,http://localhost:5174",
                 "DELIVERY_ZONE_NAME": "Villa Maipú",
                 "DELIVERY_FEE": "2500",
             }
@@ -103,6 +103,18 @@ class BackendApiTestCase(unittest.TestCase):
             },
             "payment_method": "visa",
         }
+
+    def test_cors_reflects_allowed_origin(self) -> None:
+        response = self.client.options(
+            "/api/products",
+            headers={
+                "Origin": "http://localhost:5173",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+        self.assertIn(response.status_code, {200, 204})
+        self.assertEqual(response.headers.get("Access-Control-Allow-Origin"), "http://localhost:5173")
+        self.assertEqual(response.headers.get("Vary"), "Origin")
 
     def test_register_login_and_profile_roundtrip(self) -> None:
         token = self.register_user()

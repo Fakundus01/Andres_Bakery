@@ -1,4 +1,4 @@
-﻿from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 
 from .config import Config
 from .extensions import db, jwt, mail
@@ -53,12 +53,35 @@ def _register_http_handlers(app: Flask) -> None:
 
     @app.after_request
     def add_cors_headers(response):
-        origin = app.config.get("FRONTEND_ORIGIN", "*")
-        response.headers["Access-Control-Allow-Origin"] = origin
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        origin = _resolve_cors_origin(app)
+        if origin:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+            if origin != "*":
+                response.headers["Vary"] = "Origin"
         return response
 
     @app.route("/api/<path:path>", methods=["OPTIONS"])
     def cors_preflight(path):
         return ("", 204)
+
+
+def _resolve_cors_origin(app: Flask) -> str | None:
+    request_origin = request.headers.get("Origin")
+    allowed_origins = app.config.get("FRONTEND_ORIGINS") or []
+
+    if not isinstance(allowed_origins, list):
+        raw_value = str(app.config.get("FRONTEND_ORIGIN", "*")).strip()
+        if raw_value == "*":
+            allowed_origins = ["*"]
+        else:
+            allowed_origins = [origin.strip() for origin in raw_value.split(",") if origin.strip()]
+
+    if "*" in allowed_origins:
+        return "*"
+    if request_origin and request_origin in allowed_origins:
+        return request_origin
+    if not request_origin and allowed_origins:
+        return allowed_origins[0]
+    return None

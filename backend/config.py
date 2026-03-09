@@ -1,4 +1,10 @@
-﻿import os
+import os
+
+
+def _parse_origins(raw_value: str) -> list[str]:
+    if raw_value.strip() == "*":
+        return ["*"]
+    return [origin.strip() for origin in raw_value.split(",") if origin.strip()]
 
 
 class Config:
@@ -18,13 +24,17 @@ class Config:
     MERCADO_PAGO_API_BASE_URL = os.getenv("MERCADO_PAGO_API_BASE_URL", "https://api.mercadopago.com")
     PAYMENT_CURRENCY = os.getenv("PAYMENT_CURRENCY", "ars")
 
-    FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:5174")
+    FRONTEND_ORIGIN = os.getenv(
+        "FRONTEND_ORIGIN",
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174",
+    )
+    FRONTEND_ORIGINS = _parse_origins(FRONTEND_ORIGIN)
     BACKEND_PUBLIC_URL = os.getenv("BACKEND_PUBLIC_URL", "")
 
     ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@bakery.local")
     ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
     ADMIN_NAME = os.getenv("ADMIN_NAME", "Admin")
     SUPPORT_EMAIL = os.getenv("SUPPORT_EMAIL", "support@bakery.local")
-    DELIVERY_ZONE_NAME = os.getenv("DELIVERY_ZONE_NAME", "Villa Maip\u00fa")
+    DELIVERY_ZONE_NAME = os.getenv("DELIVERY_ZONE_NAME", "Villa Maipú")
     DELIVERY_FEE = os.getenv("DELIVERY_FEE", "2500")
-    PICKUP_ADDRESS = os.getenv("PICKUP_ADDRESS", "Andres Bakery, Villa Maip\u00fa, General San Mart\u00edn")
+    PICKUP_ADDRESS = os.getenv("PICKUP_ADDRESS", "Andres Bakery, Villa Maipú, General San Martín")
