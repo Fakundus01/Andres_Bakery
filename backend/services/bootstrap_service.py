@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from decimal import Decimal
 from typing import Mapping
@@ -17,19 +17,26 @@ class BootstrapService:
         self.ensure_catalog_seed_data()
 
     def ensure_admin(self) -> None:
-        admin_email = str(self.config["ADMIN_EMAIL"])
+        admin_email = str(self.config["ADMIN_EMAIL"]).strip().lower()
+        admin_password = str(self.config["ADMIN_PASSWORD"])
+        admin_name = str(self.config["ADMIN_NAME"])
+
         admin = User.query.filter_by(email=admin_email).first()
         if not admin:
+            admin = User.query.filter_by(is_admin=True).order_by(User.id.asc()).first()
+
+        if not admin:
             admin = User(
-                name=str(self.config["ADMIN_NAME"]),
+                name=admin_name,
                 email=admin_email,
                 is_admin=True,
             )
-            admin.set_password(str(self.config["ADMIN_PASSWORD"]))
             db.session.add(admin)
-        else:
-            admin.name = str(self.config["ADMIN_NAME"])
-            admin.is_admin = True
+
+        admin.name = admin_name
+        admin.email = admin_email
+        admin.is_admin = True
+        admin.set_password(admin_password)
         db.session.commit()
 
     def ensure_site_content(self) -> None:
@@ -39,7 +46,7 @@ class BootstrapService:
                     key="about",
                     content=(
                         "Andres Bakery crea dulces artesanales, cajas para regalar y recetas "
-                        "caseras con una identidad visual c\u00e1lida, cercana y muy de barrio."
+                        "caseras con una identidad visual cálida, cercana y muy de barrio."
                     ),
                 )
             )
@@ -50,7 +57,7 @@ class BootstrapService:
             db.session.add_all(
                 [
                     Product(
-                        name="Box Merienda Villa Maip\u00fa",
+                        name="Box Merienda Villa Maipú",
                         description="Mini torta, cookies de manteca y un blend de te para regalar o compartir.",
                         price=Decimal("18900.00"),
                         category="boxes",

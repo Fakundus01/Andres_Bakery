@@ -31,7 +31,7 @@ class Config:
     FRONTEND_ORIGINS = _parse_origins(FRONTEND_ORIGIN)
     BACKEND_PUBLIC_URL = os.getenv("BACKEND_PUBLIC_URL", "")
 
-    ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@bakery.local")
+    ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "andreacastilloarraez18@gmail.com")
     ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
     ADMIN_NAME = os.getenv("ADMIN_NAME", "Admin")
     SUPPORT_EMAIL = os.getenv("SUPPORT_EMAIL", "support@bakery.local")
