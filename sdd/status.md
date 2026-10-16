@@ -29,6 +29,10 @@ Lo heredado (F01–F12) está Complete salvo lo anotado. Lo pedido el 2026-10-16
 | F20–F21 | Ingredientes + etiquetas | 40% | Planned |
 | F22–F23 | Retiro/envío + WhatsApp | 40% | Planned |
 | F24 | Cartilla de Andrea | 70% | **In Progress** — la página está; falta su texto y su foto |
+| F29–F30 | Nav configurable + Configuración | 100% | **Complete** |
+| F33–F34 | Tarjetas que giran + carrito propio | 100% | **Complete** |
+| F35–F37 | Ayuda, WhatsApp y PedidosYa | 100% | **Complete** |
+| F31–F32 | Tres roles + vista de cliente | 40% | Planned — esperan T3 |
 | F25 | Ficha de producto | 40% | Planned |
 | F26 | Link a PedidosYa | 20% | **Deferred** — todavía no tiene tienda |
 | F27 | Higiene | 100% | **Complete** |
@@ -69,6 +73,6 @@ Ninguno bloquea T0, T1, T2 ni T3. El trabajo puede arrancar igual.
 
 ## 5 · Próximo paso propuesto
 
-**T0 y T1 cerrados el 2026-10-16.** El siguiente ciclo es **T2** (tokens de diseño, estética pixel y los 4 temas estacionales), que ahora puede arrancar porque los componentes ya existen por separado.
+**T0, T1, T2 y las cuatro secciones de UI (nav, configuración, ayuda, carta+carrito) cerradas el 2026-10-16.** El siguiente ciclo es **T2** (tokens de diseño, estética pixel y los 4 temas estacionales), que ahora puede arrancar porque los componentes ya existen por separado.
 
 Antes de T2 conviene resolver **D1** (token de sesión en `localStorage` → cookie `httpOnly`): toca `AuthContext` y el back, no el árbol de componentes, así que ya no obliga a repartir `App.tsx` dos veces.

@@ -4,6 +4,28 @@ Semver `MAJOR.MINOR.PATCH` (R13). No se borra nada: lo viejo queda.
 
 ---
 
+## [0.4.0] · 2026-10-16 · Cuatro secciones de UI, una por commit
+
+Segunda tanda del dictado del humano. Cuatro decisiones antes de escribir codigo (**ADR-011 a ADR-014**) y despues cuatro commits, uno por seccion.
+
+**Navegacion (F29, F39) · ADR-011.** Arriba quedan Carta y Andrea; el resto vive en un drawer lateral que cierra con Escape, con el backdrop o al elegir destino. Los enlaces salen de un solo archivo, `layout/enlaces.ts`, que alimenta la barra y el drawer. A la derecha del todo y siempre en el mismo lugar: estaciones, carrito con contador, e Ingresar / Crear cuenta. Las preferencias se mudaron de `theme/` a `preferencias/` y ahora guardan tema, tipografia, tamano y modo de nav en un solo JSON, saneando ids viejos que ya no existan.
+
+**Configuracion (F30).** `/configuracion` con cuatro grupos de opciones y un boton para volver a los defaults. La tipografia **Redonda** existe por accesibilidad: una pixel font en parrafos largos no se lee. El tamano mueve el `font-size` de `<html>`, asi que escala todo lo que esta en `rem` sin tocar una clase. Incluye vista previa con texto largo de verdad. Se guarda por navegador, no por cuenta: un invitado tambien configura.
+
+**Ayuda (F35, F36, F37) · ADR-013.** Se fue el "Soporte guiado". Se probo en el navegador y era peor de lo reportado: ocupaba el alto completo, tenia las respuestas rapidas **debajo** del historial —asi que cada mensaje las empujaba y se terminaba tocando otro boton— y dos scrolls anidados. Ahora: acordeon nativo (`<details>`) de preguntas frecuentes y dos salidas, WhatsApp y mail. **Si falta `VITE_WHATSAPP_PHONE` el boton no aparece** y el panel dice que falta: mejor eso que un `wa.me` roto. El footer dejo de vender dashboards y dice donde encontrarla, con PedidosYa en "proximamente" (ADR-008).
+
+**Carta y carrito (F33, F34, F40).** Tarjetas con dorso: frente foto y precio, dorso descripcion e ingredientes cuando existan. Se voltea **con un boton, no con el hover**: en celular no hay hover y una tarjeta que gira sola al pasar el dedo es una trampa. Las dos caras comparten celda de grid, asi ninguna se recorta. El giro va en `steps(5)` y se apaga con `prefers-reduced-motion`. El carrito tiene pagina propia en `/carrito`; el icono del header lleva ahi y el boton flotante sigue abriendo el panel rapido.
+
+**Decidido y todavia no construido:** **ADR-012**, el invitado va a poder pedir por WhatsApp sin cuenta. No se implemento porque obliga a que `Order.user_id` sea opcional y a revisar cada consulta que hoy asume que una orden tiene usuario: eso es **T3**, no un parche. **ADR-014**, el deploy espera a T3: Vercel sirve el front, pero Flask + SQLite necesita proceso vivo y disco, y ahi se perderian los pedidos.
+
+**Medido** — 19 tests OK, eslint + tsc limpios. Verificado en navegador: drawer, configuracion cambiando tamano, panel de Ayuda, tarjeta girando y carrito sumando cantidades. **Responsive a 390px**: cero scroll horizontal y ningun elemento desbordado, medido con `scrollWidth` contra `clientWidth`, no a ojo.
+
+**Dos cosas propias encontradas y corregidas:** el generico de `GrupoOpciones` estaba atado a la clave de `Preferencias` y TypeScript colapsaba la union de todas; y agregar al carrito abria el panel rapido tapando la propia pagina del carrito.
+
+**Nota de entorno, no del codigo:** el navegador servia otro proyecto en el puerto 5174 porque habia dos procesos, el nuestro en IPv6 y uno ajeno en IPv4, y `localhost` resuelve a IPv6. Se levanto todo en el **5188** con CORS acorde.
+
+---
+
 ## [0.3.0] · 2026-10-16 · T2 estetica pixel pastel + 4 temas, y la cartilla de Andrea
 
 **Agregado — el motor de temas (F15, ADR-005).** `theme/tokens.css` con las 4 paletas estacionales en nombres **semanticos** (`--color-acento`, nunca `--rosa-300`), `ThemeProvider` que escribe `data-theme` en `<html>` y lo persiste en `localStorage` con try/catch (en ventana privada el tema igual funciona, solo no sobrevive la recarga), `useTheme` y un `ThemeSwitcher` de 4 botones en el header. Default **primavera**. Tailwind 4 lee los tokens desde `@theme`, asi que `bg-superficie` y `text-tinta` son utilidades de Tailwind de verdad y cambiar `data-theme` repinta todo sin recargar.
