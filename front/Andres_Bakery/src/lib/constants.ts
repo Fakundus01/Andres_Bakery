@@ -70,21 +70,3 @@ export const orderStatusOptions = [
   "delivered",
   "payment_failed",
 ];
-
-export const supportReplies = [
-  {
-    label: "Envios en Villa Maipú",
-    answer:
-      "Hacemos entregas dentro de Villa Maipú. En el checkout podés elegir envío local o retiro por el punto de entrega.",
-  },
-  {
-    label: "Medios de pago",
-    answer:
-      "Trabajamos con Mercado Pago. Desde ahí podés completar con saldo, Visa o Mastercard, según la opción que elijas al comprar.",
-  },
-  {
-    label: "Pedidos personalizados",
-    answer:
-      "Si querés una caja regalo o una torta especial, dejá el detalle en el chat y lo derivamos al mail de soporte para seguimiento.",
-  },
-];

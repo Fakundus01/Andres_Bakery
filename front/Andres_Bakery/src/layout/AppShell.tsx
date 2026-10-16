@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
+import { AyudaPanel } from "../components/AyudaPanel";
 import { CartDrawer } from "../components/CartDrawer";
-import { SupportChat } from "../components/SupportChat";
 import { AboutPage } from "../pages/AboutPage";
 import { AdminPage } from "../pages/admin/AdminPage";
 import { CheckoutPage } from "../pages/CheckoutPage";
@@ -34,7 +34,7 @@ export function AppShell() {
       </main>
       <SiteFooter />
       <CartDrawer />
-      <SupportChat />
+      <AyudaPanel />
     </div>
   );
 }
