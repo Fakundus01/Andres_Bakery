@@ -1,125 +1,109 @@
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { LogIn, LogOut, Menu, ShoppingBag, Sparkles, X } from "lucide-react";
+import { LogIn, LogOut, Menu, ShoppingBag, Sparkles, UserPlus } from "lucide-react";
 
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
-import { ThemeSwitcher } from "../theme/ThemeSwitcher";
+import { ThemeSwitcher } from "../preferencias/ThemeSwitcher";
+import { usePreferences } from "../preferencias/usePreferences";
+import { ENLACES_ADMIN, ENLACES_DESTACADOS, ENLACES_TODOS } from "./enlaces";
+import { NavDrawer } from "./NavDrawer";
 
 export function SiteHeader() {
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [drawerAbierto, setDrawerAbierto] = useState(false);
   const { itemCount, openCart } = useCart();
   const { isLoggedIn, logout, user } = useAuth();
+  const { navModo } = usePreferences();
 
-  const links = [
-    { to: "/", label: "Inicio" },
-    { to: "/tienda", label: "Tienda" },
-    { to: "/historia", label: "Andrea" },
-    { to: "/pedidos", label: "Pedidos" },
-    ...(user?.is_admin ? [{ to: "/admin", label: "Admin" }] : []),
-  ];
+  const enlacesAdmin = user?.is_admin ? ENLACES_ADMIN : [];
+  // En "barra" el drawer sigue existiendo para lo que no entra arriba y para el celular.
+  const mostrarDestacados = navModo === "barra";
 
   return (
-    <header className="sticky top-0 z-40 border-b-[3px] border-borde bg-superficie">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-        <Link to="/" className="flex items-center gap-3">
-          <div className="marco-foto flex h-12 w-12 items-center justify-center bg-acento text-crema">
-            <Sparkles className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="font-display text-xl font-bold tracking-tight text-tinta">Andres Bakery</p>
-            <p className="text-xs uppercase tracking-[0.3em] text-tinta-tenue">Dulces de autor</p>
-          </div>
-        </Link>
-
-        <nav className="hidden items-center gap-1 border-[3px] border-borde bg-superficie-alt p-1 lg:flex">
-          {links.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              className={({ isActive }) =>
-                `px-4 py-2 text-sm font-bold transition ${
-                  isActive
-                    ? "bg-acento text-crema"
-                    : "text-tinta-suave hover:bg-superficie hover:text-tinta"
-                }`
-              }
-            >
-              {link.label}
-            </NavLink>
-          ))}
-        </nav>
-
-        <div className="hidden items-center gap-3 lg:flex">
-          <ThemeSwitcher />
-          <button className="btn-secondary" type="button" onClick={openCart}>
-            <ShoppingBag className="h-4 w-4" />
-            Carrito ({itemCount})
+    <>
+      <header className="sticky top-0 z-40 border-b-[3px] border-borde bg-superficie">
+        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
+          <button
+            type="button"
+            className="btn-secondary p-2.5"
+            onClick={() => setDrawerAbierto(true)}
+            aria-label="Abrir menú"
+          >
+            <Menu className="h-5 w-5" />
           </button>
-          {isLoggedIn ? (
-            <>
-              <span className="border-[3px] border-borde bg-superficie-alt px-4 py-2 text-sm font-bold text-tinta-suave">
-                {user?.name}
-              </span>
-              <button className="btn-secondary" type="button" onClick={logout}>
-                <LogOut className="h-4 w-4" />
-                Salir
-              </button>
-            </>
-          ) : (
-            <Link to="/ingresar" className="btn-primary">
-              <LogIn className="h-4 w-4" />
-              Ingresar
-            </Link>
-          )}
-        </div>
 
-        <button
-          type="button"
-          className="marco-foto inline-flex h-11 w-11 items-center justify-center bg-superficie text-tinta lg:hidden"
-          onClick={() => setMobileOpen((value) => !value)}
-          aria-label={mobileOpen ? "Cerrar menú" : "Abrir menú"}
-        >
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
-      </div>
+          <Link to="/" className="flex items-center gap-3">
+            <div className="marco-foto flex h-11 w-11 items-center justify-center bg-acento text-crema">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div className="hidden sm:block">
+              <p className="font-display text-lg font-bold leading-tight tracking-tight text-tinta">Andres Bakery</p>
+              <p className="text-[10px] uppercase tracking-[0.25em] text-tinta-tenue">Dulces de autor</p>
+            </div>
+          </Link>
 
-      {mobileOpen ? (
-        <div className="border-t-[3px] border-borde bg-superficie px-4 py-4 lg:hidden">
-          <div className="flex flex-col gap-2">
-            <ThemeSwitcher className="self-start" />
-            {links.map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                onClick={() => setMobileOpen(false)}
-                className={({ isActive }) =>
-                  `border-[3px] border-borde px-4 py-3 text-sm font-bold ${
-                    isActive ? "bg-acento text-crema" : "bg-superficie-alt text-tinta-suave"
-                  }`
-                }
-              >
-                {link.label}
-              </NavLink>
-            ))}
-            <button className="btn-secondary mt-2" type="button" onClick={openCart}>
-              <ShoppingBag className="h-4 w-4" />
-              Abrir carrito ({itemCount})
+          {mostrarDestacados ? (
+            <nav className="ml-2 hidden items-center gap-1 md:flex">
+              {ENLACES_DESTACADOS.map((enlace) => (
+                <NavLink
+                  key={enlace.to}
+                  to={enlace.to}
+                  className={({ isActive }) =>
+                    `border-[3px] border-borde px-4 py-2 text-sm font-bold ${
+                      isActive ? "bg-acento text-crema" : "bg-superficie-alt text-tinta hover:bg-superficie"
+                    }`
+                  }
+                >
+                  {enlace.label}
+                </NavLink>
+              ))}
+            </nav>
+          ) : null}
+
+          {/* Todo lo de la cuenta vive acá, pegado a la derecha, siempre en el mismo lugar. */}
+          <div className="ml-auto flex items-center gap-2">
+            <ThemeSwitcher className="hidden lg:flex" />
+
+            <button type="button" className="btn-secondary relative p-2.5" onClick={openCart} aria-label={`Abrir carrito, ${itemCount} productos`}>
+              <ShoppingBag className="h-5 w-5" />
+              {itemCount > 0 ? (
+                <span className="absolute -bottom-2 -right-2 min-w-5 border-[3px] border-borde bg-acento px-1 text-xs font-bold leading-tight text-crema">
+                  {itemCount}
+                </span>
+              ) : null}
             </button>
+
             {isLoggedIn ? (
-              <button className="btn-secondary" type="button" onClick={logout}>
-                <LogOut className="h-4 w-4" />
-                Cerrar sesión
-              </button>
+              <>
+                <span className="hidden border-[3px] border-borde bg-superficie-alt px-3 py-2 text-sm font-bold text-tinta sm:block">
+                  {user?.name}
+                </span>
+                <button type="button" className="btn-secondary p-2.5" onClick={logout} aria-label="Cerrar sesión" title="Salir">
+                  <LogOut className="h-5 w-5" />
+                </button>
+              </>
             ) : (
-              <Link to="/ingresar" className="btn-primary" onClick={() => setMobileOpen(false)}>
-                <LogIn className="h-4 w-4" />
-                Ingresar
-              </Link>
+              <>
+                <Link to="/ingresar" className="btn-primary px-3 py-2.5" title="Ingresar">
+                  <LogIn className="h-5 w-5" />
+                  <span className="hidden sm:inline">Ingresar</span>
+                </Link>
+                <Link to="/registro" className="btn-secondary hidden px-3 py-2.5 lg:inline-flex" title="Crear cuenta">
+                  <UserPlus className="h-5 w-5" />
+                  Crear cuenta
+                </Link>
+              </>
             )}
           </div>
         </div>
-      ) : null}
-    </header>
+      </header>
+
+      <NavDrawer
+        abierto={drawerAbierto}
+        onCerrar={() => setDrawerAbierto(false)}
+        enlaces={ENLACES_TODOS}
+        enlacesAdmin={enlacesAdmin}
+      />
+    </>
   );
 }

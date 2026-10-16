@@ -1,8 +1,8 @@
-import { TEMAS } from "./ThemeProvider";
-import { useTheme } from "./useTheme";
+import { TEMAS } from "./PreferencesProvider";
+import { usePreferences } from "./usePreferences";
 
 export function ThemeSwitcher({ className = "" }: { className?: string }) {
-  const { tema, setTema } = useTheme();
+  const { tema, setPreferencia } = usePreferences();
 
   return (
     <div
@@ -14,7 +14,7 @@ export function ThemeSwitcher({ className = "" }: { className?: string }) {
         <button
           key={opcion.id}
           type="button"
-          onClick={() => setTema(opcion.id)}
+          onClick={() => setPreferencia("tema", opcion.id)}
           aria-pressed={tema === opcion.id}
           title={opcion.label}
           className={`px-2 py-1 text-base leading-none transition ${

@@ -31,6 +31,23 @@
   --color-error-suave: #ffdedb;
 }
 
+/* Tamano de letra: mover el font-size de <html> escala TODO, porque las
+   utilidades de Tailwind estan en rem. Un solo lugar, cero clases tocadas. */
+:root[data-escala="chica"] { font-size: 14px; }
+:root[data-escala="normal"] { font-size: 16px; }
+:root[data-escala="grande"] { font-size: 18px; }
+:root[data-escala="enorme"] { font-size: 20px; }
+
+/* Tipografia elegible. "redonda" existe para quien no puede leer la pixel:
+   es accesibilidad, no un capricho. */
+:root[data-fuente="redonda"] {
+  --font-display: "Nunito", system-ui, sans-serif;
+}
+
+:root[data-fuente="serif"] {
+  --font-display: "Fraunces", Georgia, serif;
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;
