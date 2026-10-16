@@ -1,4 +1,4 @@
-import { Cookie, Home, LayoutDashboard, Package, Sparkles } from "lucide-react";
+import { Cookie, Home, LayoutDashboard, Package, Settings, Sparkles } from "lucide-react";
 import type { ComponentType } from "react";
 
 export type EnlaceNav = {
@@ -18,6 +18,7 @@ export const ENLACES_TODOS: EnlaceNav[] = [
   { to: "/", label: "Inicio", icono: Home },
   ...ENLACES_DESTACADOS,
   { to: "/pedidos", label: "Mis pedidos", icono: Package },
+  { to: "/configuracion", label: "Configuración", icono: Settings },
 ];
 
 export const ENLACES_ADMIN: EnlaceNav[] = [{ to: "/admin", label: "Panel", icono: LayoutDashboard }];

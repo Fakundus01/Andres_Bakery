@@ -5,6 +5,7 @@ import { SupportChat } from "../components/SupportChat";
 import { AboutPage } from "../pages/AboutPage";
 import { AdminPage } from "../pages/admin/AdminPage";
 import { CheckoutPage } from "../pages/CheckoutPage";
+import { ConfiguracionPage } from "../pages/ConfiguracionPage";
 import { HomePage } from "../pages/HomePage";
 import { LoginPage } from "../pages/LoginPage";
 import { OrdersPage } from "../pages/OrdersPage";
@@ -22,6 +23,7 @@ export function AppShell() {
           <Route path="/" element={<HomePage />} />
           <Route path="/tienda" element={<ShopPage />} />
           <Route path="/historia" element={<AboutPage />} />
+          <Route path="/configuracion" element={<ConfiguracionPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/pedidos" element={<OrdersPage />} />
           <Route path="/admin" element={<AdminPage />} />
