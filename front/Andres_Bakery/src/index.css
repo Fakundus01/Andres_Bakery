@@ -235,6 +235,39 @@
       inset 2px 2px 0 0 var(--color-acento-suave);
   }
 
+  /* Tarjeta que se da vuelta. La transicion va en steps() a proposito:
+     un giro suave de 60fps desentona con todo lo demas. */
+  .flip-carta {
+    perspective: 1200px;
+  }
+
+  .flip-carta-interior {
+    display: grid;
+    transform-style: preserve-3d;
+    transition: transform 320ms steps(5);
+  }
+
+  .flip-carta[data-volteada="true"] .flip-carta-interior {
+    transform: rotateY(180deg);
+  }
+
+  /* Las dos caras comparten celda: la altura la manda la mas alta y
+     ninguna se recorta al girar. */
+  .flip-cara {
+    grid-area: 1 / 1;
+    backface-visibility: hidden;
+  }
+
+  .flip-cara-dorso {
+    transform: rotateY(180deg);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .flip-carta-interior {
+      transition: none;
+    }
+  }
+
   /* Marco para fotos reales: el pixel va en el marco, no en la comida. */
   .marco-foto {
     box-shadow:

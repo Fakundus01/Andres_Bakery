@@ -4,6 +4,7 @@ import { AyudaPanel } from "../components/AyudaPanel";
 import { CartDrawer } from "../components/CartDrawer";
 import { AboutPage } from "../pages/AboutPage";
 import { AdminPage } from "../pages/admin/AdminPage";
+import { CarritoPage } from "../pages/CarritoPage";
 import { CheckoutPage } from "../pages/CheckoutPage";
 import { ConfiguracionPage } from "../pages/ConfiguracionPage";
 import { HomePage } from "../pages/HomePage";
@@ -24,6 +25,7 @@ export function AppShell() {
           <Route path="/tienda" element={<ShopPage />} />
           <Route path="/historia" element={<AboutPage />} />
           <Route path="/configuracion" element={<ConfiguracionPage />} />
+          <Route path="/carrito" element={<CarritoPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/pedidos" element={<OrdersPage />} />
           <Route path="/admin" element={<AdminPage />} />

@@ -58,6 +58,9 @@ export function CartDrawer() {
                 Ir al checkout
                 <ArrowRight className="h-4 w-4" />
               </button>
+              <button className="btn-secondary mt-3 w-full justify-center" type="button" onClick={() => { closeCart(); navigate("/carrito"); }}>
+                Ver el carrito completo
+              </button>
             </div>
           </aside>
         </div>

@@ -11,7 +11,7 @@ import { NavDrawer } from "./NavDrawer";
 
 export function SiteHeader() {
   const [drawerAbierto, setDrawerAbierto] = useState(false);
-  const { itemCount, openCart } = useCart();
+  const { itemCount } = useCart();
   const { isLoggedIn, logout, user } = useAuth();
   const { navModo } = usePreferences();
 
@@ -64,14 +64,14 @@ export function SiteHeader() {
           <div className="ml-auto flex items-center gap-2">
             <ThemeSwitcher className="hidden lg:flex" />
 
-            <button type="button" className="btn-secondary relative p-2.5" onClick={openCart} aria-label={`Abrir carrito, ${itemCount} productos`}>
+            <Link to="/carrito" className="btn-secondary relative p-2.5" aria-label={`Ver el carrito, ${itemCount} productos`} title="Ver el carrito">
               <ShoppingBag className="h-5 w-5" />
               {itemCount > 0 ? (
                 <span className="absolute -bottom-2 -right-2 min-w-5 border-[3px] border-borde bg-acento px-1 text-xs font-bold leading-tight text-crema">
                   {itemCount}
                 </span>
               ) : null}
-            </button>
+            </Link>
 
             {isLoggedIn ? (
               <>
