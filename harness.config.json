@@ -1,0 +1,15 @@
+{
+  "master": "sdd/SDD-MASTER.md",
+  "test": "backend/.venv/Scripts/python.exe -m unittest discover -s backend/tests -t . -q",
+  "lint": "npm --prefix front/Andres_Bakery run lint",
+  "build": "npm --prefix front/Andres_Bakery run build",
+  "e2e": null,
+  "deploy": null,
+  "base_branch": "main",
+  "prod_branch": "main",
+  "notas": [
+    "test: unittest, NO pytest (el venv no lo tiene). Se corre desde la raiz del repo porque los imports son backend.*",
+    "lint: corre eslint + tsc sobre los dos tsconfig",
+    "deploy: null a proposito, no hay deploy todavia (ver sdd/costs.md)"
+  ]
+}

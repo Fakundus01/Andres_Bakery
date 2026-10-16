@@ -1,0 +1,2 @@
+sdd/changelog.md merge=union
+sdd/prompts/*.md -merge
