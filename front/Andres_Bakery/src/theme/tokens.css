@@ -1,0 +1,92 @@
+/* Las 4 paletas estacionales (ADR-005).
+   Nombres SEMANTICOS: --color-acento, nunca --rosa-300.
+   Los valores por defecto (= primavera) viven en el @theme de index.css;
+   aca cada estacion los pisa. Cambiar de tema = cambiar data-theme en <html>. */
+
+:root[data-theme="primavera"] {
+  --color-fondo: #fff4ec;
+  --color-trama: #ffe4d4;
+  --color-superficie: #fffdfa;
+  --color-superficie-alt: #ffeede;
+  --color-tinta: #4a3b35;
+  --color-tinta-suave: #6f5a50;
+  --color-tinta-tenue: #9c857a;
+  --color-crema: #fff8f0;
+  --color-borde: #4a3b35;
+  --color-sombra: #e3c3ae;
+  --color-acento: #d9668c;
+  --color-acento-suave: #ffe0e9;
+  --color-acento-2: #6faf72;
+  --color-exito: #4e8f53;
+  --color-exito-suave: #ddf0dc;
+  --color-alerta: #bd7f24;
+  --color-alerta-suave: #ffeccd;
+  --color-error: #bb4f48;
+  --color-error-suave: #ffdedb;
+}
+
+:root[data-theme="verano"] {
+  --color-fondo: #fff9e6;
+  --color-trama: #fdeec4;
+  --color-superficie: #fffefa;
+  --color-superficie-alt: #fdf0cf;
+  --color-tinta: #3a4a48;
+  --color-tinta-suave: #566e6b;
+  --color-tinta-tenue: #86a09d;
+  --color-crema: #fffdf2;
+  --color-borde: #3a4a48;
+  --color-sombra: #d8dcb4;
+  --color-acento: #1f9089;
+  --color-acento-suave: #cdeeea;
+  --color-acento-2: #e0a004;
+  --color-exito: #4e8f53;
+  --color-exito-suave: #dcf0d9;
+  --color-alerta: #bd7f24;
+  --color-alerta-suave: #fdeec4;
+  --color-error: #bb4f48;
+  --color-error-suave: #ffdfd9;
+}
+
+:root[data-theme="otono"] {
+  --color-fondo: #fdf0e0;
+  --color-trama: #f5ddc2;
+  --color-superficie: #fffaf2;
+  --color-superficie-alt: #f7e2c8;
+  --color-tinta: #4b3326;
+  --color-tinta-suave: #71513d;
+  --color-tinta-tenue: #a1816a;
+  --color-crema: #fff7ec;
+  --color-borde: #4b3326;
+  --color-sombra: #dcb88f;
+  --color-acento: #bd5c2d;
+  --color-acento-suave: #f8ddc8;
+  --color-acento-2: #7d8c3f;
+  --color-exito: #557a3c;
+  --color-exito-suave: #e6eccc;
+  --color-alerta: #b3761f;
+  --color-alerta-suave: #fae3c0;
+  --color-error: #b24b3c;
+  --color-error-suave: #fadcd2;
+}
+
+:root[data-theme="invierno"] {
+  --color-fondo: #eef2fa;
+  --color-trama: #dde5f3;
+  --color-superficie: #fbfcff;
+  --color-superficie-alt: #e2e9f6;
+  --color-tinta: #343c52;
+  --color-tinta-suave: #556080;
+  --color-tinta-tenue: #8893ad;
+  --color-crema: #f7faff;
+  --color-borde: #343c52;
+  --color-sombra: #c2cde4;
+  --color-acento: #4d6fa9;
+  --color-acento-suave: #d9e4f6;
+  --color-acento-2: #8e78bb;
+  --color-exito: #46806a;
+  --color-exito-suave: #d8ece3;
+  --color-alerta: #a67c2b;
+  --color-alerta-suave: #f5e6c8;
+  --color-error: #a85a63;
+  --color-error-suave: #f6dde1;
+}

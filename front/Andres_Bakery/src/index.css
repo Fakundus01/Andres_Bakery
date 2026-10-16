@@ -1,60 +1,229 @@
 @import "tailwindcss";
+@import "./theme/tokens.css";
 
 @theme {
-  --font-display: "Fraunces", serif;
-  --font-sans: "Manrope", sans-serif;
-  --animate-spin-slow: spin 2.5s linear infinite;
+  /* Pixel solo en titulos y precios. El cuerpo va en una tipografia legible:
+     una pixel font en parrafos largos es ilegible en celular (ADR-003). */
+  --font-display: "Pixelify Sans", "Courier New", monospace;
+  --font-sans: "Nunito", system-ui, sans-serif;
+  --animate-spin-slow: spin 2.5s steps(8) infinite;
+
+  /* Tokens semanticos. Estos valores son los de PRIMAVERA, el tema por
+     defecto; theme/tokens.css los pisa por estacion con [data-theme]. */
+  --color-fondo: #fff4ec;
+  --color-trama: #ffe4d4;
+  --color-superficie: #fffdfa;
+  --color-superficie-alt: #ffeede;
+  --color-tinta: #4a3b35;
+  --color-tinta-suave: #6f5a50;
+  --color-tinta-tenue: #9c857a;
+  --color-crema: #fff8f0;
+  --color-borde: #4a3b35;
+  --color-sombra: #e3c3ae;
+  --color-acento: #d9668c;
+  --color-acento-suave: #ffe0e9;
+  --color-acento-2: #6faf72;
+  --color-exito: #4e8f53;
+  --color-exito-suave: #ddf0dc;
+  --color-alerta: #bd7f24;
+  --color-alerta-suave: #ffeccd;
+  --color-error: #bb4f48;
+  --color-error-suave: #ffdedb;
 }
 
-:root {
-  color: #1c1917;
-  background: #fff8f3;
-  font-family: var(--font-sans);
-}
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
 
-html {
-  scroll-behavior: smooth;
-}
+  body {
+    min-width: 320px;
+    margin: 0;
+    color: var(--color-tinta);
+    font-family: var(--font-sans);
+    /* Papel cuadriculado: da el aire de juego sin una sola imagen. */
+    background-color: var(--color-fondo);
+    background-image:
+      linear-gradient(var(--color-trama) 1px, transparent 1px),
+      linear-gradient(90deg, var(--color-trama) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
 
-body {
-  min-width: 320px;
-  margin: 0;
-  background: transparent;
-}
+  * {
+    box-sizing: border-box;
+  }
 
-* {
-  box-sizing: border-box;
-}
+  img {
+    display: block;
+  }
 
-img {
-  display: block;
-}
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
 
-button,
-input,
-textarea,
-select {
-  font: inherit;
-}
+  #root {
+    min-height: 100vh;
+  }
 
-#root {
-  min-height: 100vh;
+  ::selection {
+    background: var(--color-acento-suave);
+    color: var(--color-tinta);
+  }
 }
 
 @layer components {
-  .glass-panel {
-    @apply rounded-[32px] border border-white/70 bg-white/80 shadow-xl shadow-orange-950/5 backdrop-blur-xl;
+  /* El recuadro pixel: borde de 4px SIN esquinas (los 4 box-shadow planos)
+     y una sombra dura, sin blur. Es el truco clasico de UI de 8 bits. */
+  .pixel-panel {
+    background-color: var(--color-superficie);
+    box-shadow:
+      0 -4px 0 0 var(--color-borde),
+      0 4px 0 0 var(--color-borde),
+      -4px 0 0 0 var(--color-borde),
+      4px 0 0 0 var(--color-borde),
+      8px 8px 0 0 var(--color-sombra);
   }
 
+  .pixel-panel-plano {
+    background-color: var(--color-superficie);
+    box-shadow:
+      0 -3px 0 0 var(--color-borde),
+      0 3px 0 0 var(--color-borde),
+      -3px 0 0 0 var(--color-borde),
+      3px 0 0 0 var(--color-borde);
+  }
+
+  .product-card {
+    background-color: var(--color-superficie);
+    box-shadow:
+      0 -4px 0 0 var(--color-borde),
+      0 4px 0 0 var(--color-borde),
+      -4px 0 0 0 var(--color-borde),
+      4px 0 0 0 var(--color-borde),
+      8px 8px 0 0 var(--color-sombra);
+    transition: transform 120ms steps(2), box-shadow 120ms steps(2);
+  }
+
+  .product-card:hover {
+    transform: translate(-2px, -2px);
+    box-shadow:
+      0 -4px 0 0 var(--color-borde),
+      0 4px 0 0 var(--color-borde),
+      -4px 0 0 0 var(--color-borde),
+      4px 0 0 0 var(--color-borde),
+      12px 12px 0 0 var(--color-sombra);
+  }
+
+  /* Los botones se "hunden" al apretarlos, como en el juego. */
   .btn-primary {
-    @apply inline-flex items-center gap-2 rounded-full bg-stone-900 px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex items-center gap-2 px-5 py-3 text-sm font-bold;
+    background-color: var(--color-acento);
+    color: var(--color-crema);
+    box-shadow:
+      0 -3px 0 0 var(--color-borde),
+      0 3px 0 0 var(--color-borde),
+      -3px 0 0 0 var(--color-borde),
+      3px 0 0 0 var(--color-borde),
+      4px 4px 0 0 var(--color-borde);
+    transition: transform 100ms steps(2), box-shadow 100ms steps(2);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    transform: translate(-1px, -1px);
+    box-shadow:
+      0 -3px 0 0 var(--color-borde),
+      0 3px 0 0 var(--color-borde),
+      -3px 0 0 0 var(--color-borde),
+      3px 0 0 0 var(--color-borde),
+      6px 6px 0 0 var(--color-borde);
+  }
+
+  .btn-primary:active:not(:disabled) {
+    transform: translate(2px, 2px);
+    box-shadow:
+      0 -3px 0 0 var(--color-borde),
+      0 3px 0 0 var(--color-borde),
+      -3px 0 0 0 var(--color-borde),
+      3px 0 0 0 var(--color-borde);
+  }
+
+  .btn-primary:disabled {
+    cursor: not-allowed;
+    background-color: var(--color-tinta-tenue);
+    box-shadow:
+      0 -3px 0 0 var(--color-borde),
+      0 3px 0 0 var(--color-borde),
+      -3px 0 0 0 var(--color-borde),
+      3px 0 0 0 var(--color-borde);
   }
 
   .btn-secondary {
-    @apply inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-700 transition hover:-translate-y-0.5 hover:border-stone-300 hover:bg-stone-100;
+    @apply inline-flex items-center gap-2 px-4 py-3 text-sm font-bold;
+    background-color: var(--color-superficie);
+    color: var(--color-tinta);
+    box-shadow:
+      0 -3px 0 0 var(--color-borde),
+      0 3px 0 0 var(--color-borde),
+      -3px 0 0 0 var(--color-borde),
+      3px 0 0 0 var(--color-borde),
+      4px 4px 0 0 var(--color-sombra);
+    transition: transform 100ms steps(2), box-shadow 100ms steps(2);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    transform: translate(-1px, -1px);
+    background-color: var(--color-superficie-alt);
+    box-shadow:
+      0 -3px 0 0 var(--color-borde),
+      0 3px 0 0 var(--color-borde),
+      -3px 0 0 0 var(--color-borde),
+      3px 0 0 0 var(--color-borde),
+      6px 6px 0 0 var(--color-sombra);
+  }
+
+  .btn-secondary:active:not(:disabled) {
+    transform: translate(2px, 2px);
+    box-shadow:
+      0 -3px 0 0 var(--color-borde),
+      0 3px 0 0 var(--color-borde),
+      -3px 0 0 0 var(--color-borde),
+      3px 0 0 0 var(--color-borde);
   }
 
   .field {
-    @apply w-full rounded-[22px] border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-orange-400 focus:ring-4 focus:ring-orange-100;
+    @apply w-full px-4 py-3 text-sm outline-none;
+    background-color: var(--color-superficie);
+    color: var(--color-tinta);
+    box-shadow:
+      0 -3px 0 0 var(--color-borde),
+      0 3px 0 0 var(--color-borde),
+      -3px 0 0 0 var(--color-borde),
+      3px 0 0 0 var(--color-borde),
+      inset 2px 2px 0 0 var(--color-superficie-alt);
+  }
+
+  .field::placeholder {
+    color: var(--color-tinta-tenue);
+  }
+
+  .field:focus {
+    box-shadow:
+      0 -3px 0 0 var(--color-acento),
+      0 3px 0 0 var(--color-acento),
+      -3px 0 0 0 var(--color-acento),
+      3px 0 0 0 var(--color-acento),
+      inset 2px 2px 0 0 var(--color-acento-suave);
+  }
+
+  /* Marco para fotos reales: el pixel va en el marco, no en la comida. */
+  .marco-foto {
+    box-shadow:
+      0 -4px 0 0 var(--color-borde),
+      0 4px 0 0 var(--color-borde),
+      -4px 0 0 0 var(--color-borde),
+      4px 0 0 0 var(--color-borde);
   }
 }

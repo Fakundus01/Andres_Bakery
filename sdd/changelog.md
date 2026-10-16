@@ -4,6 +4,26 @@ Semver `MAJOR.MINOR.PATCH` (R13). No se borra nada: lo viejo queda.
 
 ---
 
+## [0.3.0] · 2026-10-16 · T2 estetica pixel pastel + 4 temas, y la cartilla de Andrea
+
+**Agregado — el motor de temas (F15, ADR-005).** `theme/tokens.css` con las 4 paletas estacionales en nombres **semanticos** (`--color-acento`, nunca `--rosa-300`), `ThemeProvider` que escribe `data-theme` en `<html>` y lo persiste en `localStorage` con try/catch (en ventana privada el tema igual funciona, solo no sobrevive la recarga), `useTheme` y un `ThemeSwitcher` de 4 botones en el header. Default **primavera**. Tailwind 4 lee los tokens desde `@theme`, asi que `bg-superficie` y `text-tinta` son utilidades de Tailwind de verdad y cambiar `data-theme` repinta todo sin recargar.
+
+**Agregado — la estetica (F14, ADR-003).** Cero assets: el pixel sale de CSS propio. Recuadros con borde de 4px **sin esquinas** (los cuatro `box-shadow` planos, el truco clasico de UI de 8 bits), sombras duras sin blur, botones que se hunden al apretarlos, fondo de papel cuadriculado con `repeating-linear-gradient`, y tipografia **Pixelify Sans** solo en titulos y precios — el cuerpo va en **Nunito** porque una pixel font en parrafos largos es ilegible en celular.
+
+**Las fotos de comida quedan limpias.** El pixel va en el marco, no en el producto: destruir una foto de una torta no ayuda a venderla. El hero dejo de ser una imagen al 45% bajo un velo oscuro y paso a ser una **caja de dialogo**: foto entera arriba, panel solido abajo.
+
+**Agregado — la cartilla de Andrea (F24).** Ruta `/historia` y link "Andrea" en el menu. Ficha tipo hoja de personaje: foto enmarcada, nombre, oficio, zona y como se le encarga. **No se invento ninguna biografia.** La historia sale de `/api/site/about`, que ella ya edita desde Panel → Contenido. Si ese texto esta vacio aparece un recuadro punteado que dice exactamente que falta y quien lo completa, y **se borra solo** cuando ella escribe. Hoy se ve el texto generico que siembra `BootstrapService`, que no es de ella: **F24 sigue bloqueada por su texto y su foto**.
+
+**Cambiado — un pase mecanico sobre los 25 archivos** del front: 333 reemplazos que sacaron radios, blur y sombras blandas, y mapearon la paleta vieja (`stone-950`, `orange-500`, `emerald-50`…) a los tokens. Control final con grep: **cero** restos de la paleta anterior.
+
+**Dos bugs mios en ese pase, encontrados y corregidos:** el `` final de la regex no matchea despues de `]`, asi que sobrevivieron todos los `rounded-[32px]`; y la normalizacion de espacios aplasto la indentacion dentro de template literals en dos archivos, que se reescribieron a mano.
+
+**Desviacion declarada de `design.md` §B2:** la variante **oscura** de cada estacion no se hizo. El pedido era pastel, el pastel es claro, y ocho paletas duplican el trabajo de contraste sin que nadie lo haya pedido. `prefers-color-scheme` hoy no se consulta: el default es primavera siempre.
+
+**Medido** — 19 tests del back OK, eslint + tsc limpios, build verde: **296 KB JS** y **27 KB CSS**, que bajo de 41 porque los tokens borraron utilidades repetidas. Verificado en navegador: home, tienda, `/historia` y el panel admin renderizando, cambio de estacion repintando todo, y el tema sobreviviendo a la recarga.
+
+---
+
 ## [0.2.0] · 2026-10-16 · T0 higiene + T1 partir `App.tsx`
 
 **Borrado** — `front/Andres_Bakery/api/` entera: 13 `.js` y un `README.txt`, 316 lineas sin una sola referencia desde `src/`. Verificado antes de borrar, no asumido. La idea que proponia ese README (traer ingredientes y fotos de Spoonacular/Edamam/TheMealDB/Unsplash) quedo anotada en `features.md` §C para no perderla.

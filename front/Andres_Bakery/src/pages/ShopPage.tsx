@@ -48,9 +48,9 @@ export function ShopPage() {
         description="El catálogo ahora tiene filtros, búsqueda, CTA consistente y una estética menos improvisada y más boutique."
       />
 
-      <section className="glass-panel grid gap-4 p-5 md:grid-cols-[1fr_220px]">
+      <section className="pixel-panel grid gap-4 p-5 md:grid-cols-[1fr_220px]">
         <div>
-          <label className="text-sm font-semibold text-stone-700" htmlFor="search-products">Buscar dulces</label>
+          <label className="text-sm font-semibold text-tinta-suave" htmlFor="search-products">Buscar dulces</label>
           <input
             id="search-products"
             className="field mt-2"
@@ -60,7 +60,7 @@ export function ShopPage() {
           />
         </div>
         <div>
-          <label className="text-sm font-semibold text-stone-700" htmlFor="category-products">Categoría</label>
+          <label className="text-sm font-semibold text-tinta-suave" htmlFor="category-products">Categoría</label>
           <select
             id="category-products"
             className="field mt-2"

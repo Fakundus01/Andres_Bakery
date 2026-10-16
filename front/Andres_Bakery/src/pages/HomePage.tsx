@@ -80,11 +80,11 @@ export function HomePage() {
             title="Admin listo para vender"
             text="Dashboard con CRUD de productos, recetas, pedidos recientes y contenido general del sitio."
           />
-          <div className="glass-panel relative overflow-hidden p-6">
-            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-orange-500 via-rose-400 to-amber-300" />
-            <p className="text-xs uppercase tracking-[0.3em] text-stone-500">Soporte</p>
-            <h3 className="mt-3 font-display text-2xl font-semibold text-stone-950">Chat guiado abajo a la derecha</h3>
-            <p className="mt-3 text-sm leading-6 text-stone-600">
+          <div className="pixel-panel relative overflow-hidden p-6">
+            <div className="absolute inset-x-0 top-0 h-1 bg-acento" />
+            <p className="text-xs uppercase tracking-[0.3em] text-tinta-tenue">Soporte</p>
+            <h3 className="mt-3 font-display text-2xl font-semibold text-tinta">Chat guiado abajo a la derecha</h3>
+            <p className="mt-3 text-sm leading-6 text-tinta-suave">
               Resuelve dudas de envío, medios de pago y pedidos personalizados sin sacar al cliente del flujo de compra.
             </p>
           </div>
@@ -110,12 +110,12 @@ export function HomePage() {
       </section>
 
       <section className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
-        <div className="glass-panel p-7">
-          <p className="text-xs uppercase tracking-[0.32em] text-stone-500">Historia</p>
-          <h2 className="mt-4 font-display text-4xl font-semibold leading-tight text-stone-950">
+        <div className="pixel-panel p-7">
+          <p className="text-xs uppercase tracking-[0.32em] text-tinta-tenue">Historia</p>
+          <h2 className="mt-4 font-display text-4xl font-semibold leading-tight text-tinta">
             Una pastelería digital con tono cálido y venta real.
           </h2>
-          <p className="mt-4 text-base leading-7 text-stone-600">
+          <p className="mt-4 text-base leading-7 text-tinta-suave">
             {about ||
               "Una tienda orientada a dulces hechos por la admin, con recetas publicadas como contenido editorial y una estética más boutique."}
           </p>
@@ -139,13 +139,13 @@ export function HomePage() {
           />
           <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {featuredRecipes.map((recipe) => (
-              <article key={recipe.id} className="glass-panel overflow-hidden p-0">
+              <article key={recipe.id} className="pixel-panel overflow-hidden p-0">
                 <img src={recipe.image_url || heroFallback[2].image} alt={recipe.title} className="h-48 w-full object-cover" />
                 <div className="p-5">
-                  <p className="text-xs uppercase tracking-[0.28em] text-stone-500">{recipe.category}</p>
-                  <h3 className="mt-3 font-display text-2xl font-semibold text-stone-950">{recipe.title}</h3>
-                  <p className="mt-3 text-sm leading-6 text-stone-600">{recipe.summary}</p>
-                  <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-stone-900/90 px-3 py-1 text-xs font-semibold text-white">
+                  <p className="text-xs uppercase tracking-[0.28em] text-tinta-tenue">{recipe.category}</p>
+                  <h3 className="mt-3 font-display text-2xl font-semibold text-tinta">{recipe.title}</h3>
+                  <p className="mt-3 text-sm leading-6 text-tinta-suave">{recipe.summary}</p>
+                  <div className="mt-4 inline-flex items-center gap-2 bg-tinta/90 px-3 py-1 text-xs font-semibold text-crema">
                     <ChefHat className="h-3.5 w-3.5" />
                     Receta publicada
                   </div>

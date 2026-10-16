@@ -27,7 +27,7 @@ export function RegisterPage() {
   };
 
   return (
-    <AuthLayout eyebrow="Cuenta nueva" title="Creá tu cuenta para comprar y recibir confirmaciones" description="El registro conecta carrito, historial y mails de confirmación de compra en un mismo recorrido." alternate={<Link to="/ingresar" className="font-semibold text-stone-900 underline">Ya tengo cuenta</Link>}>
+    <AuthLayout eyebrow="Cuenta nueva" title="Creá tu cuenta para comprar y recibir confirmaciones" description="El registro conecta carrito, historial y mails de confirmación de compra en un mismo recorrido." alternate={<Link to="/ingresar" className="font-semibold text-tinta underline">Ya tengo cuenta</Link>}>
       <form className="space-y-4" onSubmit={handleSubmit}>
         <Field label="Nombre"><input className="field" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required /></Field>
         <Field label="Email"><input className="field" type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} required /></Field>

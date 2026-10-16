@@ -50,26 +50,26 @@ export function OrdersPage() {
       ) : null}
       <section className="grid gap-5 xl:grid-cols-2">
         {orders.map((order) => (
-          <article key={order.id} className="glass-panel p-6">
+          <article key={order.id} className="pixel-panel p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.28em] text-stone-500">Pedido #{order.id}</p>
-                <h3 className="mt-2 font-display text-2xl font-semibold text-stone-950">{formatCurrency(order.total_amount)}</h3>
-                <p className="mt-2 text-sm text-stone-500">{formatDate(order.created_at)}</p>
+                <p className="text-xs uppercase tracking-[0.28em] text-tinta-tenue">Pedido #{order.id}</p>
+                <h3 className="mt-2 font-display text-2xl font-semibold text-tinta">{formatCurrency(order.total_amount)}</h3>
+                <p className="mt-2 text-sm text-tinta-tenue">{formatDate(order.created_at)}</p>
               </div>
               <StatusPill status={order.status} />
             </div>
-            <div className="mt-5 space-y-3 border-t border-stone-200/70 pt-5">
+            <div className="mt-5 space-y-3 border-t-[3px] border-borde pt-5">
               {order.items.map((item) => (
-                <div key={`${order.id}-${item.product_id}`} className="flex items-center justify-between text-sm text-stone-600">
+                <div key={`${order.id}-${item.product_id}`} className="flex items-center justify-between text-sm text-tinta-suave">
                   <span>{item.quantity} x {item.product_name}</span>
-                  <strong className="text-stone-900">{formatCurrency(item.unit_price * item.quantity)}</strong>
+                  <strong className="text-tinta">{formatCurrency(item.unit_price * item.quantity)}</strong>
                 </div>
               ))}
             </div>
             {order.delivery ? (
-              <div className="mt-5 rounded-3xl bg-stone-100/90 p-4 text-sm text-stone-600">
-                <p className="font-semibold text-stone-900">Entrega</p>
+              <div className="mt-5 bg-superficie-alt/90 p-4 text-sm text-tinta-suave">
+                <p className="font-semibold text-tinta">Entrega</p>
                 <p className="mt-2">{order.delivery.delivery_method === "delivery" ? "Envío local" : "Retiro"} · {order.delivery.neighborhood}</p>
                 <p>{order.delivery.address || "Retiro coordinado"}</p>
                 <p className="mt-2">Pago elegido: {labelForPaymentMethod(order.delivery.payment_method)}</p>
@@ -78,7 +78,7 @@ export function OrdersPage() {
             {order.payments.length > 0 ? (
               <div className="mt-5 flex flex-wrap gap-2">
                 {order.payments.map((payment) => (
-                  <span key={payment.id} className="rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-semibold text-stone-600">
+                  <span key={payment.id} className="border-[3px] border-borde bg-superficie px-3 py-1 text-xs font-semibold text-tinta-suave">
                     {payment.provider} · {payment.status}
                   </span>
                 ))}

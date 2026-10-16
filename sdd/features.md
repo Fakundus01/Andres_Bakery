@@ -26,8 +26,8 @@ Estados (§5 del master): Specified 20% → Planned 40% → Tasked 60% → In Pr
 | ID | Feature | Estado | Tarea | Depende de |
 |---|---|---|---|---|
 | F13 | Partir `App.tsx` en módulos ≤300 líneas | **Complete** | T1 | — (R05, FIJA) |
-| F14 | Tokens de diseño + estética pixel pastel | Planned | T2 | F13 |
-| F15 | 4 temas estacionales con selector persistido | Planned | T2 | F14 |
+| F14 | Tokens de diseño + estética pixel pastel | **Complete** | T2 | F13 |
+| F15 | 4 temas estacionales con selector persistido | **Complete** | T2 | F14 |
 | F16 | `Product` absorbe la receta (modelo nuevo) | Planned | T3 | ADR-010 (migraciones) |
 | F17 | Precio por unidad: `unit_label`, `min_qty`, `qty_step` | Planned | T3 | F16 |
 | F18 | Selector de cantidad con total en vivo ("5 brownies = $X") | Planned | T6 | F17 |
@@ -36,7 +36,7 @@ Estados (§5 del master): Specified 20% → Planned 40% → Tasked 60% → In Pr
 | F21 | Etiquetas que crea ella (sin TACC, vegano…) + filtro | Planned | T3+T6 | F16 |
 | F22 | Retiro / envío por producto + zona y costo de una sola fuente | Planned | T9 | F16 |
 | F23 | Pedido por WhatsApp (`wa.me` con mensaje armado por el back) | Planned | T7 | F16 |
-| F24 | Cartilla de Andrea: historia, foto, cómo llegó a ser repostera | **Specified** | T8 | su texto y su foto |
+| F24 | Cartilla de Andrea: historia, foto, cómo llegó a ser repostera | **In Progress** | T8 | la página existe en `/historia`; falta **su texto y su foto** |
 | F25 | Ficha de producto con descripción larga, ingredientes y etiquetas | Planned | T6 | F20, F21 |
 | F26 | Link de salida a PedidosYa | **Deferred** | T7 | todavía no tiene tienda; la quiere a futuro (ADR-008) |
 | F27 | Higiene: borrar `front/api/*.js`, sacar `stripe`, crear `.env` | **Complete** | T0 | — |
@@ -58,7 +58,7 @@ Estados (§5 del master): Specified 20% → Planned 40% → Tasked 60% → In Pr
 
 Bloqueado por datos que no invento (R04). Actualizado el 2026-10-16 con las respuestas del humano:
 
-- **F24** · ✅ el nombre es **Andrea** y la cartilla es suya. ❌ **falta su historia escrita y una foto** → `material-cliente/`.
+- **F24** · ✅ la página existe (`/historia`), con ficha, zona y CTA a la carta. ❌ **falta su historia escrita y una foto** → `material-cliente/`. Hoy el sitio muestra el texto genérico que sembró `BootstrapService` ("Somos un emprendimiento familiar…"), **que no es de ella**: cuando lo reemplace desde Panel → Contenido, la página se completa sola. Si lo borra, aparece un recuadro punteado que dice qué falta.
 - **F21** · ✅ confirmada **"sin TACC"** como etiqueta. El resto de su lista real sigue sin estar, pero el diseño es genérico (ADR-006) y no depende de eso para construirse.
 - **F28** · ✅ confirmado: publica ingredientes **y** pasos.
 - **F26** · ✅ resuelto: todavía no tiene tienda en PedidosYa ⇒ diferida.

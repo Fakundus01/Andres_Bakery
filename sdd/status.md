@@ -12,7 +12,7 @@ El repo tiene 4 meses de código (15 commits, el último el 2026-03-08) y **estu
 |---|---|
 | Tests del back | 19 OK |
 | Lint del front (eslint + tsc) | limpio |
-| Build del front | verde — 292 KB JS · 41 KB CSS (antes de T1: 291 · 41) |
+| Build del front | verde — 296 KB JS · **27 KB CSS** (bajó de 41: los tokens borraron utilidades repetidas) |
 | App corriendo | back en `127.0.0.1:5000` y front en `localhost:5174` (5173 ocupado). Home, tienda y carrito verificados en navegador |
 | Rama | `dev`, adelantada respecto de `main` |
 
@@ -23,12 +23,12 @@ Lo heredado (F01–F12) está Complete salvo lo anotado. Lo pedido el 2026-10-16
 | ID | Feature | % | Estado |
 |---|---|---|---|
 | F13 | Partir `App.tsx` | 100% | **Complete** |
-| F14–F15 | Estética pixel + 4 temas | 40% | Planned |
+| F14–F15 | Estética pixel + 4 temas | 100% | **Complete** |
 | F16–F17 | Modelo nuevo + precio por unidad | 40% | Planned |
 | F18–F19 | Cantidad con total en vivo + variantes | 40% | Planned |
 | F20–F21 | Ingredientes + etiquetas | 40% | Planned |
 | F22–F23 | Retiro/envío + WhatsApp | 40% | Planned |
-| F24 | Cartilla de Andrea | 20% | Specified — bloqueada por su texto y su foto |
+| F24 | Cartilla de Andrea | 70% | **In Progress** — la página está; falta su texto y su foto |
 | F25 | Ficha de producto | 40% | Planned |
 | F26 | Link a PedidosYa | 20% | **Deferred** — todavía no tiene tienda |
 | F27 | Higiene | 100% | **Complete** |
@@ -40,7 +40,7 @@ Nada arranca hasta el OK de este `sdd/` (R08/R15).
 
 | # | Bloqueo | Quién lo destraba |
 |---|---|---|
-| B1 | F24: el nombre ya está (**Andrea**), falta **su historia escrita y una foto** | Andrea → `material-cliente/` |
+| B1 | F24: la página está hecha; falta **su historia escrita y una foto**. Mientras tanto se ve el texto genérico del seed | Andrea → `material-cliente/` |
 | B2 | F23 no tiene número de WhatsApp. No bloquea construir (sale de `WHATSAPP_PHONE`), sí probarlo de verdad | Andrea |
 | B4 | F22 no tiene zona ni costo de envío reales | Andrea |
 | B5 | F07 (Mercado Pago) no tiene credenciales | Andrea, o se queda apagado (ADR-002) |

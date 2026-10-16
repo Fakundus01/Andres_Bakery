@@ -27,7 +27,7 @@ export function LoginPage() {
   };
 
   return (
-    <AuthLayout eyebrow="Acceso" title="Ingresá para comprar, seguir pedidos o administrar la tienda" description="La cuenta habilita historial de compras, checkout y dashboard para la admin." alternate={<Link to="/registro" className="font-semibold text-stone-900 underline">Crear cuenta</Link>}>
+    <AuthLayout eyebrow="Acceso" title="Ingresá para comprar, seguir pedidos o administrar la tienda" description="La cuenta habilita historial de compras, checkout y dashboard para la admin." alternate={<Link to="/registro" className="font-semibold text-tinta underline">Crear cuenta</Link>}>
       <form className="space-y-4" onSubmit={handleSubmit}>
         <Field label="Email"><input className="field" type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} required /></Field>
         <Field label="Contraseña"><input className="field" type="password" value={form.password} onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))} required /></Field>

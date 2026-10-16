@@ -105,7 +105,7 @@ export function CheckoutPage() {
 
   return (
     <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
-      <div className="glass-panel p-7">
+      <div className="pixel-panel p-7">
         <SectionHeading
           eyebrow="Checkout"
           title="Un flujo claro y corto para no perder ventas"
@@ -113,7 +113,7 @@ export function CheckoutPage() {
         />
 
         {!isLoggedIn ? (
-          <div className="mt-6 rounded-3xl border border-amber-300 bg-amber-50 p-5 text-sm text-amber-900">
+          <div className="mt-6 border bg-alerta-suave p-5 text-sm text-tinta pixel-panel-plano">
             Necesitás una cuenta para comprar. <Link className="font-semibold underline" to="/ingresar">Ingresá acá</Link> o registrate antes de seguir.
           </div>
         ) : null}
@@ -153,7 +153,7 @@ export function CheckoutPage() {
           </Field>
 
           <div>
-            <p className="text-sm font-semibold text-stone-700">Cómo querés pagar</p>
+            <p className="text-sm font-semibold text-tinta-suave">Cómo querés pagar</p>
             <div className="mt-3 grid gap-3 md:grid-cols-3">
               {paymentOptions.map((option) => (
                 <ChoiceCard key={option.id} active={paymentMethod === option.id} icon={<CreditCard className="h-5 w-5" />} title={option.title} description={option.description} onClick={() => setPaymentMethod(option.id)} />
@@ -162,7 +162,7 @@ export function CheckoutPage() {
           </div>
 
           {error ? <ErrorBanner message={error} /> : null}
-          {success ? <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{success}</div> : null}
+          {success ? <div className="pixel-panel-plano bg-exito-suave p-4 text-sm text-tinta">{success}</div> : null}
 
           <button className="btn-primary w-full justify-center" type="submit" disabled={submitting || !isLoggedIn}>
             {submitting ? "Preparando checkout..." : "Crear pedido y pagar"}
@@ -170,26 +170,26 @@ export function CheckoutPage() {
         </form>
       </div>
 
-      <aside className="glass-panel h-fit p-7">
-        <p className="text-xs uppercase tracking-[0.3em] text-stone-500">Resumen</p>
-        <h2 className="mt-3 font-display text-3xl font-semibold text-stone-950">Tu pedido</h2>
+      <aside className="pixel-panel h-fit p-7">
+        <p className="text-xs uppercase tracking-[0.3em] text-tinta-tenue">Resumen</p>
+        <h2 className="mt-3 font-display text-3xl font-semibold text-tinta">Tu pedido</h2>
         <div className="mt-6 space-y-4">
           {items.map((item) => (
-            <div key={item.id} className="flex items-start justify-between gap-4 border-b border-stone-200/70 pb-4">
+            <div key={item.id} className="flex items-start justify-between gap-4 border-b border-borde pb-4">
               <div>
-                <p className="font-semibold text-stone-900">{item.name}</p>
-                <p className="text-sm text-stone-500">Cantidad: {item.quantity}</p>
+                <p className="font-semibold text-tinta">{item.name}</p>
+                <p className="text-sm text-tinta-tenue">Cantidad: {item.quantity}</p>
               </div>
-              <p className="font-semibold text-stone-900">{formatCurrency(item.price * item.quantity)}</p>
+              <p className="font-semibold text-tinta">{formatCurrency(item.price * item.quantity)}</p>
             </div>
           ))}
         </div>
-        <dl className="mt-6 space-y-3 text-sm text-stone-600">
-          <div className="flex items-center justify-between"><dt>Subtotal</dt><dd className="font-semibold text-stone-900">{formatCurrency(subtotal)}</dd></div>
-          <div className="flex items-center justify-between"><dt>Envío</dt><dd className="font-semibold text-stone-900">{formatCurrency(shippingAmount)}</dd></div>
-          <div className="flex items-center justify-between border-t border-stone-200 pt-3 text-base"><dt className="font-semibold text-stone-900">Total</dt><dd className="font-semibold text-stone-900">{formatCurrency(total)}</dd></div>
+        <dl className="mt-6 space-y-3 text-sm text-tinta-suave">
+          <div className="flex items-center justify-between"><dt>Subtotal</dt><dd className="font-semibold text-tinta">{formatCurrency(subtotal)}</dd></div>
+          <div className="flex items-center justify-between"><dt>Envío</dt><dd className="font-semibold text-tinta">{formatCurrency(shippingAmount)}</dd></div>
+          <div className="flex items-center justify-between border-t-[3px] border-borde pt-3 text-base"><dt className="font-semibold text-tinta">Total</dt><dd className="font-semibold text-tinta">{formatCurrency(total)}</dd></div>
         </dl>
-        <div className="mt-6 rounded-3xl bg-stone-900 px-5 py-4 text-sm text-white">
+        <div className="mt-6 bg-tinta px-5 py-4 text-sm text-crema">
           Vas a ser redirigido a Mercado Pago para completar el pago con la opción que elijas.
         </div>
       </aside>

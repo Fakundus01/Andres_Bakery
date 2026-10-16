@@ -27,8 +27,8 @@ export function RecipesTab({
 }) {
   return (
     <section className="grid gap-6 xl:grid-cols-[0.82fr_1.18fr]">
-      <form className="glass-panel space-y-4 p-6" onSubmit={onSubmit}>
-        <h3 className="font-display text-3xl font-semibold text-stone-950">{editingRecipeId ? "Editar receta" : "Nueva receta"}</h3>
+      <form className="pixel-panel space-y-4 p-6" onSubmit={onSubmit}>
+        <h3 className="font-display text-3xl font-semibold text-tinta">{editingRecipeId ? "Editar receta" : "Nueva receta"}</h3>
         <Field label="Título"><input className="field" value={recipeForm.title} onChange={(event) => setRecipeForm((current) => ({ ...current, title: event.target.value }))} required /></Field>
         <Field label="Resumen"><textarea className="field min-h-24" value={recipeForm.summary} onChange={(event) => setRecipeForm((current) => ({ ...current, summary: event.target.value }))} required /></Field>
         <Field label="Ingredientes"><textarea className="field min-h-24" value={recipeForm.ingredients} onChange={(event) => setRecipeForm((current) => ({ ...current, ingredients: event.target.value }))} required /></Field>
@@ -42,12 +42,12 @@ export function RecipesTab({
       </form>
       <div className="grid gap-4 md:grid-cols-2">
         {recipes.map((recipe) => (
-          <article key={recipe.id} className="glass-panel overflow-hidden p-0">
+          <article key={recipe.id} className="pixel-panel overflow-hidden p-0">
             <img src={recipe.image_url || heroFallback[1].image} alt={recipe.title} className="h-44 w-full object-cover" />
             <div className="p-5">
-              <p className="text-xs uppercase tracking-[0.28em] text-stone-500">{recipe.category}</p>
-              <h3 className="mt-2 font-display text-2xl font-semibold text-stone-950">{recipe.title}</h3>
-              <p className="mt-3 text-sm leading-6 text-stone-600">{recipe.summary}</p>
+              <p className="text-xs uppercase tracking-[0.28em] text-tinta-tenue">{recipe.category}</p>
+              <h3 className="mt-2 font-display text-2xl font-semibold text-tinta">{recipe.title}</h3>
+              <p className="mt-3 text-sm leading-6 text-tinta-suave">{recipe.summary}</p>
               <div className="mt-4 flex items-center justify-between gap-3">
                 <StatusPill status={recipe.status} compact />
                 <div className="flex gap-2">

@@ -192,7 +192,7 @@ export function AdminPage() {
       </div>
       {loading ? <LoadingPanel label="Cargando dashboard" /> : null}
       {error ? <ErrorBanner message={error} /> : null}
-      {feedback ? <div className="rounded-3xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-800">{feedback}</div> : null}
+      {feedback ? <div className="pixel-panel-plano bg-exito-suave px-5 py-4 text-sm text-tinta">{feedback}</div> : null}
       {activeTab === "overview" ? <OverviewTab orders={orders} users={users} /> : null}
 
       {activeTab === "products" ? (

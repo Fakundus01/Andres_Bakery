@@ -70,13 +70,15 @@ Regla de corte: una página = un archivo; si pasa de 300 líneas, sus secciones 
 
 **Lo que quedó realmente** (T1, verificado): el árbol de arriba es el objetivo completo; T1 movió lo que ya existía. `theme/`, `ProductPage`, `AboutPage`, `QuantityPicker`, `TagBadge`, `WhatsAppButton`, `lib/api/` por recurso y `whatsapp.ts` **siguen sin existir**: llegan con T2, T3, T6 y T7. Se sumaron, fuera de este boceto, `lib/constants.ts` y `lib/ui-types.ts`, un barrel `components/ui/index.ts`, y `admin/RecipesTab.tsx` que se jubila en T3.
 
-### B2 · Temas (T2 · ADR-003, ADR-005)
+### B2 · Temas (T2 · ADR-003, ADR-005) — ✅ HECHO el 2026-10-16
 
 Tres capas, de abajo hacia arriba:
 
 1. **`tokens.css`** · un bloque por tema: `:root[data-theme="primavera"] { --color-superficie: …; --color-tinta: …; --color-acento: … }`. Nombres **semánticos**, nunca el color literal: `--color-acento`, no `--rosa-300`.
 2. **Tailwind 4** lee esos tokens desde `@theme` en `index.css`, así las utilidades (`bg-superficie`, `text-tinta`) quedan atadas al tema sin duplicar paletas.
-3. **`ThemeProvider`** escribe `data-theme` en `<html>`, lo persiste en `localStorage` y, la primera vez, respeta `prefers-color-scheme` para elegir entre la variante clara y la oscura de la estación.
+3. **`ThemeProvider`** escribe `data-theme` en `<html>` y lo persiste en `localStorage`.
+
+**Desviación:** la **variante oscura** de cada estación no se construyó, y por lo tanto `prefers-color-scheme` no se consulta. El pedido era pastel, el pastel es claro, y ocho paletas duplican el trabajo de contraste sin que nadie lo haya pedido. Si alguna vez se quiere, el lugar es `theme/tokens.css` y no toca ningún componente: esa es la prueba de que los tokens están bien puestos.
 
 El look pixel no usa imágenes: bordes de 3–4px sin radio (o radio de 2px), `box-shadow` dura sin blur para el biselado, `image-rendering: pixelated` donde haya que escalar algo, y tipografía pixel de Google Fonts solo en títulos y precios — el cuerpo va en una tipografía legible, porque una pixel font en párrafos largos es ilegible en celular.
 

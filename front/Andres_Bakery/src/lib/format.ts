@@ -18,16 +18,16 @@ export function getStatusTone(status: string) {
     case "paid":
     case "published":
     case "delivered":
-      return "bg-emerald-100 text-emerald-800";
+      return "bg-exito-suave text-tinta";
     case "payment_pending":
     case "pending":
     case "in_progress":
-      return "bg-amber-100 text-amber-800";
+      return "bg-alerta-suave text-tinta";
     case "payment_failed":
     case "draft":
-      return "bg-rose-100 text-rose-800";
+      return "bg-error-suave text-tinta";
     default:
-      return "bg-stone-200 text-stone-700";
+      return "bg-superficie-alt text-tinta-suave";
   }
 }
 
