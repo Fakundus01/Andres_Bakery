@@ -61,6 +61,8 @@ Ninguno bloquea T0, T1, T2 ni T3. El trabajo puede arrancar igual.
 | D6 | Respuestas de escritura inconsistentes (`{id}` vs `{status}`) | 2026-10-16 | |
 | D7 | Cero tests de front | 2026-10-16 | |
 | D8 | Retención y borrado de datos personales sin definir (Ley 25.326) | 2026-10-16 | |
+| D12 | **`backend/.env` no lo lee nadie**: no hay `python-dotenv` ni `load_dotenv()`. El `.env` creado en T0 es inerte y el back sigue corriendo con los defaults de `config.py` | 2026-10-16 | bloquea que `WHATSAPP_PHONE`, `PAYMENTS_ENABLED` y un `JWT_SECRET_KEY` real sirvan de algo ⇒ hay que resolverlo **antes de T7** |
+| D13 | `config.py:34-35` trae `ADMIN_EMAIL` y `ADMIN_PASSWORD=admin123` como defaults **en un repo público**, y `BootstrapService.ensure_admin()` le reescribe esa password al admin **en cada arranque** | 2026-10-16 | hoy solo corre local. El día que se despliegue, cualquiera que leyó el repo entra al panel. Ver `security.md` N1 |
 | D9 | Varios `.py` del back arrancan con BOM | 2026-10-16 | cosmético |
 | D10 | `pip-audit` y `npm audit` sin correr tras 7 meses quietos (R19) | 2026-10-16 | |
 | ~~D11~~ | ~~`front/.env` apunta a `default-profile.svg`~~ | resuelta en T0 | el path quedó bien. Se vio además que **nadie lee** `VITE_PROFILE_DEFAULT`: queda para T8/F24 |
