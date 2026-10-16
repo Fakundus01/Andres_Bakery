@@ -16,10 +16,13 @@ Andres_Bakery/
 │   ├── models.py       User Product Ingredient Recipe Order OrderItem OrderDelivery Payment
 │   ├── routes/         9 blueprints delgados: solo parsean request y delegan
 │   └── services/       la lógica: catalog, order, payment, auth, contact, site, bootstrap, notifications
-├── front/Andres_Bakery/
-│   ├── src/App.tsx     1604 líneas: TODAS las páginas y componentes en un archivo
+├── front/Andres_Bakery/        (partido en T1 el 2026-10-16)
+│   ├── src/App.tsx     17 líneas: providers + router
+│   ├── src/layout/     AppShell · SiteHeader · SiteFooter
+│   ├── src/pages/      Home Shop Checkout Orders Login Register · admin/ (AdminPage + 5 tabs)
+│   ├── src/components/ HeroCarousel ProductCard CartDrawer SupportChat · ui/ (11 helpers)
 │   ├── src/contexts/   AuthContext (token en localStorage) · CartContext
-│   └── src/lib/        api.ts (191) · types.ts (124)
+│   └── src/lib/        api.ts · types.ts · constants.ts · format.ts · ui-types.ts
 └── instance/bakery.db  SQLite, 61 KB
 ```
 
@@ -35,7 +38,7 @@ Andres_Bakery/
 
 ## B · Arquitectura objetivo
 
-### B1 · Partir `App.tsx` (T1 · R05, regla FIJA)
+### B1 · Partir `App.tsx` (T1 · R05, regla FIJA) — ✅ HECHO el 2026-10-16
 
 Refactor **sin cambio de comportamiento**: se mueven componentes, no se reescriben. El orden importa — primero esto, porque los temas (T2) necesitan que los componentes existan por separado para recibir tokens.
 
@@ -64,6 +67,8 @@ src/
 ```
 
 Regla de corte: una página = un archivo; si pasa de 300 líneas, sus secciones salen a `components/`. Los 13 helpers de presentación que hoy viven al final de `App.tsx` van a `components/ui/` tal cual están.
+
+**Lo que quedó realmente** (T1, verificado): el árbol de arriba es el objetivo completo; T1 movió lo que ya existía. `theme/`, `ProductPage`, `AboutPage`, `QuantityPicker`, `TagBadge`, `WhatsAppButton`, `lib/api/` por recurso y `whatsapp.ts` **siguen sin existir**: llegan con T2, T3, T6 y T7. Se sumaron, fuera de este boceto, `lib/constants.ts` y `lib/ui-types.ts`, un barrel `components/ui/index.ts`, y `admin/RecipesTab.tsx` que se jubila en T3.
 
 ### B2 · Temas (T2 · ADR-003, ADR-005)
 

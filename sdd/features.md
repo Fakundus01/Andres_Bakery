@@ -25,7 +25,7 @@ Estados (§5 del master): Specified 20% → Planned 40% → Tasked 60% → In Pr
 
 | ID | Feature | Estado | Tarea | Depende de |
 |---|---|---|---|---|
-| F13 | Partir `App.tsx` en módulos ≤300 líneas | Planned | T1 | — (R05, FIJA) |
+| F13 | Partir `App.tsx` en módulos ≤300 líneas | **Complete** | T1 | — (R05, FIJA) |
 | F14 | Tokens de diseño + estética pixel pastel | Planned | T2 | F13 |
 | F15 | 4 temas estacionales con selector persistido | Planned | T2 | F14 |
 | F16 | `Product` absorbe la receta (modelo nuevo) | Planned | T3 | ADR-010 (migraciones) |
@@ -39,7 +39,7 @@ Estados (§5 del master): Specified 20% → Planned 40% → Tasked 60% → In Pr
 | F24 | Cartilla de Andrea: historia, foto, cómo llegó a ser repostera | **Specified** | T8 | su texto y su foto |
 | F25 | Ficha de producto con descripción larga, ingredientes y etiquetas | Planned | T6 | F20, F21 |
 | F26 | Link de salida a PedidosYa | **Deferred** | T7 | todavía no tiene tienda; la quiere a futuro (ADR-008) |
-| F27 | Higiene: borrar `front/api/*.js`, sacar `stripe`, crear `.env` | Planned | T0 | — |
+| F27 | Higiene: borrar `front/api/*.js`, sacar `stripe`, crear `.env` | **Complete** | T0 | — |
 | F28 | Receta paso a paso publicada en la ficha (`Product.steps`) | Planned | T3+T6 | F16 (ADR-001 enmendada) |
 
 ## C · Fuera de v1 (y por qué)
@@ -52,6 +52,7 @@ Estados (§5 del master): Specified 20% → Planned 40% → Tasked 60% → In Pr
 | Cupones y descuentos | nadie lo pidió |
 | Reseñas de clientes | nadie lo pidió, y trae moderación |
 | Notificaciones push | la conversación ya está en WhatsApp |
+| Traer ingredientes y fotos de APIs externas (Spoonacular, Edamam, TheMealDB, Unsplash) | era una propuesta escrita en `front/api/README.txt`, borrado en T0. Andrea carga su propia carta y una foto de stock no vende **su** producto. Queda anotado acá para no perder la idea |
 
 ## D · Lo que todavía no puedo especificar
 
