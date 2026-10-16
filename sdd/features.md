@@ -42,6 +42,28 @@ Estados (§5 del master): Specified 20% → Planned 40% → Tasked 60% → In Pr
 | F27 | Higiene: borrar `front/api/*.js`, sacar `stripe`, crear `.env` | **Complete** | T0 | — |
 | F28 | Receta paso a paso publicada en la ficha (`Product.steps`) | Planned | T3+T6 | F16 (ADR-001 enmendada) |
 
+## B2 · Pedido del humano el 2026-10-16 (segunda tanda, por dictado)
+
+Todavía **sin tarea asignada**: entran al backlog, no al código, hasta decidir el orden y las preguntas abiertas (R04/R08).
+
+| ID | Feature | Estado | Depende de |
+|---|---|---|---|
+| F29 | Navegación: menos ítems arriba **o** drawer lateral, elegible | Specified | F30 si se hace configurable |
+| F30 | Pantalla de **Configuración**: tema, tipografía, tamaño de letra, posición del nav | Specified | F14-F15 (ya hechas) |
+| F31 | **Tres roles explícitos**: invitado (sin login), cliente (con login), admin (Andrea) | Specified | define qué ve y qué puede cada uno |
+| F32 | Catálogo con pestaña/vista propia de cliente, separada de la mirada de admin | Specified | F31 |
+| F33 | Tarjetas de la carta que **se dan vuelta**: frente foto + precio, dorso descripción e ingredientes | Specified | F20, F25 |
+| F34 | Carrito con **vista propia** (`/carrito`), no solo el panel lateral | Specified | — |
+| F35 | Rehacer el "Soporte guiado": hoy tapa la pantalla, los botones se mueven solos y no es un chat | Specified | — |
+| F36 | Contacto por **WhatsApp** desde soporte, para quien no quiere comprar online | Specified | F23, `WHATSAPP_PHONE` |
+| F37 | **Placeholder de PedidosYa**: dónde encontrarla, aunque todavía no tenga tienda | Specified | ADR-008 |
+| F38 | **Responsive** revisado de punta a punta | Specified | se verifica por vista, no "en general" |
+| F39 | Login/Register **a la derecha del todo**, con icono y lugar fijo | Specified | F29 |
+| F40 | Más vistas propias en vez de todo en una: carrito, ficha de producto, configuración | Specified | F32, F34 |
+| F41 | **Deploy**: el front a Vercel | Specified | necesita ADR: el back Flask+SQLite **no vive en Vercel** |
+
+**Lo que se midió del soporte actual (F35), no opinión:** ocupa el alto completo del viewport y tapa el header; la fila de respuestas rápidas está debajo del historial, así que **cada mensaje la empuja y terminás tocando otro botón** (pasó en la prueba: clic en "Medios de pago", respondió "Pedidos personalizados"); hay dos barras de scroll anidadas; y es un FAQ de 3 botones más un formulario de contacto disfrazado de conversación.
+
 ## C · Fuera de v1 (y por qué)
 
 | Feature | Por qué no |

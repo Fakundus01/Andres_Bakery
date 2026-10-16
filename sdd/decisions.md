@@ -139,3 +139,62 @@ Decisiones con fecha y motivo, para no re-discutirlas. Una decisión no se borra
 **Alternativa descartada:** un script de migración a mano. Alcanza para una columna y se vuelve una fuente de bugs a la tercera.
 
 **Costo:** una dependencia más y un paso (`flask db upgrade`) en el arranque.
+
+---
+
+## ADR-011 · Navegación: barra corta + drawer, elegible
+
+**Fecha:** 2026-10-16 · **Estado:** Vigente
+
+**Contexto:** el header tenía 5 ítems, el selector de temas, el carrito y el login todo apretado en la misma línea, y en pantallas medianas se amontonaba.
+
+**Decisión:** arriba quedan **Carta** y **Andrea**, el selector de estación, y a la derecha del todo el carrito y el acceso a la cuenta. El resto del menú vive en un **drawer lateral** que se abre con el icono de hamburguesa. Cuál se usa por defecto se elige en **Configuración** (F30).
+
+**Por qué:** la Carta es lo que vende, así que no se esconde detrás de un clic. El resto (pedidos, configuración, panel) es navegación de vuelta, no de entrada. **Descartado:** solo drawer (esconde la carta) y solo barra (no es configurable, que es justo lo que se pidió).
+
+**Costo:** el drawer y la barra son dos caminos que hay que mantener en paralelo, y los dos tienen que ser accesibles con teclado.
+
+---
+
+## ADR-012 · El invitado pide sin cuenta
+
+**Fecha:** 2026-10-16 · **Estado:** Vigente
+
+**Contexto:** hoy el checkout exige login (`CheckoutPage` corta si `!isLoggedIn`). Con WhatsApp como canal principal (ADR-002), pedirle una cuenta a alguien antes de dejarlo mandar un mensaje es fricción que no compra nada.
+
+**Decisión:** tres roles explícitos. **Invitado:** mira la carta, arma el carrito y **manda el pedido por WhatsApp** dejando nombre y teléfono. **Cliente** (con cuenta): además ve su historial y puede pagar online cuando se prenda Mercado Pago. **Admin** (Andrea): el panel.
+
+**Por qué:** el pedido por WhatsApp termina en una conversación donde ella ya pide los datos. La cuenta aporta valor en el historial, no en el primer pedido.
+
+**Consecuencia en el modelo:** `Order.user_id` pasa a ser **opcional**, y la orden guarda nombre y teléfono del que pidió. Eso **no es gratis**: hay que revisar cada consulta que hoy asume que una orden tiene usuario, y `OrdersPage` solo puede listar las del usuario logueado.
+
+**Lo que NO se habilita:** pagar online sin cuenta. Un pago sin dueño en el sistema complica historial y reclamos.
+
+---
+
+## ADR-013 · El "Soporte guiado" deja de fingir que es un chat
+
+**Fecha:** 2026-10-16 · **Estado:** Vigente
+
+**Contexto:** se probó en el navegador el 2026-10-16. Ocupa el alto completo y tapa el header; la fila de respuestas rápidas está debajo del historial, así que cada mensaje la empuja y **se termina tocando otro botón** (pasó en la prueba); hay dos scrolls anidados; y abajo hay un formulario de contacto metido adentro de la "conversación".
+
+**Decisión:** se reemplaza por un panel de **Ayuda**: preguntas frecuentes desplegables y, abajo, dos salidas claras — **WhatsApp** y mail. Nada de burbujas ni de asistente.
+
+**Por qué:** no hay nadie del otro lado en tiempo real. Una interfaz que aparenta conversación promete una respuesta que no existe. Un acordeón de FAQ más un botón de WhatsApp resuelve lo mismo, ocupa un tercio del espacio y no miente.
+
+**Descartado:** un chatbot con IA. Mete dependencia, costo por consulta y activa **N4** de `security.md` — con el agravante de que inventar una respuesta sobre alérgenos es un problema de salud, no de UX. Si alguna vez se quiere, va con su propia ADR.
+
+---
+
+## ADR-014 · El deploy espera a T3
+
+**Fecha:** 2026-10-16 · **Estado:** Vigente
+
+**Contexto:** se pidió publicar en Vercel. Vercel sirve el front estático sin problema, pero el back es **Flask + SQLite**: necesita un proceso vivo y un disco que persista, y el filesystem de las funciones serverless es efímero. Publicarlo ahí perdería los pedidos de Andrea.
+
+**Decisión:** **no se deploya todavía.** Primero T3 (modelo nuevo, migraciones). Cuando el esquema esté estable: front a **Vercel**, back a un host con proceso vivo (**Render** o **Railway**, los dos con plan gratis) y la base de SQLite a **Postgres**.
+
+**Por qué:** T3 cambia el esquema entero. Deployar antes obliga a migrar la base dos veces y a mostrar algo a medio hacer.
+
+**Pendiente de decidir cuando toque:** el host del back y el proveedor de Postgres van a su propia ADR, con los números en `costs.md`. **Hoy no hay ninguna config de Vercel en el repo:** se verificó.
+
