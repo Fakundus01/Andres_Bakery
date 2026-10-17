@@ -1,6 +1,6 @@
-﻿from flask import Blueprint, request
+from flask import Blueprint, request
 
-from ..services.catalog_service import product_service
+from ..services.product_service import product_service
 from .utils import admin_required, json_endpoint
 
 
@@ -10,7 +10,10 @@ bp = Blueprint("products", __name__, url_prefix="/api/products")
 @bp.get("")
 @json_endpoint
 def list_products():
-    return product_service.list()
+    return product_service.list(
+        tag=(request.args.get("tag") or "").strip() or None,
+        only_available=request.args.get("available") in {"1", "true", "yes"},
+    )
 
 
 @bp.post("")
@@ -24,6 +27,14 @@ def create_product():
 @json_endpoint
 def get_product(product_id: int):
     return product_service.get(product_id)
+
+
+# Despues del int a proposito: Flask prueba las reglas mas especificas primero,
+# pero dejarlo escrito evita que "/api/products/12" caiga en la ficha por slug.
+@bp.get("/<slug>")
+@json_endpoint
+def get_product_by_slug(slug: str):
+    return product_service.get_by_slug(slug)
 
 
 @bp.put("/<int:product_id>")

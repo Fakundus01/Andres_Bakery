@@ -83,3 +83,51 @@ class OrderServiceTestCase(BackendServiceTestCase):
 
         self.assertEqual(len(orders), 2)
         self.assertEqual({order["user"]["email"] for order in orders}, {"a@test.local", "b@test.local"})
+
+    def test_order_rejects_a_quantity_below_the_minimum(self) -> None:
+        # El carrito ya lo impide, pero el que decide es el servidor (V4).
+        user = self.create_user(email="minimo@test.local")
+        product = self.create_product(name="Cookies de a 6", min_qty=6, qty_step=6)
+
+        with self.assertRaises(ValidationError):
+            self.service.create_order(user.id, self._payload(product, quantity=2))
+
+    def test_order_rejects_a_quantity_off_the_step(self) -> None:
+        user = self.create_user(email="salto@test.local")
+        product = self.create_product(name="Cookies de a 6", min_qty=6, qty_step=6)
+
+        with self.assertRaises(ValidationError):
+            self.service.create_order(user.id, self._payload(product, quantity=7))
+
+    def test_order_accepts_a_multiple_and_records_the_channel(self) -> None:
+        user = self.create_user(email="multiplo@test.local")
+        product = self.create_product(name="Cookies de a 6", min_qty=6, qty_step=6)
+
+        response = self.service.create_order(
+            user.id, self._payload(product, quantity=12) | {"channel": "whatsapp"}
+        )
+
+        order = db.session.get(Order, response["order_id"])
+        self.assertEqual(order.channel, "whatsapp")
+        self.assertEqual(order.items[0].quantity, 12)
+
+    def test_order_rejects_an_invented_channel(self) -> None:
+        user = self.create_user(email="canal@test.local")
+        product = self.create_product(name="Box")
+
+        with self.assertRaises(ValidationError):
+            self.service.create_order(user.id, self._payload(product, quantity=1) | {"channel": "paloma"})
+
+    @staticmethod
+    def _payload(product, *, quantity: int) -> dict:
+        return {
+            "items": [{"product_id": product.id, "quantity": quantity}],
+            "customer": {"name": "Cliente", "email": "cliente@test.local", "phone": "1122334455"},
+            "delivery": {
+                "method": "delivery",
+                "address": "Calle 123",
+                "neighborhood": "Villa Maipu",
+                "city": "General San Martin",
+            },
+            "payment_method": "visa",
+        }

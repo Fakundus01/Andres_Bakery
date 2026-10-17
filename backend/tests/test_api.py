@@ -54,6 +54,7 @@ class BackendApiTestCase(unittest.TestCase):
                 "FRONTEND_ORIGIN": "http://localhost:5173,http://localhost:5174",
                 "DELIVERY_ZONE_NAME": "Villa Maipú",
                 "DELIVERY_FEE": "2500",
+                "PAYMENTS_ENABLED": True,
             }
         )
         self.client = self.app.test_client()
@@ -204,6 +205,83 @@ class BackendApiTestCase(unittest.TestCase):
         order = history_response.get_json()[0]
         self.assertEqual(order["status"], "paid")
         self.assertTrue(any(payment["status"] == "approved" for payment in order["payments"]))
+
+    def admin_token(self) -> str:
+        response = self.client.post(
+            "/api/auth/login",
+            json={"email": "admin@test.local", "password": "admin123"},
+        )
+        self.assertEqual(response.status_code, 200)
+        return response.get_json()["access_token"]
+
+    def test_delivery_config_is_served_from_one_place(self) -> None:
+        response = self.client.get("/api/site/delivery")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload["fee"], 2500.0)
+        self.assertEqual(payload["zone_name"], "Villa Maipú")
+        self.assertIn("pickup_address", payload)
+
+    def test_product_detail_answers_by_slug(self) -> None:
+        listed = self.client.get("/api/products").get_json()
+        slug = listed[0]["slug"]
+
+        response = self.client.get(f"/api/products/{slug}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["slug"], slug)
+
+    def test_unknown_slug_is_a_404(self) -> None:
+        self.assertEqual(self.client.get("/api/products/no-existe").status_code, 404)
+
+    def test_only_the_admin_creates_tags(self) -> None:
+        client_token = self.register_user(email="otro@test.local")
+        anonymous = self.client.post("/api/tags", json={"name": "sin TACC"})
+        self.assertEqual(anonymous.status_code, 401)
+
+        as_client = self.client.post(
+            "/api/tags", json={"name": "sin TACC"}, headers=self.auth_headers(client_token)
+        )
+        self.assertEqual(as_client.status_code, 403)
+
+        as_admin = self.client.post(
+            "/api/tags", json={"name": "sin TACC"}, headers=self.auth_headers(self.admin_token())
+        )
+        self.assertEqual(as_admin.status_code, 201)
+        self.assertEqual(as_admin.get_json()["slug"], "sin-tacc")
+
+    def test_the_catalog_filters_by_tag(self) -> None:
+        token = self.admin_token()
+        tag_id = self.client.post(
+            "/api/tags", json={"name": "vegano"}, headers=self.auth_headers(token)
+        ).get_json()["id"]
+        self.client.post(
+            "/api/products",
+            json={"name": "Budin vegano", "price": "5400", "tag_ids": [tag_id]},
+            headers=self.auth_headers(token),
+        )
+
+        filtered = self.client.get("/api/products?tag=vegano").get_json()
+
+        self.assertEqual([item["name"] for item in filtered], ["Budin vegano"])
+
+    def test_payments_off_answers_503(self) -> None:
+        self.app.config["PAYMENTS_ENABLED"] = False
+        token = self.register_user(email="sinpagos@test.local")
+        order_id = self.client.post(
+            "/api/orders",
+            json=self.build_order_payload(product_id=self.first_product_id()),
+            headers=self.auth_headers(token),
+        ).get_json()["order_id"]
+
+        response = self.client.post(
+            "/api/payments/checkout",
+            json={"order_id": order_id, "payment_method": "visa"},
+            headers=self.auth_headers(token),
+        )
+
+        self.assertEqual(response.status_code, 503)
 
 
 if __name__ == "__main__":

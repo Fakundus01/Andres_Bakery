@@ -1,6 +1,6 @@
 ﻿from __future__ import annotations
 
-from ..models import Ingredient, Order, OrderDelivery, Payment, Product, Recipe, User
+from ..models import Ingredient, Order, OrderDelivery, Payment, Product, ProductVariant, Tag, User
 
 
 class Serializer:
@@ -25,33 +25,47 @@ class Serializer:
         }
 
     @staticmethod
+    def tag(tag: Tag) -> dict:
+        return {
+            "id": tag.id,
+            "name": tag.name,
+            "slug": tag.slug,
+            "color_token": tag.color_token,
+            "sort_order": tag.sort_order,
+        }
+
+    @staticmethod
+    def variant(variant: ProductVariant) -> dict:
+        return {
+            "id": variant.id,
+            "name": variant.name,
+            "price": float(variant.price),
+        }
+
+    @staticmethod
     def product(product: Product) -> dict:
         return {
             "id": product.id,
+            "slug": product.slug,
             "name": product.name,
             "description": product.description,
+            "steps": product.steps,
+            "prep_note": product.prep_note,
             "price": float(product.price),
+            "unit_label": product.unit_label,
+            "min_qty": product.min_qty,
+            "qty_step": product.qty_step,
             "category": product.category,
             "image_url": product.image_url,
             "available": product.available,
+            "allows_pickup": product.allows_pickup,
+            "allows_delivery": product.allows_delivery,
             "ingredients": [
                 Serializer.ingredient(ingredient)
                 for ingredient in product.ingredients
             ],
-        }
-
-    @staticmethod
-    def recipe(recipe: Recipe) -> dict:
-        return {
-            "id": recipe.id,
-            "title": recipe.title,
-            "summary": recipe.summary,
-            "ingredients": recipe.ingredients,
-            "steps": recipe.steps,
-            "image_url": recipe.image_url,
-            "category": recipe.category,
-            "status": recipe.status,
-            "created_at": recipe.created_at.isoformat(),
+            "tags": [Serializer.tag(tag) for tag in product.tags],
+            "variants": [Serializer.variant(variant) for variant in product.variants],
         }
 
     @staticmethod
@@ -89,9 +103,12 @@ class Serializer:
             "id": order.id,
             "user_id": order.user_id,
             "status": order.status,
+            "channel": order.channel,
             "total_amount": float(order.total_amount),
             "created_at": order.created_at.isoformat(),
-            "user": Serializer.user(order.user),
+            # Un pedido de invitado no tiene usuario (ADR-012): los datos de
+            # contacto estan en "delivery".
+            "user": Serializer.user(order.user) if order.user else None,
             "items": [
                 {
                     "id": item.id,

@@ -1,6 +1,8 @@
-﻿from .auth_service import AuthService, auth_service
+from .auth_service import AuthService, auth_service
 from .bootstrap_service import BootstrapService
-from .catalog_service import IngredientService, ProductService, RecipeService, ingredient_service, product_service, recipe_service
+from .ingredient_service import IngredientService, ingredient_service
+from .product_service import ProductService, product_service
+from .tag_service import TagService, tag_service
 from .contact_service import ContactService, contact_service
 from .exceptions import AuthenticationError, AuthorizationError, ConfigurationError, ExternalServiceError, NotFoundError, ServiceError, ValidationError
 from .notifications import NotificationService, notification_service, send_order_created_notifications
@@ -18,7 +20,7 @@ __all__ = [
     "OrderService",
     "PaymentService",
     "ProductService",
-    "RecipeService",
+    "TagService",
     "SiteService",
     "ServiceError",
     "ValidationError",
@@ -34,7 +36,7 @@ __all__ = [
     "order_service",
     "payment_service",
     "product_service",
-    "recipe_service",
+    "tag_service",
     "send_order_created_notifications",
     "site_service",
 ]

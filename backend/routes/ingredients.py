@@ -1,6 +1,6 @@
 ﻿from flask import Blueprint, request
 
-from ..services.catalog_service import ingredient_service
+from ..services.ingredient_service import ingredient_service
 from .utils import admin_required, json_endpoint
 
 

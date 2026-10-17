@@ -7,7 +7,8 @@ from uuid import uuid4
 
 from backend.app_factory import create_app
 from backend.extensions import db
-from backend.models import Ingredient, Order, OrderDelivery, OrderItem, Payment, Product, User
+from backend.models import Ingredient, Order, OrderDelivery, OrderItem, Payment, Product, Tag, User
+from backend.services.slug import unique_slug
 
 
 class BackendServiceTestCase(unittest.TestCase):
@@ -30,6 +31,7 @@ class BackendServiceTestCase(unittest.TestCase):
                 "DELIVERY_ZONE_NAME": "Villa Maipú",
                 "DELIVERY_FEE": "2500",
                 "PAYMENT_CURRENCY": "ars",
+                "PAYMENTS_ENABLED": True,
             }
         )
         self.app_context = self.app.app_context()
@@ -71,21 +73,37 @@ class BackendServiceTestCase(unittest.TestCase):
         price: str = "1500.00",
         category: str = "cookies",
         available: bool = True,
+        unit_label: str = "unidad",
+        min_qty: int = 1,
+        qty_step: int = 1,
         ingredients: list[Ingredient] | None = None,
+        tags: list[Tag] | None = None,
     ) -> Product:
         product = Product(
             name=name,
+            slug=unique_slug(Product, name),
             description=f"Descripcion de {name}",
             price=Decimal(price),
             category=category,
             available=available,
+            unit_label=unit_label,
+            min_qty=min_qty,
+            qty_step=qty_step,
             image_url="https://example.com/product.jpg",
         )
         if ingredients is not None:
             product.ingredients = list(ingredients)
+        if tags is not None:
+            product.tags = list(tags)
         db.session.add(product)
         db.session.commit()
         return product
+
+    def create_tag(self, *, name: str = "sin TACC", color_token: str = "acento") -> Tag:
+        tag = Tag(name=name, slug=unique_slug(Tag, name, fallback="etiqueta"), color_token=color_token)
+        db.session.add(tag)
+        db.session.commit()
+        return tag
 
     def create_order(
         self,

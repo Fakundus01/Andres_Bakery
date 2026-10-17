@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from decimal import Decimal
 import unicodedata
@@ -10,6 +10,7 @@ from ..models import Order, OrderDelivery, OrderItem, Product, User
 from .base import ServiceBase
 from .exceptions import AuthorizationError, ValidationError
 from .notifications import NotificationService, notification_service
+from .quantity import validate_quantity
 from .serializers import Serializer
 
 
@@ -22,6 +23,7 @@ class OrderService(ServiceBase):
         customer = data.get("customer") or {}
         delivery = data.get("delivery") or {}
         payment_method = str(data.get("payment_method") or "mercado_pago")
+        channel = self._resolve_channel(data.get("channel"))
 
         if not isinstance(items, list) or not items:
             raise ValidationError("items are required")
@@ -31,7 +33,7 @@ class OrderService(ServiceBase):
         shipping_amount = self._resolve_shipping_amount(delivery_method, delivery)
         self._validate_delivery(delivery_method, delivery)
 
-        order = Order(user_id=user.id, status="pending")
+        order = Order(user_id=user.id, status="pending", channel=channel)
         db.session.add(order)
 
         total = Decimal("0.00")
@@ -47,6 +49,9 @@ class OrderService(ServiceBase):
             product = self.require_entity(Product, product_id, "product")
             if not product.available:
                 raise ValidationError(f"product {product_id} not available")
+            # El minimo y el salto los decide el servidor: el control del
+            # carrito es comodidad, no seguridad (V4).
+            validate_quantity(product, quantity)
 
             unit_price = Decimal(str(product.price))
             total += unit_price * quantity
@@ -104,6 +109,13 @@ class OrderService(ServiceBase):
         order.status = status
         db.session.commit()
         return {"status": "updated"}
+
+    @staticmethod
+    def _resolve_channel(value: object) -> str:
+        channel = str(value or "mercado_pago").strip()
+        if channel not in {"whatsapp", "mercado_pago"}:
+            raise ValidationError("channel must be whatsapp or mercado_pago")
+        return channel
 
     def _resolve_shipping_amount(self, delivery_method: str, delivery: dict) -> Decimal:
         if delivery_method != "delivery":

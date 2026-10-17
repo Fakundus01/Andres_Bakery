@@ -1,8 +1,10 @@
 from flask import Flask, jsonify, request
+from sqlalchemy import inspect
+from sqlalchemy.exc import OperationalError
 
 from .config import Config
-from .extensions import db, jwt, mail
-from .routes import auth, ingredients, mailer, orders, payments, products, recipes, site, users
+from .extensions import db, jwt, mail, migrate
+from .routes import auth, ingredients, mailer, orders, payments, products, site, tags, users
 from .services.bootstrap_service import BootstrapService
 
 
@@ -18,14 +20,43 @@ def create_app(config_overrides: dict | None = None) -> Flask:
     _register_http_handlers(app)
 
     with app.app_context():
-        db.create_all()
-        BootstrapService(app.config).bootstrap()
+        warnings = _prepare_database(app)
+
+    if not app.config.get("TESTING"):
+        for warning in warnings:
+            app.logger.warning(warning)
 
     return app
 
 
+UPGRADE_HINT = (
+    "Corre: backend/.venv/Scripts/python.exe -m flask --app backend.app db upgrade"
+)
+
+
+def _prepare_database(app: Flask) -> list[str]:
+    """El esquema lo manejan las migraciones (ADR-010); create_all es de tests.
+
+    Si la base esta atrasada respecto del modelo, arrancar no puede explotar:
+    es justo el estado en el que queda cualquiera que hace `git pull` antes de
+    migrar. Se avisa y la app levanta igual para que `flask db upgrade` corra.
+    """
+    if app.config.get("TESTING"):
+        db.create_all()
+
+    if not inspect(db.engine).has_table("user"):
+        return [f"La base no tiene tablas todavia. {UPGRADE_HINT}"]
+
+    try:
+        return BootstrapService(app.config).bootstrap()
+    except OperationalError as exc:
+        db.session.rollback()
+        return [f"La base no esta al dia con el modelo ({exc.orig}). {UPGRADE_HINT}"]
+
+
 def _init_extensions(app: Flask) -> None:
     db.init_app(app)
+    migrate.init_app(app, db, directory="backend/migrations")
     jwt.init_app(app)
     mail.init_app(app)
 
@@ -39,7 +70,7 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(site.bp)
     app.register_blueprint(mailer.bp)
     app.register_blueprint(payments.bp)
-    app.register_blueprint(recipes.bp)
+    app.register_blueprint(tags.bp)
 
 
 def _register_http_handlers(app: Flask) -> None:

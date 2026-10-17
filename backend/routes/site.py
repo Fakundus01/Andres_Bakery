@@ -1,4 +1,4 @@
-﻿from flask import Blueprint, request
+from flask import Blueprint, request
 
 from ..services.site_service import site_service
 from .utils import admin_required, json_endpoint
@@ -18,3 +18,9 @@ def get_about():
 @json_endpoint
 def update_about():
     return site_service.update_about(request.get_json(silent=True) or {})
+
+
+@bp.get("/delivery")
+@json_endpoint
+def get_delivery():
+    return site_service.get_delivery()

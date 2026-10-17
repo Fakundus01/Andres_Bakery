@@ -16,6 +16,12 @@ product_ingredients = db.Table(
     ),
 )
 
+product_tags = db.Table(
+    "product_tags",
+    db.Column("product_id", db.Integer, db.ForeignKey("product.id"), primary_key=True),
+    db.Column("tag_id", db.Integer, db.ForeignKey("tag.id"), primary_key=True),
+)
+
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -37,11 +43,23 @@ class User(db.Model):
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
+    slug = db.Column(db.String(160), nullable=False, unique=True)
     description = db.Column(db.Text)
+    steps = db.Column(db.Text)
+    prep_note = db.Column(db.Text)
+
     price = db.Column(db.Numeric(10, 2), nullable=False)
+    # price es el precio de UNA unit_label. min_qty y qty_step son el minimo de
+    # pedido y el salto: "se venden de a 6" es min_qty=6, qty_step=6.
+    unit_label = db.Column(db.String(40), nullable=False, default="unidad")
+    min_qty = db.Column(db.Integer, nullable=False, default=1)
+    qty_step = db.Column(db.Integer, nullable=False, default=1)
+
     category = db.Column(db.String(120), default="general")
     image_url = db.Column(db.String(500))
     available = db.Column(db.Boolean, default=True)
+    allows_pickup = db.Column(db.Boolean, nullable=False, default=True)
+    allows_delivery = db.Column(db.Boolean, nullable=False, default=True)
 
     order_items = db.relationship("OrderItem", back_populates="product", lazy=True)
     ingredients = db.relationship(
@@ -50,6 +68,52 @@ class Product(db.Model):
         back_populates="products",
         lazy=True,
     )
+    tags = db.relationship(
+        "Tag",
+        secondary=product_tags,
+        back_populates="products",
+        lazy=True,
+    )
+    variants = db.relationship(
+        "ProductVariant",
+        back_populates="product",
+        lazy=True,
+        cascade="all, delete-orphan",
+        order_by="ProductVariant.sort_order",
+    )
+
+
+class Tag(db.Model):
+    """Las crea Andrea: "sin TACC", "vegano", "frio" (ADR-006).
+
+    Son su declaracion bajo su responsabilidad: el software las muestra,
+    no las certifica.
+    """
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(60), nullable=False, unique=True)
+    slug = db.Column(db.String(80), nullable=False, unique=True)
+    color_token = db.Column(db.String(40), nullable=False, default="acento")
+    sort_order = db.Column(db.Integer, nullable=False, default=0)
+
+    products = db.relationship(
+        "Product",
+        secondary=product_tags,
+        back_populates="tags",
+        lazy=True,
+    )
+
+
+class ProductVariant(db.Model):
+    """Solo para lo que se vende entero con tamanos: "torta 8 porciones" (ADR-007)."""
+
+    id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey("product.id"), nullable=False)
+    name = db.Column(db.String(120), nullable=False)
+    price = db.Column(db.Numeric(10, 2), nullable=False)
+    sort_order = db.Column(db.Integer, nullable=False, default=0)
+
+    product = db.relationship("Product", back_populates="variants")
 
 
 class Ingredient(db.Model):
@@ -66,22 +130,13 @@ class Ingredient(db.Model):
     )
 
 
-class Recipe(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(150), nullable=False)
-    summary = db.Column(db.Text, nullable=False)
-    ingredients = db.Column(db.Text, nullable=False)
-    steps = db.Column(db.Text, nullable=False)
-    image_url = db.Column(db.String(500))
-    category = db.Column(db.String(120), default="general")
-    status = db.Column(db.String(50), default="published")
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-
 class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    # Opcional a proposito: el invitado pide por WhatsApp sin cuenta (ADR-012).
+    # Los datos de contacto de ese pedido viven en OrderDelivery.
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
     status = db.Column(db.String(50), default="pending")
+    channel = db.Column(db.String(30), nullable=False, default="mercado_pago")
     total_amount = db.Column(db.Numeric(10, 2), default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

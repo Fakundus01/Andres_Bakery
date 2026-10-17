@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from decimal import Decimal
 import json
@@ -98,6 +98,11 @@ class PaymentService(ServiceBase):
         self.client = client or MercadoPagoClient()
 
     def create_checkout(self, user_identity: int | str | None, data: dict) -> dict:
+        # Mercado Pago queda detras de un interruptor hasta tener credenciales
+        # (ADR-002). Apagado responde 503, no un error de configuracion raro.
+        if not current_app.config.get("PAYMENTS_ENABLED"):
+            raise ConfigurationError("online payments are disabled")
+
         order_id = data.get("order_id")
         requested_method = str(data.get("payment_method") or "mercado_pago")
         if order_id is None:
