@@ -1,6 +1,6 @@
 # features.md · Andres Bakery
 
-**Versión:** 0.1.0 · **Última actualización:** 2026-10-16
+**Versión:** 0.2.0 · **Última actualización:** 2026-10-17
 
 Estados (§5 del master): Specified 20% → Planned 40% → Tasked 60% → In Progress 80% → Complete 100%.
 
@@ -64,13 +64,32 @@ Todavía **sin tarea asignada**: entran al backlog, no al código, hasta decidir
 
 **Lo que se midió del soporte actual (F35), no opinión:** ocupa el alto completo del viewport y tapa el header; la fila de respuestas rápidas está debajo del historial, así que **cada mensaje la empuja y terminás tocando otro botón** (pasó en la prueba: clic en "Medios de pago", respondió "Pedidos personalizados"); hay dos barras de scroll anidadas; y es un FAQ de 3 botones más un formulario de contacto disfrazado de conversación.
 
+## B3 · Pedido del humano el 2026-10-17 (tercera tanda, por dictado)
+
+Todo esto entró con su ADR y su tarea en el mismo ciclo (R08). **F33 ya estaba hecho**: lo que faltaba era el hover, que es F42.
+
+| ID | Feature | Estado | Tarea | ADR |
+|---|---|---|---|---|
+| F42 | La tarjeta **se da vuelta con el hover** donde hay mouse, sin perder el botón ni el "Agregar" | **Complete** | T10 | ADR-016 |
+| F43 | **Redes sociales** de Andrea en su perfil (Instagram, TikTok y las que ella cargue) | **Complete** | T11 | ADR-017 |
+| F44 | **CV / perfil profesional**: trayectoria, estudios, qué sabe hacer, en una vista imprimible (`/cv`) | **Complete** | T11 | ADR-017 |
+| F45 | **Subir fotos desde el panel**, sin pegar links | **Complete** | T12 | ADR-018 |
+| F46 | **Asistente de recetas con IA**: mira la foto y deja un borrador que ella corrige | **Complete (apagado)** | T14 | ADR-020 |
+| F47 | **Gráficos de ventas** en el panel: facturación por día, pedidos por estado, lo que más se pide | **Complete** | T13 | ADR-019 |
+| F48 | **Visitas a la página**, medidas sin cookies ni IP | **Complete** | T13 | ADR-019 |
+| F49 | **Panel más fácil**: la carta se carga con un formulario guiado por pasos, con la foto arriba | **Complete** | T12 | ADR-018 |
+
+**Por qué F44 (el CV) no es un desvío del proyecto.** El pedido fue textual: que un reclutador que entre a ver su emprendimiento encuentre ahí su CV. No cuesta ni una tabla nueva — es el mismo `SiteContent["profile"]` de F43 (ADR-017) — y el sitio ya es, de hecho, la prueba de que el emprendimiento existe. Lo único que hace falta que no está: **que ella cargue su trayectoria real**. Hasta entonces `/cv` muestra los huecos y no se linkea desde el perfil (misma regla que F24: no se inventa la biografía de una persona).
+
+**Lo que F46 todavía no puede hacer, dicho claro:** sin `ANTHROPIC_API_KEY` el botón no aparece. Está construido y probado con un cliente falso, igual que Mercado Pago (ADR-002). Para prenderlo hace falta una llave y decidir el gasto: los números están en `costs.md`.
+
 ## C · Fuera de v1 (y por qué)
 
 | Feature | Por qué no |
 |---|---|
 | Traer pedidos de PedidosYa al panel | sin API pública autogestionada (ADR-008) |
 | WhatsApp Business API oficial | costo + verificación de negocio (`costs.md`) |
-| Subida de fotos desde el panel | hoy es `image_url`; habilitar subida activa N5 de seguridad |
+| ~~Subida de fotos desde el panel~~ | **entró el 2026-10-17** (F45, ADR-018): activa N5 y los controles fueron en el mismo ciclo |
 | Cupones y descuentos | nadie lo pidió |
 | Reseñas de clientes | nadie lo pidió, y trae moderación |
 | Notificaciones push | la conversación ya está en WhatsApp |

@@ -1,13 +1,13 @@
 # testing.md · Andres Bakery
 
-**Versión:** 0.1.0 · **Última actualización:** 2026-10-16
+**Versión:** 0.2.0 · **Última actualización:** 2026-10-17
 
 ## 1 · Cómo se corre (comandos reales, verificados el 2026-10-16)
 
 Los mismos que `harness.config.json`. **Siempre desde la raíz del repo**: los imports del back son `backend.*`.
 
 ```bash
-# Back: 70 tests, unittest (NO pytest: el venv no lo tiene)
+# Back: 136 tests, unittest (NO pytest: el venv no lo tiene)
 backend/.venv/Scripts/python.exe -m unittest discover -s backend/tests -t . -q
 
 # Front: eslint + tsc (los dos proyectos de TS)
@@ -17,7 +17,7 @@ cd front/Andres_Bakery && npm run lint
 cd front/Andres_Bakery && npm run build
 ```
 
-Estado medido el 2026-10-16 tras T3: **70 tests OK**, lint limpio, build en verde (326,85 KB de JS, 29,22 KB de CSS).
+Estado medido el 2026-10-17 tras T10-T14: **136 tests OK**, lint limpio, build en verde (360,12 KB de JS, 30,71 KB de CSS).
 
 ## 2 · Qué hay cubierto hoy
 
@@ -32,15 +32,28 @@ Estado medido el 2026-10-16 tras T3: **70 tests OK**, lint limpio, build en verd
 | `test_order_service.py` | creación de órdenes, cálculo de total y envío |
 | `test_payment_service.py` | checkout y webhook con un `FakeMercadoPagoClient` |
 | `test_bootstrap_service.py` | creación del admin, **que arrancar no le pise la contraseña** (D13) y la siembra inicial |
-| `support.py` | `BackendServiceTestCase`: app + DB temporal por test en `backend/tests/.tmp/` |
+| `test_profile_service.py` | el perfil y el CV: qué se guarda, qué se recorta y qué se descarta (ADR-017) |
+| `test_image_file.py` | el validador/limpiador de imágenes: EXIF, chunks, políglotas, HEIC, WEBP, archivos cortados (ADR-018) |
+| `test_upload_service.py` | la subida: nombre generado, tope de tamaño, lo que no toca el disco, path traversal |
+| `test_metrics_service.py` | normalización de rutas y dispositivos, contadores agregados y el resumen (ADR-019) |
+| `test_ai_service.py` | el asistente con `FakeRecipeClient`: apagado, techo diario, recorte de la salida, SSRF (ADR-020) |
+| `test_api_panel.py` | los endpoints nuevos de punta a punta: permisos, headers de seguridad, 503 de la IA |
+| `imagenes_de_prueba.py` | un JPEG **real** (escrito por el encoder de Windows, en base64) y un PNG armado con CRC y zlib |
+| `support.py` | `BackendServiceTestCase` (servicios) y `ApiTestCase` (app + cliente HTTP + login de admin), los dos con DB temporal por test en `backend/tests/.tmp/` |
 
-**Convención a respetar:** cada test crea su propia DB SQLite con nombre `uuid4()` y la borra al terminar. Los servicios externos se inyectan como fake (ver `FakeMercadoPagoClient`), nunca se llama a la API real.
+**Convención a respetar:** cada test crea su propia DB SQLite con nombre `uuid4()` y la borra al terminar. Los servicios externos se inyectan como fake (`FakeMercadoPagoClient`, `FakeRecipeClient`), nunca se llama a la API real — y con la IA eso además **no cuesta plata**.
+
+**Una clase de tests no hereda de otra.** El arnés de la app de test vive en `support.py`, que `discover` no carga como módulo de tests. Cuando `test_api_panel` heredaba de `test_api`, unittest corría la suite entera del padre otra vez: 13 tests nuevos aparecían como 23.
+
+**Las imágenes de los tests son reales, no bytes inventados.** El JPEG salió de un encoder de verdad y por eso trae su APP0 JFIF, que es justo lo que hay que tirar; el PNG se arma con `zlib` y CRC calculado. Una primera versión del fixture se escribió partiendo el base64 a mano y quedó corrupto: los tests fallaron hasta que el base64 se generó con código.
 
 **Lo que NO cubren los tests y se verificó en el navegador (T3):** el salto de cantidades en la ficha (6 → 12 con un clic), el carrito leyendo el envío del back, el checkout con los pagos apagados hasta el pedido #4, y 390px sin desbordes en cinco rutas.
 
 **Las migraciones también se prueban**: `0002` se corrió sobre una **copia** de la base real antes que sobre la real, en los dos sentidos (`upgrade` y `downgrade`) y desde una base vacía. Una migración que nunca se ejecutó no está probada.
 
-**Hueco grande:** **cero tests de front**. No hay runner instalado.
+**Lo que se verificó en navegador el 2026-10-17** (R07), no con tests: el giro por hover y que el dorso tenga su "Agregar"; la subida de una foto real de punta a punta (archivo elegido → guardado → servido → mostrado en el formulario y en la carta); el panel con sus gráficos; `/historia` con las redes; `/cv`; y 390px sin desbordes en cuatro rutas.
+
+**Hueco grande:** **cero tests de front**. No hay runner instalado, y ahora hay lógica propia que lo pide (`ejeY`, `urlDeImagen`, el gate de `usePunteroFino`). Dos bugs de este ciclo —el eje que etiquetaba "1" dos veces y el texto de 5px en celular— se encontraron **mirando la pantalla**, que es exactamente lo que un test hubiera atrapado antes.
 
 ## 3 · Estrategia
 
@@ -62,11 +75,14 @@ Estado medido el 2026-10-16 tras T3: **70 tests OK**, lint limpio, build en verd
 | V7 · el total lo calcula el servidor | ya cubierto por `test_order_service.py`; **no puede volverse rojo** | automatizado |
 | V8 · panel operable en 375px | navegador, viewport de iPhone SE | navegador |
 | V9 · los tests siguen verdes tras la migración | el comando de §1 | automatizado |
+| V11 · una foto subida no conserva metadatos | `test_image_file` + `test_upload_service` leen **los bytes del archivo guardado** | automatizado |
+| V12 · lo que devuelve el modelo no entra crudo | `test_ai_service`: un borrador con `tags`, `precio` y `sql` sale con las siete claves de siempre | automatizado |
+| V13 · las visitas no identifican a nadie | `test_metrics_service` compara las **columnas de la tabla** contra la lista esperada | automatizado |
 
 ## 5 · Cobertura mínima para dar algo por `done`
 
 1. Servicio nuevo o tocado del back ⇒ su test, verde.
-2. Los 70 existentes, verdes (V9). Un test que había pasado y ahora no, bloquea.
+2. Los 136 existentes, verdes (V9). Un test que había pasado y ahora no, bloquea.
 3. `npm run lint` y `npm run build`, limpios (V1).
 4. Si se tocó algo visible ⇒ revisado en navegador, en celular y en escritorio, y dicho en el handback.
 5. Si el cambio toca precios, mínimos o totales ⇒ el rojo se vio primero (R29).

@@ -1,6 +1,6 @@
 # design.md · Andres Bakery
 
-**Versión:** 0.1.0 · **Última actualización:** 2026-10-16 · **Estado:** propuesta, esperando OK
+**Versión:** 0.2.0 · **Última actualización:** 2026-10-17 · **Estado:** A y B construidos; C es lo de T10-T14, también construido
 
 Dos partes: **A) lo que existe hoy** (fiel, R15) y **B) a dónde va** con las decisiones del 2026-10-16.
 
@@ -140,3 +140,67 @@ Mercado Pago queda intacto detrás de `PAYMENTS_ENABLED` (default `false`). Cuan
 - `stripe==8.7.0` de `requirements.txt` — no se importa en ningún lado; los pagos van por `urllib` directo a la API de Mercado Pago.
 - `Recipe` + `routes/recipes.py` + `recipesApi` — después de migrar su contenido (ADR-001).
 - El `DELIVERY_FEE = 2500` hardcodeado en `App.tsx:62` — pasa a venir del back (C4).
+
+---
+
+## C · Lo que entró el 2026-10-17 (T10–T14)
+
+### C1 · Piezas nuevas
+
+```
+backend/
+├── services/
+│   ├── profile_service.py   el perfil y el CV: normaliza y valida el JSON (ADR-017)
+│   ├── image_file.py        valida por estructura y reescribe sin metadatos (ADR-018)
+│   ├── upload_service.py    nombre, carpeta y tope; no decide nada sobre el contenido
+│   ├── metrics_service.py   contadores de visita + el resumen ya agregado (ADR-019)
+│   └── ai_service.py        el asistente, con el cliente inyectable (ADR-020)
+├── routes/  uploads.py · metrics.py · ai.py          (+ /profile en site.py)
+└── migrations/versions/0003_metricas_de_visitas.py   tabla page_view
+
+front/src/
+├── components/
+│   ├── SubirFoto.tsx        arrastrar/elegir + preview + error en castellano
+│   ├── RedesSociales.tsx    los links de Andrea, con rel="noopener noreferrer"
+│   └── charts/              GraficoSerie · GraficoRanking · piezas (eje, formato, tabla)
+├── pages/
+│   ├── CvPage.tsx           /cv, con @media print
+│   └── admin/               PerfilTab · PerfilCv · FotoDelProducto · usePanelDeAdmin
+└── lib/   imagenes.ts · usePunteroFino.ts · useContarVisitas.ts
+```
+
+**Por qué `usePanelDeAdmin`:** el panel pasó de 5 a 6 pestañas y `AdminPage.tsx` se iba de 300 líneas (R05). El estado y los pedidos a la API viven en el hook; la pantalla arma el layout y nada más.
+
+### C2 · Dónde vive cada cosa, y por qué ahí
+
+| Dato | Dónde | Por qué |
+|---|---|---|
+| Perfil, redes, CV | `SiteContent["profile"]`, un JSON | son de **una** persona y siempre se piden juntos: una tabla daría joins para pintar una página (ADR-017) |
+| Fotos subidas | `instance/uploads/`, nombre aleatorio | fuera del árbol de código y fuera del repo; el nombre del cliente se descarta (ADR-018) |
+| Ruta de la foto en la DB | `/uploads/<nombre>`, **relativa** | el día que el back cambie de dominio no hay que reescribir cada fila. El front le pone el host con `urlDeImagen` |
+| Visitas | tabla `page_view`, contador agregado | sin IP ni cookie: no hay a quién identificar (ADR-019) |
+
+### C3 · La decisión de color de los gráficos, medida
+
+Los cuatro temas traen `--color-acento` y `--color-acento-2`. Lo natural sería usar los dos para separar series. **Se midió con el validador de paletas antes de escribir un gráfico**, y el par no sirve:
+
+| Tema | Peor par adyacente | Veredicto |
+|---|---|---|
+| primavera | ΔE 5,1 (deutan) | **falla** separación CVD (mínimo 8) |
+| verano | — | el acento cae por debajo del piso de croma |
+| otoño | ΔE 2,5 (deutan) | **falla** |
+| invierno | ΔE 10,1 **con visión normal** | **falla el piso duro** (mínimo 15): ni con visión plena se distinguen |
+
+Por eso **todos los gráficos usan un solo hue** (`--color-acento`, que sí pasa contraste contra la superficie en los cuatro temas) y **la identidad la llevan el título y las etiquetas, nunca el color**. Los rankings escriben el valor al lado de cada barra, así que son su propia tabla; las series por día agregan una tabla para lector de pantalla.
+
+**Desviación declarada:** la guía de visualización pide extremos de barra redondeados de 4px. Acá van **cuadrados**: el proyecto no usa radios en ningún borde (ADR-003). La regla de la que sale ese 4px —que el dato se lea limpio— se cumple con el aire entre barras.
+
+**El SVG se dibuja al ancho real del panel**, medido con `ResizeObserver`, en vez de estirar un `viewBox` fijo. Con el `viewBox` estirado, en un celular de 390px los números del eje terminaban en ~5px.
+
+### C4 · Lo que el asistente de IA **no** puede hacer, por diseño
+
+- No publica: prellena el formulario y **no pisa** lo que ella ya escribió.
+- No propone etiquetas (alérgenos ⇒ ADR-020).
+- No lee una URL que no sea una foto ya subida al propio sitio (SSRF).
+- No devuelve campos fuera del esquema: lo que no está, se tira.
+- No corre sin llave ni sin que el humano decida el gasto (`costs.md`).

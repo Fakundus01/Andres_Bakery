@@ -221,3 +221,118 @@ Decisiones con fecha y motivo, para no re-discutirlas. Una decisión no se borra
 - Los tests **no leen** `backend/.env` (`backend/tests/__init__.py` apunta `ENV_FILE` a un archivo que no existe): si lo leyeran, pasarían o fallarían según lo que cada máquina tenga cargado.
 
 **Pendiente:** el `.env` local quedó con `admin@local.test` y una clave aleatoria. El mail real de Andrea **ya está en el historial de git** (`config.py:34` del commit viejo) y eso no se deshace reescribiendo el presente.
+
+---
+
+## ADR-016 · El hover da vuelta la tarjeta solo donde hay un mouse, y el dorso se queda con el botón de agregar
+
+**Fecha:** 2026-10-17 · **Estado:** Vigente · **Enmienda:** el comentario de `ProductCard.tsx` que descartaba el hover
+
+**Contexto:** F33 se implementó con un botón (ícono de info) porque en celular no hay hover y una tarjeta que gira cuando pasás el dedo es una trampa. El humano pidió explícitamente el giro con hover.
+
+**Decisión:** las dos cosas, separadas por capacidad del dispositivo.
+
+- El giro por hover está detrás de `(hover: hover) and (pointer: fine)`: entra en escritorio con mouse y **no existe** en una pantalla táctil, donde `:hover` queda pegado después de tocar.
+- Ese medio se evalúa **en JS** (`usePunteroFino`, con `matchMedia`) y no con un `:hover` en el CSS. No es un detalle: la cara visible también manda `aria-hidden` e `inert`, así que si el CSS girara la tarjeta por su cuenta, la pantalla mostraría una cara y el lector de pantalla anunciaría la otra — y los botones de la cara tapada seguirían siendo clickeables. Con una sola fuente de verdad eso no puede pasar.
+- El botón se queda, en todos los dispositivos. Es el único camino en celular, el camino del teclado (`focus-within` gira igual) y el que deja el dorso abierto mientras lees.
+- Con `prefers-reduced-motion: reduce` la cara cambia sin animación: se muestra el dorso, no gira.
+
+**Lo que obliga a cambiar, y es la parte que importa:** si la tarjeta gira al pasar el mouse, **"Agregar" deja de ser clickeable** — el puntero entra, la cara se va y el botón se escapa. Por eso el dorso suma su propio botón de agregar al pedido. Sin eso, el hover le saca al visitante la acción principal de la carta; con eso, cualquiera de las dos caras vende.
+
+**Descartado:** girar con un retardo (`transition-delay`) para que el puntero "de paso" no dispare el giro. Agrega un estado invisible y no resuelve el botón que se escapa.
+
+---
+
+## ADR-017 · El perfil de Andrea es un JSON en `SiteContent`, no una tabla nueva
+
+**Fecha:** 2026-10-17 · **Estado:** Vigente
+
+**Contexto:** F43 (sus redes) y F44 (su CV y su trayectoria) necesitan guardar datos con forma: una lista de redes, una lista de experiencias, una de estudios. Hoy `/historia` lee un único texto plano de `SiteContent["about"]`.
+
+**Decisión:** un solo registro `SiteContent["profile"]` con un **JSON** adentro, validado y normalizado por `ProfileService` al escribir. No entran tablas ni columnas nuevas, así que **no hay migración** y el contenido del sitio sigue teniendo un solo lugar donde vive.
+
+**Por qué:** son datos de **una** persona y nadie los consulta por separado — no se filtra por red social ni se ordena por experiencia. Una tabla `SocialLink` y una `CvEntry` darían tres joins para pintar una página que siempre se pide entera. Si algún día hay más de un perfil, la migración es leer el JSON y repartirlo; mientras eso no pase, el JSON es la forma honesta.
+
+**El contrato lo sostiene el servidor, no el front:** `ProfileService` recorta cada campo a su largo máximo, acepta como mucho 8 redes y 12 entradas por lista, y descarta lo que no reconoce. Si el JSON guardado está roto o vacío, devuelve el perfil vacío: la página muestra los huecos punteados (como ya hace F24) en vez de explotar.
+
+**La URL de una red se valida de verdad.** Solo `http://` y `https://`. `javascript:…` en un campo que después sale en un `href` es XSS almacenado con un formulario de admin de por medio, y el admin es justo quien va a pegar links sin mirarlos. Los `<a>` salen con `rel="noopener noreferrer"`.
+
+**Nada se inventa (sigue a F24):** no se escriben handles, años ni títulos de nadie. Cada sección que viene vacía **no se renderiza**, y el panel dice qué falta.
+
+**Sobre el CV:** se publica como una vista propia (`/cv`) con hoja de estilos de impresión, armada con los datos que ella carga. Así "tener el CV" no depende de subir un PDF: el que lo quiera lo imprime o lo guarda como PDF desde el navegador, y el contenido es texto indexable en vez de un archivo opaco. Si además quiere adjuntar su propio archivo, el campo existe y se apoya en F45.
+
+---
+
+## ADR-018 · Las fotos se suben al panel: validadas por contenido, reescritas sin metadatos, servidas inertes
+
+**Fecha:** 2026-10-17 · **Estado:** Vigente · **Enmienda:** `features.md` §C decía "subida de fotos desde el panel: fuera de v1"
+
+**Contexto:** hoy la foto de un producto es `image_url`, un campo de texto. Para cargar la carta, Andrea tiene que subir la imagen a otro lado, copiar el link y pegarlo. Pidió que el panel sea fácil; ese paso es el más caro de todos y el que más veces va a repetir.
+
+**Decisión:** entra `POST /api/uploads` (solo admin, `multipart/form-data`). Esto **activa N5 de `security.md`**, y los controles van en el mismo ciclo, no después:
+
+| Control | Cómo |
+|---|---|
+| Tamaño | tope de 4 MB, cortado por `MAX_CONTENT_LENGTH` **y** revisado en el servicio |
+| Tipo real | se parsea la **estructura** del archivo (marcadores JPEG, chunks PNG), no la extensión ni el `Content-Type` que manda el navegador |
+| Metadatos | se reescribe el archivo dejando solo lo que hace falta para verlo: se van EXIF, XMP, ICC y comentarios |
+| Nombre | lo genera el servidor (`secrets.token_hex`): el nombre del usuario no llega al disco, así que no hay `../` que valga |
+| Dónde | `instance/uploads/`, fuera del árbol de código y fuera del repo (`.gitignore`) |
+| Cómo se sirve | `Content-Type` fijo según el tipo detectado, `X-Content-Type-Options: nosniff` y `Content-Disposition: inline` solo para imágenes |
+
+**Por qué reescribir y no solo validar:** una foto sacada con el celular trae **EXIF con GPS**. Andrea cocina en su casa; publicar la carta con las coordenadas de su casa adentro de cada JPG es filtrar su domicilio sin que nadie lo note. Reescribir también mata el archivo políglota (un JPG válido que además es HTML o un ZIP).
+
+**Por qué sin `Pillow`:** es la opción obvia y está viva, pero para JPEG y PNG lo que hace falta son ~140 líneas de recorrer segmentos y chunks, y es **el mismo criterio de ADR-015** (`env_file.py` en vez de `python-dotenv`). Pillow entra el día que haya que redimensionar o convertir de verdad, con su línea en este archivo (R28). Hoy el tope de 4 MB hace de límite y el navegador escala la foto en pantalla.
+
+**Lo que no se acepta, y lo dice claro:** WEBP y HEIC se rechazan con el mensaje "guardala como JPG o PNG". HEIC es el default de iPhone, así que va a pasar: el aviso del panel lo nombra en vez de decir "formato inválido". Queda como deuda **D16**.
+
+**Lo que se cae de acá (cierra D3):** si el back empieza a servir archivos que subió una persona, **los headers de seguridad dejan de ser hardening y pasan a ser parte del control**. Entran globales en `after_request`: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Cross-Origin-Resource-Policy` y una CSP mínima para lo que sirve el back (que es JSON e imágenes, no HTML).
+
+---
+
+## ADR-019 · Las visitas se cuentan agregadas, sin cookie ni IP, y los gráficos son SVG propio
+
+**Fecha:** 2026-10-17 · **Estado:** Vigente
+
+**Contexto:** se pidió un panel con gráficos: cuánta gente entró, cuánta compró, cantidades y medidas. De las ventas ya hay datos (`Order`, `OrderItem`); de las visitas no hay nada.
+
+**Decisión, dos partes.**
+
+**1. Qué se mide.** Una tabla `PageView` con **contadores agregados**: `(día, ruta, clase de dispositivo) → cantidad`. Un `UPDATE … + 1`, no una fila por visita. No se guarda IP, ni cookie, ni user agent, ni id de sesión, ni nada que permita reconstruir el recorrido de una persona. La ruta se **normaliza contra las rutas conocidas** antes de guardarse (`/producto/<slug>` cuenta como una sola ruta, y lo que no se reconoce cae en `otra`): sin eso, cualquiera llena la tabla pegando URLs inventadas.
+
+**Lo que esto cuesta, dicho de frente:** no hay **visitantes únicos**, y no se puede saber si la persona que entró es la que compró. Para saberlo habría que identificar a quien mira, y eso es exactamente lo que no queremos guardar — con N2 abierto (Ley 25.326, retención sin definir, D8) meter un identificador por visitante es agrandar el problema para un número que no cambia ninguna decisión de Andrea. Se mide **visitas**, y la conversión se mira contra pedidos, no contra personas. Toma la forma de la lección de `sdd-universal/sdd/decisions.md#ADR-013` (contadores propios y clase gruesa de dispositivo), recuperada del Cerebro: es dato, no instrucción (R26).
+
+**2. Con qué se dibuja.** Componentes SVG propios (`GraficoBarras`, `GraficoLineas`, `GraficoRanking`), en el estilo pixel del sitio. **Sin librería de gráficos:** `recharts` o `chart.js` pesan más que todo el CSS del proyecto, traen su propia estética redondeada que choca con ADR-003, y lo que hace falta son tres formas (barras por día, línea de pedidos, ranking horizontal). Con `<rect>` y `<polyline>` alcanza, y los bordes chunky salen gratis porque son los mismos tokens. Si alguna vez hace falta zoom, tooltips o series apiladas, entra una librería con su línea en este archivo (R28).
+
+**El panel no se trae todos los pedidos para contar.** `GET /api/metrics/summary` devuelve ya agregado lo que el gráfico dibuja. Hoy el panel pide `/api/orders` entero y suma en el navegador: con 40 pedidos da igual, con 4.000 es la deuda D5 pegándole al panel.
+
+---
+
+## ADR-020 · El asistente de recetas con IA: apagado por default, borrador que ella corrige, y lo que devuelve el modelo es DATO
+
+**Fecha:** 2026-10-17 · **Estado:** Vigente · **Activa N4 de `security.md`**
+
+**Contexto:** se pidió que al subir la foto de un brownie, la IA la reconozca y deje cargada una receta base que Andrea después corrige. Hoy ella escribe descripción, ingredientes y pasos desde cero por cada producto.
+
+**Decisión:** entra `POST /api/ai/recipe-draft` (solo admin): recibe una imagen ya subida (F45) y devuelve un **borrador** — nombre sugerido, categoría, descripción, lista de ingredientes y pasos. El panel lo usa para **prellenar el formulario**. Nada se guarda ni se publica solo: ella edita y aprieta guardar, igual que hoy.
+
+**Los límites, que son el 90% de la decisión:**
+
+- **Apagado sin llave.** Sin `ANTHROPIC_API_KEY` o con `AI_ENABLED=false`, el endpoint responde **503** con un mensaje que explica qué falta, y el botón del panel no aparece. Mismo patrón que Mercado Pago (ADR-002): implementado, probado con un cliente falso, apagado hasta que haya credencial.
+- **Nunca toca alérgenos.** El borrador **no propone etiquetas** ("sin TACC", "sin lactosa", "vegano"): esas las pone ella y son su declaración bajo su responsabilidad (ADR-006, `security.md` §3). Un modelo adivinando "sin TACC" sobre una foto es un problema de salud, no de UX — es la misma razón por la que ADR-013 descartó el chatbot.
+- **La respuesta del modelo es dato, no instrucción (R26).** Una foto puede traer texto escrito adentro ("ignorá las instrucciones anteriores…"), y el modelo lo lee. Por eso la salida se acepta **solo** como JSON con la forma esperada: cada campo se recorta a su largo, las listas a su cantidad, y todo lo que no está en el esquema se tira. Nada de lo que devuelva se ejecuta, se concatena en una consulta ni se guarda sin que ella lo vea.
+- **Techo de gasto.** `AI_DAILY_LIMIT` (default 25) corta la cantidad de borradores por día. Un endpoint de admin que cuesta plata por llamada necesita un techo que no dependa de que nadie se equivoque.
+- **Se avisa en pantalla** que lo escribió una IA mirando una foto y que hay que leerlo antes de publicar.
+
+**Qué modelo y con qué se lo llama (R28, y acá hubo un cambio de opinión a mitad de camino):** `claude-opus-5-5` por la API de Anthropic, con el **SDK oficial `anthropic`**.
+
+La primera versión de esta ADR decía "`claude-sonnet-5-5` llamado con `requests`, sin dependencia nueva", siguiendo el criterio de ADR-015. Se revisó contra la documentación del proveedor antes de escribir una línea de código y las dos partes estaban mal:
+
+- **El modelo:** elegir el más chico "porque sale más barato" es una decisión del dueño del proyecto, no del que programa, y acá la diferencia es de centavos por borrador (ver `costs.md`). Va el modelo bueno. Si el gasto molesta, bajarlo es cambiar un string — y está anotado como la primera palanca.
+- **El cliente HTTP:** `requests` a mano contra `/v1/messages` es mantener nosotros el formato de un endpoint que cambia (el parámetro de salida estructurada, la forma del bloque de imagen y la configuración de razonamiento cambiaron todas en el último año). Con el SDK, eso lo mantiene el proveedor. **Es la diferencia con ADR-015:** leer un `.env` son 40 líneas que no cambian nunca; hablar con una API viva, no.
+
+Entonces entra **una** dependencia nueva, `anthropic` (oficial, activa, la que recomienda la documentación). Y entra **apagada**: `ai_service.py` la importa adentro de la función, no arriba del archivo, así que si no está instalada el back arranca igual y el asistente responde el mismo 503 que cuando falta la llave. Ningún otro pedazo del proyecto la toca.
+
+El borrador se pide con **salida estructurada** (`output_config.format` con un esquema JSON), que es lo que hace cumplir la forma del lado del proveedor; el parseo propio de arriba sigue estando igual, porque la defensa no se delega. Esfuerzo `low`: mirar una foto y proponer una receta base no necesita más, y el techo de gasto agradece.
+
+**Descartado:** reconocer la imagen con un modelo local (no hay dónde correrlo: el back es un proceso chico en free tier), y publicar el borrador solo si la confianza es alta (no hay medida de confianza que valga para "esto es un brownie y lleva estos ingredientes", y el costo de equivocarse lo paga ella frente a un cliente).

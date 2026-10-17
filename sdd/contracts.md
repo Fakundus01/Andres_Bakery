@@ -1,6 +1,6 @@
 # contracts.md · Andres Bakery
 
-**Versión:** 0.1.0 · **Última actualización:** 2026-10-16
+**Versión:** 0.3.0 · **Última actualización:** 2026-10-17
 
 Contrato de la API. Es lo que desacopla el panel (T5) de la carta pública (T6): aprobado esto, las dos pueden ir en paralelo.
 
@@ -77,7 +77,7 @@ Esto dejo de ser propuesta: esta construido y con tests. Tres diferencias respec
 | GET | `/api/products/<slug>` | — | ficha del producto (F25) |
 | GET | `/api/tags` | — | etiquetas para el filtro |
 | POST·PUT·DELETE | `/api/tags[/<id>]` | admin | las crea ella (ADR-006) |
-| GET | `/api/site/delivery` | — | `{zone_name, fee, pickup_address}` — mata el 2500 hardcodeado (C4) |
+| GET | `/api/site/delivery` | — | `{zone_name, fee, pickup_address, whatsapp_phone, payments_enabled, ai_enabled}` — mata el 2500 hardcodeado (C4) |
 | POST | `/api/orders/<id>/whatsapp` | token | `{phone, message}`: el back arma el texto con los importes de la DB (ADR-002) |
 
 ### Cambios sobre endpoints existentes
@@ -89,3 +89,96 @@ Esto dejo de ser propuesta: esta construido y con tests. Tres diferencias respec
 ## 3 · Compatibilidad
 
 El front y el back se despliegan juntos y no hay consumidores externos, así que **no se mantienen las dos formas**: el cambio es de corte, en un solo ciclo, con los tests del back como red. Si alguna vez hay un consumidor externo, esto deja de valer y hay que versionar.
+
+## 4 · Lo que entró el 2026-10-17 (T10–T14) — **implementado, con tests**
+
+| Método | Ruta | Auth | Devuelve |
+|---|---|---|---|
+| GET | `/api/site/profile` | — | el perfil de Andrea: redes, ficha y CV (F43, F44) |
+| PUT | `/api/site/profile` | admin | `{status}` — lo valida y normaliza el servidor (ADR-017) |
+| POST | `/api/uploads` | admin | `{url, filename, content_type, bytes, width, height}` · 201 — `multipart/form-data`, campo `file` (F45) |
+| GET | `/uploads/<nombre>` | — | el archivo, con `Content-Type` fijo y `nosniff` |
+| POST | `/api/metrics/view` | — | `204` — cuenta una visita, sin cookie ni IP (F48) |
+| GET | `/api/metrics/summary?days=30` | admin | lo que dibujan los gráficos, **ya agregado** (F47, F48) |
+| POST | `/api/ai/recipe-draft` | admin | el borrador de receta, o **503** si está apagado (F46) |
+
+### `GET /api/site/profile`
+
+Todo campo puede venir vacío: la página renderiza solo lo que tiene (F24).
+
+```json
+{
+  "role": "Repostera",
+  "tagline": "Hace todo ella",
+  "photo_url": "/uploads/ab12….jpg",
+  "location": "Villa Maipú, General San Martín",
+  "socials": [{"network": "instagram", "url": "https://instagram.com/…", "label": "@…"}],
+  "cv": {
+    "published": false,
+    "headline": "", "summary": "", "contact_email": "", "file_url": "",
+    "skills": ["…"],
+    "experience": [{"title": "", "place": "", "period": "", "detail": ""}],
+    "education": [{"title": "", "place": "", "period": "", "detail": ""}]
+  }
+}
+```
+
+`socials[].network` solo puede ser uno de: `instagram`, `tiktok`, `facebook`, `youtube`, `whatsapp`, `linkedin`, `pinterest`, `web`, `mail`. `url` solo `http(s)://` — cualquier otro esquema se descarta al guardar (ADR-017). `cv.published` en `false` ⇒ `/cv` no se linkea desde el perfil.
+
+### `POST /api/uploads`
+
+`multipart/form-data` con el campo **`file`**. Solo **JPEG y PNG**, hasta **4 MB**. El servidor descarta el nombre y el `Content-Type` que manda el navegador: decide por el contenido (ADR-018).
+
+Errores en castellano, con el caso de HEIC nombrado: `413` si pasa el tope de Flask, `400` si el archivo no es una imagen que el servidor entienda.
+
+### `POST /api/metrics/view`
+
+```json
+{"path": "/tienda", "device": "mouse"}
+```
+
+`204` siempre que el cuerpo sea sano, incluso si la ruta no se reconoce (cae en `otra`). `device` es `mouse` o `tactil`; cualquier otra cosa cuenta como `otra`. **No lleva auth, no deja cookie y no guarda IP** (ADR-019).
+
+### `GET /api/metrics/summary?days=30`
+
+```json
+{
+  "days": 30,
+  "revenue_total": 184500.0,
+  "orders_total": 23,
+  "orders_paid": 9,
+  "customers": 7,
+  "visits_total": 412,
+  "revenue_by_day": [{"day": "2026-10-01", "value": 12000.0}],
+  "orders_by_day": [{"day": "2026-10-01", "value": 2}],
+  "visits_by_day": [{"day": "2026-10-01", "value": 31}],
+  "orders_by_status": [{"label": "paid", "value": 9}],
+  "top_products": [{"label": "Brownie clásico", "value": 48, "revenue": 86400.0}],
+  "top_paths": [{"label": "/tienda", "value": 160}],
+  "devices": [{"label": "mouse", "value": 240}, {"label": "tactil", "value": 172}]
+}
+```
+
+`days` se recorta a `[1, 365]`. Las series vienen **con los días vacíos rellenos en cero**: el gráfico no tiene que adivinar huecos.
+
+### `POST /api/ai/recipe-draft`
+
+```json
+{"image_url": "/uploads/ab12….jpg", "hint": "brownie"}
+```
+
+Responde el borrador, siempre con la misma forma y siempre recortado por el servidor:
+
+```json
+{
+  "name": "Brownie clásico",
+  "category": "brownies",
+  "description": "…",
+  "ingredients": ["…"],
+  "steps": ["…"],
+  "unit_label": "unidad",
+  "notice": "Lo escribió una IA mirando la foto. Leelo y corregilo antes de publicar."
+}
+```
+
+**No propone etiquetas** a propósito (alérgenos ⇒ ADR-020). `503` con los pagos de IA apagados o sin `ANTHROPIC_API_KEY`; `429` si se pasó `AI_DAILY_LIMIT`; `400` si la imagen no existe o no es del propio sitio.

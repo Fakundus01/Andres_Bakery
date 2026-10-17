@@ -4,6 +4,88 @@ Semver `MAJOR.MINOR.PATCH` (R13). No se borra nada: lo viejo queda.
 
 ---
 
+## [0.6.0] · 2026-10-17 · T10-T14: el hover, el perfil con CV, las fotos, los graficos y la IA apagada
+
+Cinco pedidos del humano por dictado, con sus cinco ADR (016 a 020). Todo medido, nada deducido.
+
+### T10 · La tarjeta gira con el hover, y el dorso se queda con el "Agregar" (F42, ADR-016)
+
+F33 ya existia desde 0.4.0, pero giraba **solo con un boton**. Ahora gira tambien al pasar el mouse, con dos cuidados que no son opcionales:
+
+- El hover entra **solo donde hay un mouse de verdad** (`(hover: hover) and (pointer: fine)`), y el medio se evalua en JS (`usePunteroFino`) y no en CSS. En una pantalla tactil `:hover` queda pegado despues de tocar, y ademas la cara visible manda `aria-hidden` e `inert`: con el CSS girando por su cuenta, la pantalla mostraria una cara y el lector de pantalla anunciaria la otra.
+- **El dorso suma su propio boton de agregar.** Si la tarjeta gira al pasar el puntero, el "Agregar" de la cara de adelante deja de ser clickeable: el puntero entra, la cara se va y el boton se escapa. Sin esto, el hover le sacaba a la carta su accion principal.
+
+El boton de informacion se queda en todos los dispositivos: en celular es el unico camino, y es el del teclado.
+
+### T11 · El perfil de Andrea: sus redes y su CV (F43, F44, ADR-017)
+
+`/historia` dejo de ser solo un texto. Ahora ella carga desde **Panel -> Tu perfil**: su foto, que es, su zona, una linea sobre ella, **sus redes** (Instagram, TikTok, y seis mas) y **su CV** completo -- titulo, resumen, que sabe hacer, experiencia y formacion.
+
+El CV se publica en **`/cv`**, una vista propia con hoja de estilos de impresion: cualquiera la guarda en PDF desde el navegador. **El pedido fue textual**: que un reclutador que entre a ver el emprendimiento encuentre ahi su CV. Por eso el link vive en su perfil y no escondido, y por eso el CV es texto de verdad y no un archivo adjunto.
+
+Todo vive en **un JSON** en `SiteContent["profile"]`, validado y normalizado por `ProfileService`: sin tabla nueva y sin migracion. El servidor recorta cada campo, acepta 8 redes y 12 entradas por lista, y **una URL que no empiece con `http(s)://` no se guarda** -- `javascript:` en un campo que despues sale en un `href` es XSS almacenado, y el admin es justo quien pega links sin mirarlos.
+
+Lo que esta vacio **no se renderiza**: misma regla que F24. No se inventa el CV de una persona real.
+
+### T12 · Las fotos se suben desde el panel (F45, F49, ADR-018) -- esto prende N5
+
+Hasta hoy la foto de un producto era una URL que ella tenia que conseguir en otro lado. Ahora se arrastra o se elige, y **`image_url` sigue existiendo**: si ya tiene la foto subida, pegar el link sigue siendo mas rapido.
+
+`POST /api/uploads` (solo admin) **no mira la extension ni el `Content-Type`**: parsea la estructura del archivo -- marcadores del JPEG, chunks del PNG con su CRC -- y **reescribe la imagen dejando solo los pixeles**. Se van EXIF, XMP, ICC y comentarios.
+
+**Por que reescribir y no solo validar:** una foto de celular trae **EXIF con GPS**. Andrea cocina en su casa; publicar la carta con las coordenadas de su casa adentro de cada JPG es filtrar su domicilio sin que nadie lo note. Reescribir mata ademas el archivo poliglota: un JPG valido que tambien es HTML o un ZIP.
+
+**Medido, no deducido:** una foto real de 1967 bytes salio de 1949 con el JFIF afuera, y el archivo limpio **vuelve a decodificar** como JPEG de 120x80. Se rompio el limpiador a proposito (R29) y los tests se pusieron rojos con el `eXIf` y el `Exif\0\0` adentro del archivo guardado.
+
+Nombre generado por el servidor (`secrets.token_hex`), carpeta fuera del repo, y servido con `Content-Type` fijo, `nosniff` y `Content-Disposition: inline`. **WEBP y HEIC se rechazan nombrandolos**: el mensaje dice "guardala como JPG", y para HEIC aclara que es el formato del iPhone (D16).
+
+**Se cae de aca:** los **headers de seguridad** entraron globales (`nosniff`, `X-Frame-Options`, `Referrer-Policy`, `Cross-Origin-Resource-Policy`, CSP minima). Desde que el back sirve archivos que subio una persona dejaron de ser hardening. Cierra **D3**.
+
+### T13 · Graficos y metricas en el panel (F47, F48, ADR-019)
+
+El resumen del panel ahora tiene numeros arriba y **seis graficos**: visitas por dia, pedidos por dia, facturacion por dia, lo que mas se pide, estado de los pedidos, paginas mas vistas y dispositivos. Con selector de 7 / 30 / 90 dias.
+
+Las visitas se cuentan en una tabla nueva, `page_view`, con **contadores agregados**: `(dia, ruta, clase de dispositivo) -> cantidad`. **Sin IP, sin cookie, sin user agent, sin id de sesion.** La ruta se normaliza contra las rutas conocidas antes de guardarse, asi que nadie llena la tabla pegando URLs inventadas, y las vueltas de Andrea por el panel **no se cuentan**: si se contaran, el numero que mira seria mayormente ella.
+
+**Lo que eso cuesta, dicho de frente:** no hay visitantes unicos y no se puede cruzar quien mira con quien compra. Para saberlo habria que identificar a quien entra, que es exactamente lo que no queremos guardar.
+
+El resumen lo **agrega el servidor** (`GET /api/metrics/summary`): el panel ya no se trae todos los pedidos para sumarlos en el navegador.
+
+**Los graficos son SVG propio, sin libreria** -- y hubo una razon medida para que todos usen **un solo color**: el validador de paletas dice que el par `acento`/`acento-2` de los temas **no sirve para separar dos series**. En invierno da ΔE 10,1 incluso con vision normal (el minimo es 15). Asi que el color no codifica nada: la identidad la dicen el titulo y las etiquetas.
+
+Se corrigieron dos cosas mirando el navegador, no el codigo: el grafico ancho dejaba una pared de aire adentro del panel (ahora van todos en dos columnas), y en 390px el texto del eje quedaba en ~5px porque escalaba con el `viewBox` (ahora el SVG se dibuja al tamano real del panel y 11px son 11px).
+
+### T14 · El asistente de recetas con IA (F46, ADR-020) -- **construido y apagado**
+
+`POST /api/ai/recipe-draft` recibe una foto **ya subida** y devuelve un borrador: nombre, categoria, descripcion, ingredientes y pasos. El panel lo usa para **prellenar el formulario**, y **completa sin pisar**: lo que ella ya escribio gana siempre.
+
+Los limites son el 90% de la feature:
+
+- **Apagado sin llave.** Sin `ANTHROPIC_API_KEY` o con `AI_ENABLED=false` responde **503** explicando que falta, y el boton del panel no aparece. Mismo patron que Mercado Pago.
+- **Nunca propone etiquetas.** "Sin TACC" lo declara ella y es su responsabilidad: un modelo adivinandolo sobre una foto es un problema de salud, no de UX.
+- **La salida del modelo es DATO, no instruccion (R26).** Una foto puede traer texto escrito adentro. Se acepta solo lo que entra en el esquema, recortado campo por campo; lo demas se tira. Testeado: un borrador con `tags`, `precio` y `sql` adentro sale con las siete claves de siempre y nada mas.
+- **Solo fotos del propio sitio.** Una URL cualquiera convertiria al back en un proxy que descarga lo que le pidan (SSRF).
+- **Techo de gasto**: `AI_DAILY_LIMIT` (25/dia).
+
+Entra **una dependencia nueva**, `anthropic`, y entra apagada: `ai_service.py` la importa adentro de la funcion, asi que si no esta instalada el back arranca igual. La primera version de la ADR decia "sin dependencia, con `requests`" y se corrigio al leer la documentacion del proveedor: mantener a mano el formato de una API viva no es lo mismo que leer un `.env` (ADR-015). Los numeros estan en `costs.md`: **~USD 0,021 por borrador**, USD 0,21/mes para diez productos nuevos, USD 16/mes en el peor caso contra el techo.
+
+### Lo que se encontro probando
+
+- **`PanelApiTestCase` heredaba de `BackendApiTestCase`** y unittest corria la suite entera del padre otra vez: 13 tests nuevos aparecian como 23. El arnes de la app de test se mudo a `support.py`, que `discover` no carga.
+- La base de datos trae `date` y el eje de los graficos mostraba **"1" dos veces** cuando el maximo del dia era 1 (la linea del medio valia 0,5). No hay medio pedido: con maximo 2 o menos, el techo es 2.
+- El SVG dentro de una celda de grid **agrandaba la celda** para entrar, y la medicion del ancho se volvia circular. `min-w-0` en el panel.
+
+### Numeros
+
+| Antes (0.5.0) | Ahora (0.6.0) |
+|---|---|
+| 70 tests | **136 tests**, todos verdes |
+| JS 326,85 KB · CSS 29,22 KB | JS 360,12 KB · CSS 30,71 KB |
+| migracion 0002 | **0003** (`page_view`), probada sobre copia, en los dos sentidos y desde base vacia |
+| 5 pestanas en el panel | 6, con graficos y perfil |
+
+---
+
 ## [0.5.0] · 2026-10-16 · T3: el modelo nuevo, y el `admin123` fuera del repo publico
 
 ### Seguridad primero (D12, D13) · ADR-015
