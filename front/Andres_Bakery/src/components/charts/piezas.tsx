@@ -1,24 +1,36 @@
 import { formatCurrency } from "../../lib/format";
 import type { PuntoDeSerie } from "../../lib/types";
 
-/** Redondea el techo del eje a un número limpio (0, 1K, 2K…). */
-export function ejeY(maximo: number): number {
+/** Las marcas del eje: de 0 al techo, en pasos "lindos".
+ *
+ *  Devuelve la lista y no solo el techo, y esa es toda la gracia. Antes el
+ *  gráfico dibujaba tres líneas fijas —abajo, al medio y arriba— y la del
+ *  medio valía la mitad del techo: con techo 5 valía 2,5 y la etiqueta la
+ *  redondeaba a "3". La línea decía un número y estaba en otro. No hay medio
+ *  pedido ni media visita.
+ *
+ *  Con pasos de 1, 2, 5, 10, 20… cada marca cae donde dice que cae.
+ */
+export function ticksDelEje(maximo: number): number[] {
   if (maximo <= 0) {
-    return 0;
-  }
-  // Con techo 1, la línea del medio vale 0,5 y se etiquetaba "1" dos veces.
-  // Son pedidos y visitas: no hay medio pedido.
-  if (maximo <= 2) {
-    return 2;
+    return [0];
   }
   const magnitud = 10 ** Math.floor(Math.log10(maximo));
-  for (const multiplo of [1, 2, 2.5, 5, 10]) {
-    const candidato = magnitud * multiplo;
-    if (candidato >= maximo) {
-      return candidato;
+  for (const multiplo of [1, 2, 5, 10]) {
+    const paso = magnitud * multiplo;
+    const cuantas = Math.ceil(maximo / paso);
+    if (cuantas <= 4) {
+      // toPrecision mata la basura de coma flotante (0.30000000000000004).
+      return Array.from({ length: cuantas + 1 }, (_, i) => Number((i * paso).toPrecision(12)));
     }
   }
-  return magnitud * 10;
+  return [0, maximo];
+}
+
+/** El techo del eje: la última marca. */
+export function ejeY(maximo: number): number {
+  const marcas = ticksDelEje(maximo);
+  return marcas[marcas.length - 1];
 }
 
 export function formatoCorto(valor: number, moneda = false): string {

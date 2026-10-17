@@ -388,3 +388,25 @@ En el modo que se esconde, el panel se dibuja **encima** del contenido y el luga
 | Tarjetas que giraban al cruzar la grilla camino al carrito | **5 cambios de estado** en 150ms | **0** |
 
 El primero era el *"tiembla y desaparece"*: `steps(5)` hacía caer el giro en 72° y 108°, donde una tarjeta plana se ve de canto. Con `steps(3)` los ángulos son 0, 60, 120 y 180. El segundo desapareció solo al sacar el hover.
+
+---
+
+## ADR-023 · Vitest para la lógica pura del front, y nada más por ahora
+
+**Fecha:** 2026-10-17 · **Estado:** Vigente · **Cierra en parte:** D7 (cero tests de front, abierta desde el 2026-10-16)
+
+**Contexto:** el front llevaba cuatro ciclos sin un solo test. Los bugs se encontraban de tres maneras, todas caras: mirando la pantalla, leyendo el código en una revisión, o —la peor— usando la página el humano. En el último ciclo, el bug de las iniciales que partían emojis lo encontró un reviewer **leyendo**, y el del eje que etiquetaba "1" dos veces lo encontré **mirando un gráfico**. Ninguno de los dos necesitaba un navegador para salir: son funciones que reciben un número y devuelven otro.
+
+**Decisión:** entra **Vitest** como dependencia de desarrollo del front, y se usa **solo para lógica pura**: funciones que no tocan React, ni la red, ni el DOM.
+
+**Qué queda cubierto hoy (48 tests):** `iniciales`, `urlDeImagen`, la regla de cantidades (`cantidades.ts` completo), `ticksDelEje` y `formatoCorto` de los gráficos, `sanear` de las preferencias y la sesión guardada.
+
+**Por qué Vitest y no otro:** el proyecto ya es Vite. Vitest **reusa `vite.config.ts`** tal cual —los mismos plugins, los mismos alias, el mismo manejo de TypeScript y JSX— así que no hay una segunda configuración de build que mantener en sincronía. Está muy vivo (es el runner por defecto del ecosistema Vite). Jest habría pedido su propia cadena de transformación para TS y JSX; es exactamente la duplicación que no queremos.
+
+**Entorno `node`, no `jsdom`.** Lo que se prueba no monta componentes, así que un DOM falso sería una dependencia más para no usarla. El día que se prueben componentes, entra `jsdom` + Testing Library con su propia línea acá.
+
+**Lo que NO se prueba con esto, y se sigue probando en el navegador** (R07): que el panel lateral se abra, que la tarjeta gire, que no haya desbordes a 390px, que los headers salgan. Eso necesita un navegador de verdad y ya tiene su forma de verificarse.
+
+**Lo que costó y vale la pena anotar:** el runner encontró un bug **en el primer intento**, antes de terminar de escribirse. El test "la línea del medio de un eje de enteros cae en un entero" se puso rojo con máximo 4: el techo daba 5 y la línea del medio valía 2,5, pero la etiqueta la redondeaba a "3". La línea decía un número y estaba en otro. Eso llevó a cambiar el eje de "un techo y tres líneas fijas" a "una lista de marcas en pasos de 1, 2, 5, 10…", que es como lo hacen las librerías de gráficos y por este motivo.
+
+**Dos comandos de test, no uno.** `harness.config.json` tenía una sola clave `test` para el back. Ahora hay dos suites y las dos tienen que estar verdes para que algo sea `done`: se agregó `test_front` y la nota que lo explica. No se juntaron en un solo comando a propósito: corren en runtimes distintos y conviene poder correr una sola mientras se trabaja.

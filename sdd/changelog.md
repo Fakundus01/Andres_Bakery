@@ -4,6 +4,68 @@ Semver `MAJOR.MINOR.PATCH` (R13). No se borra nada: lo viejo queda.
 
 ---
 
+## [0.8.0] · 2026-10-17 · T16: el front tiene tests, y los tests ya encontraron cosas
+
+Aprobada la dependencia (ADR-023), entra **Vitest** para la logica pura del front. **48 tests** sobre las iniciales de la cuenta, las imagenes, la regla de cantidades, el eje de los graficos, el saneado de preferencias y la sesion guardada.
+
+Entorno `node` y no `jsdom`: nada de esto monta componentes. Lo visual sigue verificandose en el navegador (R07).
+
+### Lo que encontraron los tests, que es el punto
+
+**1. El eje de los graficos etiquetaba una linea donde no estaba.** El primer test del eje se puso rojo antes de terminar de escribirse: con maximo 4, el techo daba 5, la linea del medio valia **2,5** y la etiqueta la redondeaba a **"3"**. La linea decia un numero y estaba en otro.
+
+Se cambio el eje de "un techo y tres lineas fijas" a **una lista de marcas en pasos lindos** (1, 2, 5, 10, 20…), que es como lo hacen las librerias de graficos y por exactamente este motivo. Ahora cada marca cae donde dice que cae, y el test lo fija: *todas las marcas de una serie de enteros son enteras*.
+
+**2. «Salir» no borraba la sesion guardada.** Y este lo puse yo, ayer, en el commit `073c2e4`.
+
+Al blindar el `localStorage` contra las ventanas privadas, un reemplazo masivo convirtio a `olvidarSesion()` en una funcion que **se llamaba a si misma**. El `catch` que estaba ahi para tragarse los errores del navegador se trago tambien el desborde de pila, asi que la funcion no hacia nada **en silencio**:
+
+```js
+function olvidarSesion(): void {
+  try {
+    olvidarSesion();   // <- se llama a si misma
+  } catch { /* el desborde de pila moria aca */ }
+}
+```
+
+Consecuencia real: apretar **Salir** limpiaba la pantalla pero **dejaba el token en el navegador**. Recargar devolvia la sesion. En una computadora compartida, eso es que la siguiente persona entra.
+
+No llego a ningun lado —vive en `dev`, sin push ni deploy— pero estuvo en el repo unas horas. La leccion no es "revisar mejor": es que **un `catch` que se traga todo esconde bugs que no tienen nada que ver con lo que se queria atrapar**, y que un reemplazo masivo puede escribir adentro de la funcion nueva.
+
+Ahora la sesion guardada vive en `lib/sesionGuardada.ts`, acepta un almacen inyectado y **tiene siete tests**. El que describe el bug se vio rojo contra el codigo de ayer:
+
+```
+FAIL  src/lib/sesionGuardada.test.ts > la sesion guardada > olvidar borra de verdad
+```
+
+**3. La sesion vencia y la pagina no se enteraba.** Aparecio probando el panel: el token dura 15 minutos y, pasado ese rato, Andrea seguia viendo el panel "abierto" —su nombre arriba, las pestañas— con todo fallando en silencio con 401. Y no podia ni volver a entrar: la pantalla de ingreso la rebotaba porque para el front la sesion seguia viva.
+
+Ahora `apiRequest` avisa cuando el back rechaza un token **que nosotros mandamos** (401 **y** 422: el primero es vencido, el segundo es ilegible) y la sesion se cierra sola.
+
+Verificado con un token vencido de verdad, firmado con la clave real del `.env`: el back contesta `401 {"msg":"Token has expired"}`, la app redirige a `#/ingresar`, el circulo vuelve a "Entrar o crear una cuenta" y el almacenamiento queda limpio.
+
+### Y algo que aparecio al instalar: `npm audit`
+
+Instalar Vitest disparo el primer `npm audit` del proyecto (D10 estaba abierta desde el 2026-10-16 sin correrse nunca). **16 avisos: 12 altos.** Ninguno lo trajo Vitest.
+
+Lo que importa de verdad, con el matiz honesto:
+
+- **`react-router-dom` 7.13.0** arrastra una docena de avisos, uno de ellos **RCE sin autenticar** por deserializacion. **La mayoria son de modo SSR/RSC** —single-fetch, `__manifest`, hidratacion— y este proyecto es un SPA con `HashRouter`, sin nada de eso. Pero **dos si aplican del lado del cliente**: *open redirect* via barra invertida en `<Link>`/`useNavigate` y via ruta que arranca con `//`. Se arregla con un salto de version menor.
+- **`vite`** tiene tres altos, todos del **servidor de desarrollo** (lectura de archivos arbitrarios, bypass de `server.fs.deny`). No afectan al sitio publicado, si a la maquina de quien programa.
+- `postcss`, `nanoid`, `rollup` y las dependencias de `eslint`: todas de build.
+
+**No se actualizo nada**: eso es R19 y necesita su propio OK y su propia verificacion. Queda como **D23**, con los numeros arriba para poder decidir.
+
+### Numeros
+
+| Antes (0.7.1) | Ahora (0.8.0) |
+|---|---|
+| 151 tests del back, **0 del front** | 151 + **48** |
+| `harness.config.json` con una suite | dos: `test` y `test_front`, las dos tienen que estar verdes |
+| JS 366,14 KB | JS 366,59 KB (el runner no entra al bundle) |
+
+---
+
 ## [0.7.1] · 2026-10-17 · El hover le borraba la rotacion al dorso
 
 Reportado por el humano usando la pagina: *"cuando esta dada vuelta, si vos le pasas el mouse, da vuelta otra vez, es como que quiere dar vuelta otra vez"*.

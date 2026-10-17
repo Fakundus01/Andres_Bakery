@@ -70,8 +70,11 @@ const VALIDOS: Record<keyof Preferencias, readonly { id: string }[]> = {
 };
 
 /** Solo acepta valores que existan hoy: si una preferencia vieja quedó guardada
- *  con un id que ya no usamos, cae al default en vez de romper la pantalla. */
-function sanear(crudo: unknown): Preferencias {
+ *  con un id que ya no usamos, cae al default en vez de romper la pantalla.
+ *
+ *  Se exporta para poder probarla sola: es la única lógica de este archivo que
+ *  no necesita React. */
+export function sanear(crudo: unknown): Preferencias {
   const resultado = { ...PREFERENCIAS_POR_DEFECTO };
   if (!crudo || typeof crudo !== "object") {
     return resultado;

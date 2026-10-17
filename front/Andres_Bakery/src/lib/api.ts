@@ -19,6 +19,15 @@ import type {
 
 export const API_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:5000";
 
+/** Se dispara cuando el back rechaza un token que creíamos bueno.
+ *
+ *  El access token dura 15 minutos. Sin esto, pasado ese rato Andrea seguía
+ *  viendo el panel "abierto" —su nombre arriba, las pestañas— y todo fallaba
+ *  en silencio con 401: ni datos, ni explicación, ni forma de volver a entrar
+ *  (la pantalla de ingreso la rebotaba porque para el front la sesión seguía
+ *  viva). Ahora la sesión se cierra sola y la página lo dice. */
+export const EVENTO_SESION_VENCIDA = "andres-bakery:sesion-vencida";
+
 export class ApiError extends Error {
   status: number;
 
@@ -46,6 +55,15 @@ async function apiRequest<T>(
   });
 
   if (!response.ok) {
+    // 401 y 422: el back usa el primero para un token vencido o ausente y el
+    // segundo para uno que no puede ni leer (guardado a medias, manoseado).
+    // Los dos significan lo mismo del lado de acá: esta sesión ya no sirve.
+    //
+    // Solo cuando mandamos token: un 401 sin token es "esto pide cuenta", no
+    // "tu sesión se venció".
+    if ((response.status === 401 || response.status === 422) && options.token) {
+      window.dispatchEvent(new CustomEvent(EVENTO_SESION_VENCIDA));
+    }
     let message = `Error ${response.status}`;
     try {
       const data = (await response.json()) as { error?: string };

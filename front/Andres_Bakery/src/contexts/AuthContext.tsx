@@ -7,7 +7,14 @@ import {
   type ReactNode,
 } from "react";
 
-import { authApi } from "../lib/api";
+import { authApi, EVENTO_SESION_VENCIDA } from "../lib/api";
+import {
+  SIN_SESION,
+  guardarSesion,
+  leerSesionGuardada,
+  olvidarSesion,
+  type SesionGuardada,
+} from "../lib/sesionGuardada";
 import type { User } from "../lib/types";
 
 interface AuthContextValue {
@@ -20,57 +27,10 @@ interface AuthContextValue {
   logout: () => void;
 }
 
-const AUTH_STORAGE_KEY = "andres-bakery-auth";
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-interface AuthState {
-  token: string;
-  user: User | null;
-}
-
-const SIN_SESION: AuthState = { token: "", user: null };
-
-/** `localStorage` no siempre existe.
- *
- *  En una ventana privada, con los datos de sitio bloqueados o detrás de
- *  ciertas políticas de empresa, **tocarlo tira una excepción**. Si eso pasa
- *  adentro del inicializador de `useState`, no hay sesión que recuperar: hay
- *  pantalla en blanco. Sin sesión guardada la página funciona igual —hay que
- *  volver a entrar, nada más—, así que cualquier error acá vale "no hay
- *  sesión". (`PreferencesProvider` ya hacía esto; este se había quedado atrás.)
- */
-function leerSesionGuardada(): AuthState {
-  try {
-    const stored = localStorage.getItem(AUTH_STORAGE_KEY);
-    if (!stored) {
-      return SIN_SESION;
-    }
-    const parsed = JSON.parse(stored) as AuthState;
-    return { token: parsed.token ?? "", user: parsed.user ?? null };
-  } catch {
-    olvidarSesion();
-    return SIN_SESION;
-  }
-}
-
-function guardarSesion(estado: AuthState): void {
-  try {
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(estado));
-  } catch {
-    // Sin persistencia la sesión vale para esta pestaña y se pierde al recargar.
-  }
-}
-
-function olvidarSesion(): void {
-  try {
-    olvidarSesion();
-  } catch {
-    // Si no se puede ni borrar, no hay nada que hacer y tampoco nada que romper.
-  }
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [auth, setAuth] = useState<AuthState>(leerSesionGuardada);
+  const [auth, setAuth] = useState<SesionGuardada>(leerSesionGuardada);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -88,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         olvidarSesion();
-        setAuth({ token: "", user: null });
+        setAuth(SIN_SESION);
       })
       .finally(() => setIsLoading(false));
   }, [auth.token, auth.user]);
@@ -123,8 +83,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     olvidarSesion();
-    setAuth({ token: "", user: null });
+    setAuth(SIN_SESION);
   };
+
+  // Si el back rechaza nuestro token, la sesión ya no existe: se cierra acá y
+  // la pantalla pasa sola a "Ingresar", en vez de quedar fingiendo que anda.
+  useEffect(() => {
+    const alVencer = () => {
+      olvidarSesion();
+      setAuth(SIN_SESION);
+    };
+    window.addEventListener(EVENTO_SESION_VENCIDA, alVencer);
+    return () => window.removeEventListener(EVENTO_SESION_VENCIDA, alVencer);
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({

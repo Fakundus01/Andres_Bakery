@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type MouseEvent } from "react";
 
 import type { PuntoDeSerie } from "../../lib/types";
-import { TablaDeSerie, ejeY, formatoCorto } from "./piezas";
+import { TablaDeSerie, formatoCorto, ticksDelEje } from "./piezas";
 
 const ANCHO_BASE = 640;
 const ALTO = 220;
@@ -58,7 +58,8 @@ export function GraficoSerie({
   }
 
   const maximo = Math.max(...datos.map((punto) => punto.value));
-  const techo = ejeY(maximo);
+  const marcas = ticksDelEje(maximo);
+  const techo = marcas[marcas.length - 1];
   const anchoUtil = ancho - MARGEN.izquierda - MARGEN.derecha;
   const altoUtil = ALTO - MARGEN.arriba - MARGEN.abajo;
   const paso = anchoUtil / Math.max(1, datos.length - 1);
@@ -108,28 +109,32 @@ export function GraficoSerie({
         onMouseMove={seguirElMouse}
         onMouseLeave={() => setActivo(null)}
       >
-        {/* Grilla fina y recesiva: tres líneas, nunca punteadas. */}
-        {[0, 0.5, 1].map((parte) => (
-          <g key={parte}>
-            <line
-              x1={MARGEN.izquierda}
-              x2={ancho - MARGEN.derecha}
-              y1={base - parte * altoUtil}
-              y2={base - parte * altoUtil}
-              stroke="var(--color-sombra)"
-              strokeWidth={1}
-              vectorEffect="non-scaling-stroke"
-            />
-            <text
-              x={MARGEN.izquierda - 8}
-              y={base - parte * altoUtil + 4}
-              textAnchor="end"
-              className="fill-[var(--color-tinta-tenue)] text-[11px]"
-            >
-              {formatoCorto(techo * parte, moneda)}
-            </text>
-          </g>
-        ))}
+        {/* Grilla fina y recesiva, nunca punteada. Una línea por marca del
+            eje: así cada etiqueta cae exactamente en su valor. */}
+        {marcas.map((marca) => {
+          const y = techo === 0 ? base : base - (marca / techo) * altoUtil;
+          return (
+            <g key={marca}>
+              <line
+                x1={MARGEN.izquierda}
+                x2={ancho - MARGEN.derecha}
+                y1={y}
+                y2={y}
+                stroke="var(--color-sombra)"
+                strokeWidth={1}
+                vectorEffect="non-scaling-stroke"
+              />
+              <text
+                x={MARGEN.izquierda - 8}
+                y={y + 4}
+                textAnchor="end"
+                className="fill-[var(--color-tinta-tenue)] text-[11px]"
+              >
+                {formatoCorto(marca, moneda)}
+              </text>
+            </g>
+          );
+        })}
 
         {forma === "columnas"
           ? datos.map((punto, indice) => (

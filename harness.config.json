@@ -1,6 +1,7 @@
 {
   "master": "sdd/SDD-MASTER.md",
   "test": "backend/.venv/Scripts/python.exe -m unittest discover -s backend/tests -t . -q",
+  "test_front": "npm --prefix front/Andres_Bakery run test",
   "lint": "npm --prefix front/Andres_Bakery run lint",
   "build": "npm --prefix front/Andres_Bakery run build",
   "e2e": null,
@@ -9,6 +10,7 @@
   "prod_branch": "main",
   "notas": [
     "test: unittest, NO pytest (el venv no lo tiene). Se corre desde la raiz del repo porque los imports son backend.*",
+    "test_front: Vitest, solo logica pura (ADR-023). Las DOS suites tienen que estar verdes para un done (R16); se separan porque corren en runtimes distintos y conviene poder correr una sola mientras se trabaja.",
     "lint: corre eslint + tsc sobre los dos tsconfig",
     "deploy: null a proposito, no hay deploy todavia (ver sdd/costs.md)",
     "migrate: desde T3 el esquema lo manejan las migraciones (ADR-010). create_all solo corre en TESTING. Si la base esta atrasada, la app arranca igual y avisa por log en vez de explotar."

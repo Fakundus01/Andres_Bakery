@@ -1,6 +1,6 @@
 # testing.md · Andres Bakery
 
-**Versión:** 0.2.0 · **Última actualización:** 2026-10-17
+**Versión:** 0.3.0 · **Última actualización:** 2026-10-17
 
 ## 1 · Cómo se corre (comandos reales, verificados el 2026-10-16)
 
@@ -10,6 +10,9 @@ Los mismos que `harness.config.json`. **Siempre desde la raíz del repo**: los i
 # Back: 151 tests, unittest (NO pytest: el venv no lo tiene)
 backend/.venv/Scripts/python.exe -m unittest discover -s backend/tests -t . -q
 
+# Front: 48 tests de logica pura, Vitest (ADR-023)
+npm --prefix front/Andres_Bakery run test
+
 # Front: eslint + tsc (los dos proyectos de TS)
 cd front/Andres_Bakery && npm run lint
 
@@ -17,7 +20,7 @@ cd front/Andres_Bakery && npm run lint
 cd front/Andres_Bakery && npm run build
 ```
 
-Estado medido el 2026-10-17 tras T10-T14: **151 tests OK**, lint limpio, build en verde (360,12 KB de JS, 30,71 KB de CSS).
+Estado medido el 2026-10-17 tras T16: **151 tests del back + 48 del front OK**, lint limpio, build en verde (366,59 KB de JS, 33,92 KB de CSS).
 
 ## 2 · Qué hay cubierto hoy
 
@@ -62,12 +65,29 @@ Estado medido el 2026-10-17 tras T10-T14: **151 tests OK**, lint limpio, build e
 
 **Lo que se verificó en navegador el 2026-10-17 (T15)**, con el mouse real y midiendo, no mirando: el giro por clic (ancho mínimo de la tarjeta durante la animación, y cero giros al cruzar la grilla); el menú de cuenta con y sin sesión; el panel lateral en sus dos modos, con mouse y con teclado; 11 rutas × 2 modos × 390/1280 px × con y sin sesión = **88 cargas limpias** sin desbordes ni errores de consola; las 4 escalas de letra contra el alto del header; y el sitio entero con `localStorage` reventado a propósito.
 
-**Hueco grande:** **cero tests de front**. No hay runner instalado, y la lista de lógica pura que lo pide ya es larga: `iniciales` (el reviewer encontró el bug de los emojis **leyendo**, no corriendo nada), `ejeY`, `formatoCorto`, `urlDeImagen`, `sanear` de las preferencias y `acomodarCantidad`. Son todas funciones sin React ni red: un runner y media hora las cubre. **Entra Vitest cuando el humano lo apruebe** — es dependencia nueva y pide su ADR (R28). Dos bugs de este ciclo —el eje que etiquetaba "1" dos veces y el texto de 5px en celular— se encontraron **mirando la pantalla**, que es exactamente lo que un test hubiera atrapado antes.
+## 2b · Qué cubre el front (Vitest, ADR-023)
+
+| Archivo | Qué cubre |
+|---|---|
+| `lib/iniciales.test.ts` | las iniciales del círculo de la cuenta, incluidos los emojis que antes se partían al medio |
+| `lib/imagenes.test.ts` | cuándo una foto lleva adelante el host del back y cuándo no |
+| `lib/cantidades.test.ts` | la regla de "se venden de a 6", espejo de `quantity.py`, con la propiedad de que lo que acomoda siempre es válido |
+| `lib/sesionGuardada.test.ts` | leer, guardar y **borrar** la sesión, con el almacenamiento bloqueado y con un JSON roto |
+| `components/charts/piezas.test.ts` | las marcas del eje (todas enteras) y el formato corto |
+| `preferencias/sanear.test.ts` | lo que viene de `localStorage` no puede romper la pantalla |
+
+**Entorno `node`, no `jsdom`:** nada de esto monta componentes. Lo visual se sigue verificando en el navegador (R07).
+
+**El runner encontró un bug antes de terminar de instalarse:** el primer test del eje se puso rojo con máximo 4 —techo 5, línea del medio en 2,5, etiqueta "3"— y eso cambió el diseño del eje. Un runner que no encuentra nada el primer día es un runner mal apuntado.
+
+**Lo que todavía NO se prueba acá:** componentes, hooks y todo lo que necesita un DOM. Eso sigue siendo navegador.
+
+**Hueco que queda:** los **componentes** del front. La lógica pura ya está cubierta; lo que sigue sin red es que un componente renderice lo que debe. Entra con `jsdom` + Testing Library cuando haga falta, con su línea en `decisions.md` (R28).
 
 ## 3 · Estrategia
 
 - **Back ⇒ tests automatizados** (R07). Todo servicio nuevo o modificado trae su test en el mismo ciclo.
-- **Front ⇒ navegador** (R07). Las verificaciones visuales (temas, contraste, 375px) se revisan en el navegador y se deja constancia en el handback. Se suma Vitest + Testing Library solo para la lógica pura que lo amerite (cálculo de totales, armado del mensaje de WhatsApp, `min_qty`/`qty_step`): es lógica con aritmética y conviene tenerla medida, no mirada. Dependencia nueva ⇒ ADR previo (R28).
+- **Front ⇒ dos caminos.** La **lógica pura** va a Vitest (ADR-023): cuentas, formato, saneado de datos de entrada. Lo **visual y lo que necesita un navegador** —temas, contraste, 390px, que el panel se abra, que la tarjeta gire— se revisa en el navegador y se deja constancia en el handback. Si un bug se puede escribir como "esta función recibe X y tiene que devolver Y", es de Vitest.
 - **TDD donde hay aritmética o reglas** (R29): rojo medido contra la base, no deducido. Precios, mínimos, pasos y totales entran por acá.
 - **Loop cerrado** (R30): `done` necesita comando + salida literal + hash, y un reviewer que **re-ejecuta** y que no sea quien implementó.
 
