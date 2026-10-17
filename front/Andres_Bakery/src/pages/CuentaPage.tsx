@@ -27,7 +27,10 @@ export function CuentaPage() {
           {iniciales(user.name) || <User className="h-8 w-8" />}
         </div>
         <div className="min-w-0">
-          <p className="font-display text-3xl font-bold text-tinta">{user.name}</p>
+          {/* break-words: un nombre largo de una sola palabra no tiene donde
+              cortar y empuja el ancho de TODA la pagina (medido: 1257px de
+              desborde en 390). El back acepta ese nombre sin chistar. */}
+          <p className="break-words font-display text-3xl font-bold text-tinta">{user.name}</p>
           <p className="mt-1 flex items-center gap-2 text-sm text-tinta-suave">
             <Mail className="h-4 w-4 text-acento" />
             <span className="truncate">{user.email}</span>

@@ -28,24 +28,49 @@ interface AuthState {
   user: User | null;
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [auth, setAuth] = useState<AuthState>(() => {
+const SIN_SESION: AuthState = { token: "", user: null };
+
+/** `localStorage` no siempre existe.
+ *
+ *  En una ventana privada, con los datos de sitio bloqueados o detrás de
+ *  ciertas políticas de empresa, **tocarlo tira una excepción**. Si eso pasa
+ *  adentro del inicializador de `useState`, no hay sesión que recuperar: hay
+ *  pantalla en blanco. Sin sesión guardada la página funciona igual —hay que
+ *  volver a entrar, nada más—, así que cualquier error acá vale "no hay
+ *  sesión". (`PreferencesProvider` ya hacía esto; este se había quedado atrás.)
+ */
+function leerSesionGuardada(): AuthState {
+  try {
     const stored = localStorage.getItem(AUTH_STORAGE_KEY);
     if (!stored) {
-      return { token: "", user: null };
+      return SIN_SESION;
     }
+    const parsed = JSON.parse(stored) as AuthState;
+    return { token: parsed.token ?? "", user: parsed.user ?? null };
+  } catch {
+    olvidarSesion();
+    return SIN_SESION;
+  }
+}
 
-    try {
-      const parsed = JSON.parse(stored) as AuthState;
-      return {
-        token: parsed.token ?? "",
-        user: parsed.user ?? null,
-      };
-    } catch {
-      localStorage.removeItem(AUTH_STORAGE_KEY);
-      return { token: "", user: null };
-    }
-  });
+function guardarSesion(estado: AuthState): void {
+  try {
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(estado));
+  } catch {
+    // Sin persistencia la sesión vale para esta pestaña y se pierde al recargar.
+  }
+}
+
+function olvidarSesion(): void {
+  try {
+    olvidarSesion();
+  } catch {
+    // Si no se puede ni borrar, no hay nada que hacer y tampoco nada que romper.
+  }
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [auth, setAuth] = useState<AuthState>(leerSesionGuardada);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -58,11 +83,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .me(auth.token)
       .then((user) => {
         const next = { token: auth.token, user };
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(next));
+        guardarSesion(next);
         setAuth(next);
       })
       .catch(() => {
-        localStorage.removeItem(AUTH_STORAGE_KEY);
+        olvidarSesion();
         setAuth({ token: "", user: null });
       })
       .finally(() => setIsLoading(false));
@@ -70,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const setSession = (token: string, user: User) => {
     const next = { token, user };
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(next));
+    guardarSesion(next);
     setAuth(next);
   };
 
@@ -97,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    localStorage.removeItem(AUTH_STORAGE_KEY);
+    olvidarSesion();
     setAuth({ token: "", user: null });
   };
 

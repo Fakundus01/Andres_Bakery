@@ -13,8 +13,13 @@ export function iniciales(nombre: string | null | undefined): string {
   if (palabras.length === 0) {
     return "";
   }
+  // Se recorre por caracteres de verdad y no por posiciones del string: un
+  // emoji ocupa dos posiciones, y cortarlo al medio imprime un rombo con un
+  // signo de pregunta adentro. "🍰 Pastelera" daba "<roto>P".
   if (palabras.length === 1) {
-    return palabras[0].slice(0, 2).toUpperCase();
+    return [...palabras[0]].slice(0, 2).join("").toUpperCase();
   }
-  return (palabras[0][0] + palabras[palabras.length - 1][0]).toUpperCase();
+  const primera = [...palabras[0]][0];
+  const ultima = [...palabras[palabras.length - 1]][0];
+  return (primera + ultima).toUpperCase();
 }

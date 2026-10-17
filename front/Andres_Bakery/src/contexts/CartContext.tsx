@@ -36,12 +36,37 @@ const CART_STORAGE_KEY = "andres-bakery-cart-v2";
 const CLAVES_VIEJAS = ["andres-bakery-cart"];
 const CartContext = createContext<CartContextValue | null>(null);
 
+/** Tocar `localStorage` tira excepción en una ventana privada o con los datos
+ *  de sitio bloqueados. Sin esto, el carrito dejaba la página en blanco para
+ *  esa persona: no se podía ni mirar la carta. Sin guardado el carrito igual
+ *  funciona; se pierde al recargar, que es mucho mejor que no abrir. */
+function guardarCarrito(items: CartItem[]): void {
+  try {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+  } catch {
+    // Dura lo que dure la pestaña.
+  }
+}
+
+function olvidarCarrito(clave: string = CART_STORAGE_KEY): void {
+  try {
+    localStorage.removeItem(clave);
+  } catch {
+    // Nada que borrar y nada que romper.
+  }
+}
+
 function leerCarritoGuardado(): CartItem[] {
   for (const vieja of CLAVES_VIEJAS) {
-    localStorage.removeItem(vieja);
+    olvidarCarrito(vieja);
   }
 
-  const stored = localStorage.getItem(CART_STORAGE_KEY);
+  let stored: string | null = null;
+  try {
+    stored = localStorage.getItem(CART_STORAGE_KEY);
+  } catch {
+    return [];
+  }
   if (!stored) {
     return [];
   }
@@ -54,7 +79,7 @@ function leerCarritoGuardado(): CartItem[] {
       // se acomoda al entrar y no recien en el checkout.
       .map((item) => ({ ...item, quantity: acomodarCantidad(item, item.quantity) }));
   } catch {
-    localStorage.removeItem(CART_STORAGE_KEY);
+    olvidarCarrito();
     return [];
   }
 }
@@ -64,7 +89,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   const persist = (next: CartItem[]) => {
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(next));
+    guardarCarrito(next);
     setItems(next);
   };
 
@@ -118,7 +143,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const clearCart = () => {
-    localStorage.removeItem(CART_STORAGE_KEY);
+    olvidarCarrito();
     setItems([]);
   };
 

@@ -19,6 +19,7 @@ export function MenuDeCuenta() {
 
   // Cambiar de página cierra el menú: si no, queda flotando sobre la pantalla nueva.
   useEffect(() => setAbierto(false), [pathname]);
+  const cerrar = () => setAbierto(false);
 
   useEffect(() => {
     if (!abierto) {
@@ -43,7 +44,7 @@ export function MenuDeCuenta() {
   }, [abierto]);
 
   const letras = iniciales(user?.name);
-  const etiqueta = isLoggedIn ? `Tu cuenta, ${user?.name ?? ""}` : "Entrar o crear una cuenta";
+  const etiqueta = isLoggedIn && user?.name ? `Tu cuenta, ${user.name}` : isLoggedIn ? "Tu cuenta" : "Entrar o crear una cuenta";
 
   return (
     <div className="relative" ref={caja}>
@@ -71,11 +72,11 @@ export function MenuDeCuenta() {
               <p className="truncate px-3 py-2 text-xs uppercase tracking-[0.2em] text-tinta-tenue">
                 {user?.name}
               </p>
-              <Opcion to="/cuenta" icono={User} texto="Perfil" />
+              <Opcion to="/cuenta" icono={User} texto="Perfil" onElegir={cerrar} />
               {user?.is_admin ? (
-                <Opcion to="/admin" icono={LayoutDashboard} texto="Administrador" />
+                <Opcion to="/admin" icono={LayoutDashboard} texto="Administrador" onElegir={cerrar} />
               ) : null}
-              <Opcion to="/configuracion" icono={Settings} texto="Configuración" />
+              <Opcion to="/configuracion" icono={Settings} texto="Configuración" onElegir={cerrar} />
               <button
                 type="button"
                 role="menuitem"
@@ -91,9 +92,9 @@ export function MenuDeCuenta() {
             </>
           ) : (
             <>
-              <Opcion to="/ingresar" icono={LogIn} texto="Ingresar" />
-              <Opcion to="/registro" icono={UserPlus} texto="Crear cuenta" />
-              <Opcion to="/configuracion" icono={Settings} texto="Configuración" />
+              <Opcion to="/ingresar" icono={LogIn} texto="Ingresar" onElegir={cerrar} />
+              <Opcion to="/registro" icono={UserPlus} texto="Crear cuenta" onElegir={cerrar} />
+              <Opcion to="/configuracion" icono={Settings} texto="Configuración" onElegir={cerrar} />
             </>
           )}
         </div>
@@ -106,15 +107,21 @@ function Opcion({
   to,
   icono: Icono,
   texto,
+  onElegir,
 }: {
   to: string;
   icono: typeof User;
   texto: string;
+  onElegir: () => void;
 }) {
   return (
     <Link
       to={to}
       role="menuitem"
+      /* Cierra con el clic y no solo cuando cambia la ruta: elegir la opción
+         de la pantalla en la que ya estás no cambia el pathname, y el menú
+         quedaba flotando. */
+      onClick={onElegir}
       className="flex items-center gap-3 px-3 py-3 text-sm font-bold text-tinta hover:bg-superficie-alt"
     >
       <Icono className="h-4 w-4" />

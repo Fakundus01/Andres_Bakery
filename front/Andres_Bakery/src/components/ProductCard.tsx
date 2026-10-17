@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ChefHat, RotateCcw, ShoppingBag } from "lucide-react";
 
@@ -23,10 +23,34 @@ export function ProductCard({ product, onAddToCart }: { product: Product; onAddT
   const regla = textoRegla(product);
   const etiquetas = product.tags ?? [];
 
+  const caraDeAdelante = useRef<HTMLElement>(null);
+  const dorso = useRef<HTMLElement>(null);
+  const yaGiro = useRef(false);
+
+  /** Al girar, el foco se muda a la cara que quedó a la vista.
+   *
+   *  Poner `inert` en el ancestro de lo que estaba enfocado manda el foco al
+   *  `<body>`: con el teclado se podía seguir, pero un lector de pantalla
+   *  perdía el hilo y nada anunciaba que la tarjeta había girado. */
+  useEffect(() => {
+    if (!yaGiro.current) {
+      return;
+    }
+    const cara = volteada ? dorso.current : caraDeAdelante.current;
+    cara?.focus();
+  }, [volteada]);
+
+  const girar = (haciaElDorso: boolean) => {
+    yaGiro.current = true;
+    setVolteada(haciaElDorso);
+  };
+
   return (
     <div className="flip-carta" data-volteada={volteada}>
       <div className="flip-carta-interior">
         <article
+          ref={caraDeAdelante}
+          tabIndex={-1}
           className="flip-cara product-card flex flex-col overflow-hidden"
           aria-hidden={volteada}
           inert={volteada}
@@ -34,7 +58,7 @@ export function ProductCard({ product, onAddToCart }: { product: Product; onAddT
           <div className="relative">
             <button
               type="button"
-              onClick={() => setVolteada(true)}
+              onClick={() => girar(true)}
               className="block w-full cursor-pointer"
               aria-label={`Ver qué lleva ${product.name}`}
             >
@@ -50,8 +74,11 @@ export function ProductCard({ product, onAddToCart }: { product: Product; onAddT
                 Ver qué lleva
               </span>
             </button>
+            {/* pointer-events-none en los cartelitos: se dibujan sobre la foto,
+                que es el botón que da vuelta la tarjeta. Sin eso, el clic justo
+                encima de una etiqueta no hacía nada. */}
             {etiquetas.length > 0 ? (
-              <ul className="absolute left-3 top-3 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2">
+              <ul className="pointer-events-none absolute left-3 top-3 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2">
                 {etiquetas.map((tag) => (
                   <li key={tag.id}>
                     <TagBadge tag={tag} />
@@ -61,7 +88,7 @@ export function ProductCard({ product, onAddToCart }: { product: Product; onAddT
             ) : null}
             {product.steps ? (
               <span
-                className="absolute bottom-3 right-3 inline-flex items-center gap-1 border-[3px] border-borde bg-superficie px-2 py-1 text-xs font-bold text-tinta"
+                className="pointer-events-none absolute bottom-3 right-3 inline-flex items-center gap-1 border-[3px] border-borde bg-superficie px-2 py-1 text-xs font-bold text-tinta"
                 title="Este producto publica su receta"
               >
                 <ChefHat className="h-3.5 w-3.5" />
@@ -112,6 +139,9 @@ export function ProductCard({ product, onAddToCart }: { product: Product; onAddT
         </article>
 
         <article
+          ref={dorso}
+          tabIndex={-1}
+          aria-label={`Qué lleva ${product.name}`}
           className="flip-cara flip-cara-dorso product-card flex flex-col p-5"
           aria-hidden={!volteada}
           inert={!volteada}
@@ -156,7 +186,7 @@ export function ProductCard({ product, onAddToCart }: { product: Product; onAddT
               <button
                 className="btn-secondary px-3"
                 type="button"
-                onClick={() => setVolteada(false)}
+                onClick={() => girar(false)}
                 aria-label="Volver a la foto"
                 title="Volver"
               >

@@ -35,12 +35,37 @@ De paso se arreglaron las dos cosas que el humano describio como "tiemblan y des
 
 Lo primero era `steps(5)`, que hacia caer el giro justo en 72 y 108 grados. Con `steps(3)` los angulos son 0, 60, 120 y 180. Lo segundo se fue solo al sacar el hover.
 
+### Lo que encontro la revision independiente (R30)
+
+Un reviewer que re-ejecuto todo y barrio **11 rutas x 2 modos de panel x 2 anchos x con y sin sesion = 88 cargas limpias**: cero desbordes, cero errores de consola, ninguna pantalla tapada. Encontro cinco cosas, las cinco corregidas y medidas:
+
+- **Un nombre largo sin espacios se llevaba la pagina entera de ancho.** 1257px de desborde en 390px, y arrastraba al header tambien. El back acepta ese nombre sin chistar (no hay largo maximo). Faltaba `break-words`. Ahora: **0**.
+- **El menu de cuenta quedaba abierto** si elegias la opcion de la pantalla en la que ya estabas: el unico cierre colgaba de que cambiara la ruta, y elegir "Perfil" estando en `/cuenta` no la cambia. Ahora cierra con el clic.
+- **Las iniciales partian emojis al medio.** "🍰 Pastelera" daba un rombo con signo de pregunta: se indexaba por posiciones del string y un emoji ocupa dos. Ahora se recorre por caracteres de verdad.
+- **Los cartelitos sobre la foto se comian el clic que da vuelta la tarjeta.** Las etiquetas y el "Con receta" se dibujan encima del boton: clickear justo ahi no hacia nada. Un `pointer-events-none` y listo. Medido: de `llegaAlBoton: false` a `true` en todas.
+- **El giro mandaba el foco al `<body>`.** Poner `inert` en el ancestro de lo enfocado lo expulsa; con el teclado se podia seguir, pero un lector de pantalla perdia el hilo y nada anunciaba que la tarjeta habia girado. Ahora el foco se muda a la cara que quedo a la vista, con su nombre ("Que lleva Brownie Tentacion").
+
+### Y una que estaba desde antes: la pagina en blanco con el almacenamiento bloqueado
+
+El reviewer marco, fuera del diff, que `AuthContext` leia `localStorage` sin red de contencion. Se reviso el resto y **el carrito tenia lo mismo**. En una ventana privada, con los datos de sitio bloqueados o detras de ciertas politicas de empresa, tocar `localStorage` **tira excepcion**: pasaba adentro del arranque de los dos providers y la persona se quedaba con **la pantalla en blanco**. No podia ni mirar la carta.
+
+Medido con el `localStorage` reventado a proposito, antes y despues:
+
+| | Antes | Despues |
+|---|---|---|
+| Header | no renderiza | renderiza |
+| Tarjetas en la carta | 0 | 4 |
+| Agregar al carrito | imposible | anda (se pierde al recargar, nada mas) |
+| Errores de JS | la app no arranca | **0** |
+
+Sin guardado el sitio funciona igual: hay que volver a entrar y el carrito dura lo que dura la pestana. Eso es infinitamente mejor que no abrir. `PreferencesProvider` ya lo hacia bien desde 0.4.0; los otros dos se habian quedado atras.
+
 ### Numeros
 
 | Antes (0.6.0) | Ahora (0.7.0) |
 |---|---|
 | 151 tests del back | **151**, sin cambios: esta tanda es de front |
-| JS 360,12 KB · CSS 30,71 KB | JS 365,68 KB · CSS 33,85 KB |
+| JS 360,12 KB · CSS 30,71 KB | JS 366,14 KB · CSS 33,93 KB |
 | 7 controles en el header | **3** |
 
 ---

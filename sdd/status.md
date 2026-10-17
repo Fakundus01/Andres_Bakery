@@ -12,7 +12,7 @@ El repo tiene 4 meses de código y **estuvo 7 meses quieto** hasta el 2026-10-16
 |---|---|
 | Tests del back | **151 OK** (eran 70 al cerrar T3) |
 | Lint del front (eslint + tsc) | limpio |
-| Build del front | verde — 365,68 KB JS · 33,85 KB CSS |
+| Build del front | verde — 366,14 KB JS · 33,93 KB CSS |
 | Migraciones | **`0003` aplicada**. Probada sobre una copia antes que sobre la real, en los dos sentidos y desde base vacía |
 | App corriendo | back en `127.0.0.1:5000`, front en `127.0.0.1:5173`. Probado en navegador: giro por hover, subida de una foto real de punta a punta, panel con gráficos, perfil y `/cv` |
 | Responsive 390px | `/cv`, `/historia`, `/tienda` y `/admin`: cero desbordes, medido con `scrollWidth` vs `clientWidth` |
@@ -67,7 +67,8 @@ Lo de 0.5.0 sigue igual salvo lo tachado. **D3 se cerró** y entraron tres deuda
 | D4 | Firma del webhook de MP sin validar | 2026-10-16 | sigue |
 | D5 | Ninguna lista pagina | 2026-10-16 | el panel ya no depende de eso para contar (`/api/metrics/summary`) |
 | D6 | Respuestas de escritura inconsistentes | 2026-10-16 | sigue |
-| D7 | Cero tests de front | 2026-10-16 | **crece**: hay lógica propia que lo amerita (`ejeY`, `normalizar_ruta` del lado del front, `urlDeImagen`). Lo de arriba se probó en navegador, no con tests |
+| **D21** | **A 320px** (por debajo del mínimo que nos pusimos, 390) `/tienda` desborda 15px | 2026-10-17 | lo midió el reviewer. A 390 está impecable en las 11 rutas. Queda anotado por si alguna vez baja el piso |
+| D7 | Cero tests de front | 2026-10-16 | **sigue creciendo**: ya hay seis funciones puras sin cubrir y el bug de los emojis en `iniciales` salió de una lectura, no de un test. Entra Vitest cuando se apruebe la dependencia. **crece**: hay lógica propia que lo amerita (`ejeY`, `normalizar_ruta` del lado del front, `urlDeImagen`). Lo de arriba se probó en navegador, no con tests |
 | D8 | Retención y borrado de datos personales sin definir | 2026-10-16 | sigue. Las visitas **no** agrandan esto: son contadores sin persona (ADR-019) |
 | **D19** | **Se tira el perfil de color de la foto.** El limpiador descarta el chunk `iCCP`/los APPn, así que una foto de iPhone en Display P3 conserva sus píxeles pero pierde el perfil y el navegador la dibuja como sRGB | 2026-10-17 | lo marcó el reviewer y es **de producto, no de seguridad**: en una repostería la foto *es* el producto y el corrimiento de color se ve. Hoy es el precio de no tener `Pillow`; se resuelve igual que D16 |
 | **D20** | **La llamada real al SDK de Anthropic no tiene test.** El parseo de la respuesta sí (`leer_respuesta`, que salió afuera justo para eso); lo que no se ejercita nunca es `messages.create` | 2026-10-17 | es la frontera con una librería de terceros. Si algún día cambia la forma del pedido, lo vamos a ver en producción y no en los tests |
