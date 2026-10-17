@@ -74,7 +74,10 @@ function leerCarritoGuardado(): CartItem[] {
   try {
     const guardado = JSON.parse(stored) as CartItem[];
     return guardado
-      .filter((item) => Boolean(item?.slug && item?.unit_label))
+      // La cantidad tiene que ser un número de verdad: el JSON guardado puede
+      // venir de una versión vieja o tocado a mano, y un "ocho" ahí adentro
+      // deja la cantidad y el total en NaN.
+      .filter((item) => Boolean(item?.slug && item?.unit_label) && Number.isFinite(Number(item?.quantity)))
       // El producto pudo cambiar de mínimo o de salto despues de guardarse:
       // se acomoda al entrar y no recien en el checkout.
       .map((item) => ({ ...item, quantity: acomodarCantidad(item, item.quantity) }));

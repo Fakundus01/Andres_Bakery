@@ -1,9 +1,18 @@
+# Actualizado el 2026-10-17 (ADR-024, R19). pip-audit: 0 avisos.
+# Antes de esto habia 57 avisos conocidos en 6 paquetes, entre ellos PyJWT
+# —que firma las sesiones— y Werkzeug, que procesa cada request.
+flask==3.1.3
+werkzeug==3.1.9
 flask-JWT-Extended==4.6.0
 flask-Mail==0.9.1
 flask-Migrate==4.0.7
 flask-SQLAlchemy==3.1.1
-flask==3.0.2
-werkzeug==3.0.1
+
+# PyJWT entra por flask-jwt-extended, pero se fija acá a proposito: es lo que
+# valida el token del panel y no queremos que la version dependa de lo que
+# resuelva el instalador ese dia.
+PyJWT==2.15.1
+
 # Solo para el asistente de recetas (F46, ADR-020). El back arranca igual sin
 # esta libreria: ai_service.py la importa adentro de la funcion y, si falta,
 # el endpoint responde el mismo 503 que cuando no hay clave.

@@ -1,0 +1,13 @@
+# Herramientas de desarrollo. NO hacen falta para correr la app ni los tests.
+#
+# Se declaran para que la auditoria de R19 sea repetible y no dependa de que
+# alguien se acuerde del nombre del comando:
+#
+#   backend/.venv/Scripts/python.exe -m pip install -r backend/requirements-dev.txt
+#   backend/.venv/Scripts/python.exe -m pip_audit --progress-spinner off
+#
+# Ojo: pip-audit arrastra `requests` y `urllib3` al venv. Antes entraban por
+# `stripe`, que estaba instalado sin que nadie lo usara y se desinstalo el
+# 2026-10-17 (era deuda de T0). El codigo del proyecto no importa ninguno de
+# los tres: Mercado Pago habla por `urllib` de la stdlib.
+pip-audit>=2.9

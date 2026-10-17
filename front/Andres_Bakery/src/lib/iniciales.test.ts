@@ -6,6 +6,8 @@ describe("iniciales", () => {
   it("toma la primera y la última palabra", () => {
     expect(iniciales("Facundo Moreno")).toBe("FM");
     expect(iniciales("Maria del Carmen Perez")).toBe("MP");
+    // En mayúscula aunque se registre en minúscula.
+    expect(iniciales("facundo moreno")).toBe("FM");
   });
 
   it("con una sola palabra usa sus dos primeras letras", () => {

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { Menu, ShoppingBag, Sparkles } from "lucide-react";
+import { Menu, ShoppingBag } from "lucide-react";
 
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
@@ -38,10 +38,21 @@ export function SiteHeader() {
             <Menu className="h-5 w-5" />
           </button>
 
+          {/* El logo que mandó Andrea, no un ícono prestado. Venía en JPEG con
+              fondo negro de WhatsApp: se le devolvió la transparencia y se
+              recortó el aire sobrante. El original queda intacto en
+              `material-cliente/logo/`.
+
+              El nombre sigue escrito al lado: a 44px de alto las letras del
+              logo no se leen, y el logo solo no dice dónde está parado. */}
           <Link to="/" className="flex items-center gap-3">
-            <div className="marco-foto flex h-11 w-11 items-center justify-center bg-acento text-crema">
-              <Sparkles className="h-5 w-5" />
-            </div>
+            <img
+              src="/logo-andres-bakery.png"
+              alt="Andres Bakery"
+              className="h-11 w-auto shrink-0"
+              width={75}
+              height={44}
+            />
             <div className="hidden sm:block">
               <p className="font-display text-lg font-bold leading-tight tracking-tight text-tinta">Andres Bakery</p>
               <p className="text-[10px] uppercase tracking-[0.25em] text-tinta-tenue">Dulces de autor</p>

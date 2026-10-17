@@ -25,8 +25,21 @@ export const API_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:500
  *  viendo el panel "abierto" —su nombre arriba, las pestañas— y todo fallaba
  *  en silencio con 401: ni datos, ni explicación, ni forma de volver a entrar
  *  (la pantalla de ingreso la rebotaba porque para el front la sesión seguía
- *  viva). Ahora la sesión se cierra sola y la página lo dice. */
+ *  viva). Ahora la sesión se cierra sola y la pantalla de ingreso lo dice.
+ *
+ *  **El evento lleva el token rechazado**, y eso no es un adorno: sin él, una
+ *  respuesta lenta de una sesión vieja cerraba la sesión nueva. Pasa de
+ *  verdad —conexión lenta, un pedido colgado, la persona vuelve a entrar
+ *  mientras tanto— y la patea afuera justo después de entrar bien. */
 export const EVENTO_SESION_VENCIDA = "andres-bakery:sesion-vencida";
+
+export type DetalleSesionVencida = { token: string };
+
+function avisarSesionVencida(token: string): void {
+  window.dispatchEvent(
+    new CustomEvent<DetalleSesionVencida>(EVENTO_SESION_VENCIDA, { detail: { token } }),
+  );
+}
 
 export class ApiError extends Error {
   status: number;
@@ -62,13 +75,16 @@ async function apiRequest<T>(
     // Solo cuando mandamos token: un 401 sin token es "esto pide cuenta", no
     // "tu sesión se venció".
     if ((response.status === 401 || response.status === 422) && options.token) {
-      window.dispatchEvent(new CustomEvent(EVENTO_SESION_VENCIDA));
+      avisarSesionVencida(options.token);
     }
     let message = `Error ${response.status}`;
     try {
-      const data = (await response.json()) as { error?: string };
-      if (data.error) {
-        message = data.error;
+      // `error` es lo que devuelven nuestros servicios; `msg`, lo que devuelve
+      // flask-jwt-extended ("Token has expired"). Sin leer los dos, todo
+      // problema de token quedaba en un "Error 401" sin explicación.
+      const data = (await response.json()) as { error?: string; msg?: string };
+      if (data.error || data.msg) {
+        message = data.error ?? data.msg ?? message;
       }
     } catch {
       const text = await response.text();
@@ -235,11 +251,18 @@ export const uploadsApi = {
       body: cuerpo,
     });
     if (!response.ok) {
+      // Esta llamada no pasa por `apiRequest` porque va multipart, así que el
+      // aviso de sesión vencida hay que darlo también acá: si no, subir una
+      // foto con la sesión caída dejaba el panel fingiendo que anda, que es
+      // justo lo que el aviso vino a resolver.
+      if (response.status === 401 || response.status === 422) {
+        avisarSesionVencida(token);
+      }
       let message = `Error ${response.status}`;
       try {
-        const data = (await response.json()) as { error?: string };
-        if (data.error) {
-          message = data.error;
+        const data = (await response.json()) as { error?: string; msg?: string };
+        if (data.error || data.msg) {
+          message = data.error ?? data.msg ?? message;
         }
       } catch {
         message = `No se pudo subir la imagen (error ${response.status}).`;

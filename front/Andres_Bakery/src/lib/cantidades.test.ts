@@ -49,8 +49,13 @@ describe("la regla de cantidades (espejo de quantity.py)", () => {
 
   it("acomoda una cantidad vieja del carrito a la regla de hoy", () => {
     // El producto pudo haber cambiado de mínimo después de guardarse.
+    // Para abajo, nunca para arriba: pedir 9 no puede terminar en 12, que es
+    // subirle el pedido y el precio a alguien que no lo pidió.
     expect(acomodarCantidad(deASeis, 7)).toBe(6);
-    expect(acomodarCantidad(deASeis, 10)).toBe(12);
+    expect(acomodarCantidad(deASeis, 9)).toBe(6);
+    expect(acomodarCantidad(deASeis, 10)).toBe(6);
+    expect(acomodarCantidad(deASeis, 12)).toBe(12);
+    expect(acomodarCantidad(deASeis, 13)).toBe(12);
     expect(acomodarCantidad(deASeis, 1)).toBe(6);
     expect(acomodarCantidad(deASeis, 0)).toBe(6);
     expect(acomodarCantidad(deASeis, -5)).toBe(6);
@@ -58,7 +63,7 @@ describe("la regla de cantidades (espejo de quantity.py)", () => {
 
   it("lo que acomoda siempre es válido", () => {
     for (const regla of [deASeis, porUnidad, minimoTres]) {
-      for (const cantidad of [-3, 0, 1, 2, 5, 7, 13, 100]) {
+      for (const cantidad of [-3, 0, 1, 2, 5, 7, 9, 13, 100, NaN, Infinity]) {
         expect(esCantidadValida(regla, acomodarCantidad(regla, cantidad))).toBe(true);
       }
     }
@@ -66,6 +71,9 @@ describe("la regla de cantidades (espejo de quantity.py)", () => {
 
   it("aguanta un 0 o un nulo en la regla sin dividir por cero", () => {
     const rota = { min_qty: 0, qty_step: 0 };
+    const sinDatos = { min_qty: undefined, qty_step: undefined } as unknown as typeof rota;
+    expect(cantidadInicial(sinDatos)).toBe(1);
+    expect(acomodarCantidad(sinDatos, 5)).toBe(5);
     expect(cantidadInicial(rota)).toBe(1);
     expect(acomodarCantidad(rota, 5)).toBe(5);
     expect(esCantidadValida(rota, 5)).toBe(true);

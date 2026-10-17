@@ -21,7 +21,7 @@ class BackendServiceTestCase(unittest.TestCase):
             {
                 "TESTING": True,
                 "SQLALCHEMY_DATABASE_URI": f"sqlite:///{database_path.as_posix()}",
-                "JWT_SECRET_KEY": "test-secret",
+                "JWT_SECRET_KEY": "clave-de-test-de-32-bytes-o-mas-para-hmac",
                 "ADMIN_EMAIL": "admin@test.local",
                 "ADMIN_PASSWORD": "admin123",
                 "ADMIN_NAME": "Admin Test",
@@ -176,7 +176,7 @@ class ApiTestCase(unittest.TestCase):
             {
                 "TESTING": True,
                 "SQLALCHEMY_DATABASE_URI": f"sqlite:///{database_path.as_posix()}",
-                "JWT_SECRET_KEY": "test-secret",
+                "JWT_SECRET_KEY": "clave-de-test-de-32-bytes-o-mas-para-hmac",
                 "ADMIN_EMAIL": "admin@test.local",
                 "ADMIN_PASSWORD": "admin123",
                 "ADMIN_NAME": "Admin Test",

@@ -26,7 +26,7 @@ describe("ticksDelEje (las marcas del eje)", () => {
   it("todas las marcas de una serie de enteros son enteras", () => {
     // Regresión: con techo 5 la línea del medio valía 2,5 y la etiqueta la
     // redondeaba a "3". La línea decía un número y estaba en otro.
-    for (const maximo of [1, 2, 3, 4, 5, 7, 8, 13, 20, 42, 99, 101]) {
+    for (let maximo = 1; maximo <= 200; maximo++) {
       for (const marca of ticksDelEje(maximo)) {
         expect(Number.isInteger(marca), `maximo ${maximo} dio la marca ${marca}`).toBe(true);
       }
@@ -60,6 +60,15 @@ describe("ticksDelEje (las marcas del eje)", () => {
     expect(ticksDelEje(-3)).toEqual([0]);
   });
 
+  it("un número que no es número no deja el gráfico en blanco", () => {
+    // Regresión: NaN se colaba y devolvía [0, NaN], que mete atributos
+    // inválidos en el SVG. Basta con que a un punto le falte el `value`.
+    expect(ticksDelEje(NaN)).toEqual([0]);
+    expect(ticksDelEje(Infinity)).toEqual([0]);
+    expect(ticksDelEje(-Infinity)).toEqual([0]);
+    expect(formatoCorto(NaN)).toBe("—");
+  });
+
   it("no arrastra basura de coma flotante", () => {
     for (const maximo of [0.3, 3, 7, 0.7]) {
       for (const marca of ticksDelEje(maximo)) {
@@ -85,7 +94,11 @@ describe("formatoCorto", () => {
     expect(formatoCorto(14200, true)).toBe("$14K");
   });
 
-  it("en pesos, lo chico va con el formato de moneda completo", () => {
-    expect(formatoCorto(500, true)).toContain("500");
+  it("en pesos, el eje entero usa el mismo formato", () => {
+    // El 0 salía como "$ 0" (moneda completa) al lado de "$5K".
+    expect(formatoCorto(0, true)).toBe("$0");
+    expect(formatoCorto(500, true)).toBe("$500");
+    expect(formatoCorto(999, true)).toBe("$999");
+    expect(formatoCorto(1000, true)).toBe("$1K");
   });
 });

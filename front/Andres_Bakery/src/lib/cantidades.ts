@@ -36,12 +36,20 @@ export function bajarCantidad(producto: ReglaCantidad, cantidad: number) {
 }
 
 /** Acomoda una cantidad cualquiera (la del localStorage de ayer, por ejemplo)
- *  al mínimo y al salto que el producto tiene hoy. */
+ *  al mínimo y al salto que el producto tiene hoy.
+ *
+ *  **Redondea para abajo, nunca para arriba.** Con `Math.round`, en un producto
+ *  que se vende de a 6, pedir 9 terminaba en 12: la mitad de arriba del salto
+ *  le subía el pedido —y el precio— a alguien que no lo pidió. Entre darle de
+ *  menos y cobrarle de más, de menos.
+ *
+ *  Una cantidad que no es un número (un carrito viejo manoseado a mano) cae
+ *  al mínimo en vez de propagar `NaN` hasta el total. */
 export function acomodarCantidad(producto: ReglaCantidad, cantidad: number) {
-  if (cantidad <= minimo(producto)) {
+  if (!Number.isFinite(cantidad) || cantidad <= minimo(producto)) {
     return minimo(producto);
   }
-  const pasos = Math.round((cantidad - minimo(producto)) / salto(producto));
+  const pasos = Math.floor((cantidad - minimo(producto)) / salto(producto));
   return minimo(producto) + pasos * salto(producto);
 }
 

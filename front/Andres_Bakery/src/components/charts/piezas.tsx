@@ -12,7 +12,11 @@ import type { PuntoDeSerie } from "../../lib/types";
  *  Con pasos de 1, 2, 5, 10, 20… cada marca cae donde dice que cae.
  */
 export function ticksDelEje(maximo: number): number[] {
-  if (maximo <= 0) {
+  // `Number.isFinite` y no solo `<= 0`: con NaN la comparacion da false, se
+  // colaba hasta el final y devolvia [0, NaN]. Eso ponia atributos invalidos
+  // en el SVG y el grafico salia en blanco, sin error. Y es alcanzable: basta
+  // con que a un punto de la serie le falte el `value`.
+  if (!Number.isFinite(maximo) || maximo <= 0) {
     return [0];
   }
   const magnitud = 10 ** Math.floor(Math.log10(maximo));
@@ -24,6 +28,8 @@ export function ticksDelEje(maximo: number): number[] {
       return Array.from({ length: cuantas + 1 }, (_, i) => Number((i * paso).toPrecision(12)));
     }
   }
+  // Inalcanzable con cualquier numero finito positivo: con multiplo 10
+  // siempre entra una sola linea. Queda por si acaso, con un valor sano.
   return [0, maximo];
 }
 
@@ -34,8 +40,13 @@ export function ejeY(maximo: number): number {
 }
 
 export function formatoCorto(valor: number, moneda = false): string {
+  if (!Number.isFinite(valor)) {
+    return "—";
+  }
   if (moneda) {
-    return valor >= 1000 ? `$${Math.round(valor / 1000)}K` : formatCurrency(valor);
+    // Formato parejo en todo el eje: antes el 0 salia como "$ 0" (moneda
+    // completa) al lado de "$5K", y los dos convivian en la misma columna.
+    return valor >= 1000 ? `$${Math.round(valor / 1000)}K` : `$${Math.round(valor)}`;
   }
   if (valor >= 1000) {
     return `${(valor / 1000).toFixed(valor >= 10000 ? 0 : 1)}K`;
