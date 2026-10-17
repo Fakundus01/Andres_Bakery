@@ -23,7 +23,8 @@ Errores: `{"error": "<mensaje>"}` con el status de la excepción (`services/exce
 | GET | `/api/ingredients` | — | `Ingredient[]` — existe, el front no lo usa |
 | POST·PUT·DELETE | `/api/ingredients[/<id>]` | admin | existen, el front no los usa |
 | GET | `/api/orders` | token | `Order[]` (del usuario; todas si es admin) |
-| POST | `/api/orders` | token | `{order_id, total, …}` |
+| POST | `/api/orders` | token | `{order_id, total, emails}` |
+| POST | `/api/orders/whatsapp` | **— (token opcional)** | `{order_id, total, phone, message}` · 201 — el pedido del invitado (F23, F31, ADR-025) |
 | PATCH | `/api/orders/<id>/status` | admin | `{status}` |
 | POST | `/api/payments/checkout` | token | `{checkout_url, preference_id, …}` |
 | POST | `/api/payments/webhook` | — (MP) | `{status}` |
@@ -78,11 +79,12 @@ Esto dejo de ser propuesta: esta construido y con tests. Tres diferencias respec
 | GET | `/api/tags` | — | etiquetas para el filtro |
 | POST·PUT·DELETE | `/api/tags[/<id>]` | admin | las crea ella (ADR-006) |
 | GET | `/api/site/delivery` | — | `{zone_name, fee, pickup_address, whatsapp_phone, payments_enabled, ai_enabled}` — mata el 2500 hardcodeado (C4) |
-| POST | `/api/orders/<id>/whatsapp` | token | `{phone, message}`: el back arma el texto con los importes de la DB (ADR-002) |
+| ~~POST~~ | ~~`/api/orders/<id>/whatsapp`~~ | ~~token~~ | **reemplazada el 2026-10-17 por `POST /api/orders/whatsapp`** (ADR-025): pedía el token que el invitado no tiene, y con el id en la URL se leía el mensaje de otro pedido |
 
 ### Cambios sobre endpoints existentes
 
 - `POST /api/orders` valida `min_qty` y `qty_step` del lado del servidor y rechaza con **400** si no se cumplen (V4). Suma `channel` (`"whatsapp"` | `"mercado_pago"`) y `customer_phone`.
+- **El envío lo decide el servidor** desde el 2026-10-17: `delivery.shipping_amount` del request se ignora en las dos rutas. Antes se respetaba si venía, y en una ruta pública eso es envío gratis —o negativo— a pedido (ADR-025).
 - `POST /api/payments/checkout` devuelve **503** si `PAYMENTS_ENABLED=false`, en vez del `ConfigurationError` actual.
 - `GET /api/products` deja de devolver `Recipe`-ismos y pasa a la forma de arriba.
 
@@ -182,3 +184,50 @@ Responde el borrador, siempre con la misma forma y siempre recortado por el serv
 ```
 
 **No propone etiquetas** a propósito (alérgenos ⇒ ADR-020). `503` con los pagos de IA apagados o sin `ANTHROPIC_API_KEY`; `429` si se pasó `AI_DAILY_LIMIT`; `400` si la imagen no existe o no es del propio sitio.
+
+## 5 · Lo que entró el 2026-10-17 (T7) — **implementado, con tests**
+
+### `POST /api/orders/whatsapp` — el pedido sin cuenta (F23, F31, ADR-025)
+
+Pública a propósito. Si llega un `Authorization` válido, el pedido queda atado a esa cuenta; si llega uno vencido o roto, se ignora y el pedido es de invitado.
+
+```json
+{
+  "items": [{ "product_id": 3, "quantity": 6 }],
+  "customer": { "name": "Vecina del barrio", "phone": "11 4455 6677", "email": "opcional@…" },
+  "delivery": {
+    "method": "delivery",
+    "address": "Jose Hernandez 1234",
+    "neighborhood": "Villa Maipú",
+    "notes": "Timbre B"
+  }
+}
+```
+
+Responde **201**:
+
+```json
+{
+  "order_id": 6,
+  "total": 21700.0,
+  "phone": "5491170595319",
+  "message": "¡Hola Andrea! Te hago un pedido desde la web.\n\nPedido #6\n- 12 x Cookies New York: $19.200\nEnvío: $2.500\nTotal: $21.700\n…"
+}
+```
+
+- **`message` lo arma el servidor** con los importes de la base. El front no lo escribe ni lo corrige: lo pega en `wa.me` con `linkWhatsApp()`. Se corta a 1500 caracteres sin tocar el total ni la entrega.
+- **`phone`** sale de `WHATSAPP_PHONE`. Si está vacío, el front muestra el número de pedido y dice que falta configurarlo, en vez de un link roto.
+- **Obligatorios:** `items`, `customer.name` y `customer.phone` (8 dígitos mínimo). El mail es opcional (migración `0004`).
+- **400** con el motivo en castellano: sin nombre, sin teléfono, fuera de la zona de entrega, más de 30 productos distintos, más de 1000 unidades de uno, o una cantidad que no respeta `min_qty`/`qty_step`.
+- **429** con `Retry-After` pasando 3 por minuto o 10 por hora desde la misma IP (ADR-026).
+
+### Topes por IP (ADR-026)
+
+| Ruta | Tope | Respuesta al pasarse |
+|---|---|---|
+| `POST /api/orders/whatsapp` | 3/min, 10/hora | `429` + `Retry-After` |
+| `POST /api/auth/login` | 10 cada 5 min | `429` + `Retry-After` |
+| `POST /api/auth/register` | 5/hora | `429` + `Retry-After` |
+| `POST /api/contact` | 5/hora | `429` + `Retry-After` |
+
+El cuerpo del 429 es `{"error": "…"}` con el texto en castellano, como el resto de los errores del front.

@@ -32,6 +32,9 @@ class BackendServiceTestCase(unittest.TestCase):
                 "DELIVERY_FEE": "2500",
                 "PAYMENT_CURRENCY": "ars",
                 "PAYMENTS_ENABLED": True,
+                # Apagado por default: si no, 10 logins de una suite agotan el
+                # tope y el test que falla no es el que mide el limite (ADR-026).
+                "RATE_LIMIT_ENABLED": False,
             }
         )
         self.app_context = self.app.app_context()
@@ -185,6 +188,9 @@ class ApiTestCase(unittest.TestCase):
                 "DELIVERY_ZONE_NAME": "Villa Maipú",
                 "DELIVERY_FEE": "2500",
                 "PAYMENTS_ENABLED": True,
+                # Apagado por default: si no, 10 logins de una suite agotan el
+                # tope y el test que falla no es el que mide el limite (ADR-026).
+                "RATE_LIMIT_ENABLED": False,
             }
         )
         self.client = self.app.test_client()

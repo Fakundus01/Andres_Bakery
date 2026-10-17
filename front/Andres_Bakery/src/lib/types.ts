@@ -240,7 +240,8 @@ export interface OrderCreationPayload {
   items: Array<Pick<OrderItem, "product_id" | "quantity">>;
   customer: {
     name: string;
-    email: string;
+    /** Opcional desde el pedido de invitado (ADR-025): el canal es el teléfono. */
+    email?: string;
     phone?: string;
   };
   delivery: {
@@ -259,6 +260,16 @@ export interface OrderCreationResponse {
   order_id: number;
   total: number;
   emails?: Record<string, string>;
+}
+
+/** Lo que devuelve la ruta pública de pedido (F23, ADR-025). El `message` lo
+ *  arma el back con los precios de la base: el front no lo escribe ni lo
+ *  corrige, solo lo pega en el link de WhatsApp. */
+export interface PedidoWhatsAppResponse {
+  order_id: number;
+  total: number;
+  phone: string;
+  message: string;
 }
 
 export interface CheckoutResponse {

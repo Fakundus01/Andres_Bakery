@@ -35,7 +35,7 @@ Estados (§5 del master): Specified 20% → Planned 40% → Tasked 60% → In Pr
 | F20 | Ingredientes relacionales visibles en la carta | **In Progress** | T4 | se ven en el dorso y en la ficha; **falta elegirlos desde el panel** |
 | F21 | Etiquetas que crea ella (sin TACC, vegano…) + filtro | **Complete** | T3 | CRUD en el panel + filtro `?tag=` resuelto por el back |
 | F22 | Retiro / envío por producto + zona y costo de una sola fuente | **In Progress** | T9 | `allows_pickup`/`allows_delivery` y `/api/site/delivery` listos (mata el 2500 hardcodeado, C4); falta que el checkout respete el flag por producto |
-| F23 | Pedido por WhatsApp (`wa.me` con mensaje armado por el back) | Planned | T7 | F16 |
+| F23 | Pedido por WhatsApp (`wa.me` con mensaje armado por el back) | **Complete** | T7 | ADR-025. Probado de punta a punta en el navegador, sin cuenta |
 | F24 | Cartilla de Andrea: historia, foto, cómo llegó a ser repostera | **In Progress** | T8 | la página existe en `/historia`; falta **su texto y su foto** |
 | F25 | Ficha de producto con descripción larga, ingredientes y etiquetas | **Complete** | T3 | `/producto/<slug>`; el slug **no se mueve** si ella corrige el nombre |
 | F26 | Link de salida a PedidosYa | **Deferred** | T7 | todavía no tiene tienda; la quiere a futuro (ADR-008) |
@@ -50,7 +50,7 @@ Todavía **sin tarea asignada**: entran al backlog, no al código, hasta decidir
 |---|---|---|---|
 | F29 | Navegación: menos ítems arriba **o** drawer lateral, elegible | **Complete** | ADR-011 |
 | F30 | Pantalla de **Configuración**: tema, tipografía, tamaño de letra, posición del nav | **Complete** | F14-F15 |
-| F31 | **Tres roles explícitos**: invitado (sin login), cliente (con login), admin (Andrea) | **In Progress** | `Order.user_id` **ya es opcional** y el serializer tolera el pedido sin usuario. Falta la ruta publica de pedido: va con T7 (el mensaje lo arma el back) |
+| F31 | **Tres roles explícitos**: invitado (sin login), cliente (con login), admin (Andrea) | **Complete** | T7 cerró lo que faltaba: `POST /api/orders/whatsapp` es pública y el invitado compra sin cuenta (ADR-025). El panel ve esos pedidos con nombre y teléfono |
 | F32 | Catálogo con pestaña/vista propia de cliente, separada de la mirada de admin | Planned | F31 |
 | F33 | Tarjetas de la carta que **se dan vuelta** | **Complete** | con T3 ya muestran ingredientes, etiquetas y el aviso de preparacion |
 | F34 | Carrito con **vista propia** (`/carrito`) | **Complete** | — |
@@ -90,6 +90,7 @@ Todo sobre diseño, mirando lo que había quedado de las tandas anteriores.
 | F52 | **Panel lateral elegible**: siempre abierto, o que se abra al acercarse | **Complete** | T15 | ADR-021 |
 | F53 | **La tarjeta gira con un clic en la foto**, no con el hover | **Complete** | T15 | ADR-022 |
 | F54 | **Su logo de verdad** en el header y de favicon, y sus datos de contacto reales | **Complete** | T17 | ADR-024 |
+| F55 | **Tope de requests por IP** en el pedido público, el login, el registro y el contacto | **Complete** | T7 | ADR-026, cierra D2 |
 
 **F53 revierte parte de F42.** El hover se construyó, se probó con el humano y se cayó en la prueba: con la tarjeta girando al acercar el puntero, el botón "Agregar" se escapa justo cuando alguien va a apretarlo. Quedó el "Agregar" del dorso, que había entrado para tapar ese problema y resultó útil igual.
 
@@ -118,5 +119,5 @@ Bloqueado por datos que no invento (R04). Actualizado el 2026-10-16 con las resp
 - **F28** · ✅ confirmado: publica ingredientes **y** pasos.
 - **F26** · ✅ resuelto: todavía no tiene tienda en PedidosYa ⇒ diferida.
 - **F22** · ❌ falta la zona de entrega y el costo reales, y si cambian por producto.
-- **F23** · ❌ falta el número de WhatsApp. No bloquea construir (sale de `WHATSAPP_PHONE`), sí bloquea probarlo de verdad.
+- ~~**F23** · falta el número de WhatsApp~~ → **resuelto el 2026-10-17**: salió de su etiqueta (F54) y el flujo se probó con el número real.
 - Retención y borrado de datos personales (`security.md` N2): ❌ sin definir.

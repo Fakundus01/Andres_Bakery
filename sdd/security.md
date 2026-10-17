@@ -1,6 +1,6 @@
 # security.md · Andres Bakery
 
-**Versión:** 0.2.0 · **Clasificado el:** 2026-10-16 · **Reclasificado el:** 2026-10-17 (R27: F45 prendió N5 y F46 prendió N4) · **Reclasificar:** con cada feature nueva
+**Versión:** 0.3.0 · **Clasificado el:** 2026-10-16 · **Reclasificado el:** 2026-10-17 (R27: F45 prendió N5, F46 prendió N4, y **F23 abrió la primera escritura pública**) · **Reclasificar:** con cada feature nueva
 
 ## 1 · Superficie (R27)
 
@@ -8,7 +8,7 @@
 |---|---|---|
 | **N0 · Base** | Sí | todo proyecto |
 | **N1 · Identidad** | Sí | hay login con JWT y rol admin |
-| **N2 · Datos** | Sí | nombre, email, teléfono y dirección de entrega de personas |
+| **N2 · Datos** | Sí | nombre, email, teléfono y dirección de entrega de personas. **Desde el 2026-10-17 también de gente sin cuenta** (pedido de invitado, F23): esos datos entran por una ruta pública |
 | **N3 · Plata** | Sí (latente) | Mercado Pago está implementado, apagado hasta tener credenciales (ADR-002) |
 | **N4 · IA** | **Sí** desde el 2026-10-17 | el asistente de recetas manda una foto a un modelo (F46, ADR-020). El panel de Ayuda sigue siendo un árbol fijo |
 | **N5 · Archivos** | **Sí** desde el 2026-10-17 | el panel pasó a subir fotos de verdad (F45, ADR-018). Era el gatillo que esta fila anticipaba |
@@ -108,12 +108,25 @@ El asistente de recetas manda una foto a la API de Anthropic y recibe un borrado
 
 ### N6 · Superficie pública
 
-| Control | Estado |
+**Cambió el 2026-10-17 (F23, ADR-025):** `POST /api/orders/whatsapp` es la primera ruta sin auth que **crea filas** y **dispara un mail** por request. Controles propios de esa ruta:
+
+| Control de la ruta pública de pedido | Estado |
+|---|---|
+| Tope por IP | ✅ 3/min y 10/hora, `429` con `Retry-After` (ADR-026) |
+| Tope de renglones y de unidades | ✅ 30 productos distintos, 1000 unidades por renglón (`ORDER_MAX_LINES`, `ORDER_MAX_UNITS`) |
+| Precio desde la base, nunca del request | ✅ ya era así para el producto; **desde hoy también el envío** (antes se aceptaba `shipping_amount` del cliente: con `-5000` el total quedaba por debajo del subtotal) |
+| Mínimo y salto por producto | ✅ `validate_quantity` del lado del servidor (V4) |
+| Zona de entrega | ✅ la misma validación que la ruta con token |
+| Token vencido o roto | ✅ se ignora y el pedido es de invitado, en vez de 401 |
+| No devolver nada de otro pedido | ✅ la respuesta se arma con el pedido recién creado; **no hay** ruta que lea un pedido por id sin dueño (por eso se descartó `/api/orders/<id>/whatsapp`, ADR-025) |
+| Mail de aviso | ⚠️ sale uno a Andrea por pedido. El tope por IP es lo único que lo acota: con el `MAIL_SERVER` configurado, eso es tráfico saliente a pedido de un anónimo |
+
+| Control general | Estado |
 |---|---|
 | SQL parametrizado | ✅ todo por el ORM, cero concatenación |
 | CORS explícito, no `*` | ✅ `FRONTEND_ORIGINS` por env, lista separada por comas |
 | Validar toda entrada en el servidor | ⚠️ parcial: hay `parse_int` y chequeos en los servicios, pero no validación por esquema |
-| Rate limit general | ❌ no hay |
+| Rate limit general | ⚠️ **parcial desde el 2026-10-17** (ADR-026): hay tope por IP en `POST /api/orders/whatsapp` (3/min, 10/hora), `login` (10/5min), `register` y `contact` (5/hora), con `Retry-After`. **En memoria del proceso**: no sobrevive un reinicio y no sirve con varios workers (D25). `/api/metrics/view` sigue sin tope, a propósito: limitarlo sesgaría el contador de visitas |
 | Errores que no cuentan de más | ⚠️ `ExternalServiceError` propaga el body de error de Mercado Pago tal cual al cliente (`payment_service.py:89`) |
 | Headers `nosniff` / `X-Frame-Options` / `Referrer-Policy` / CSP | ✅ desde el 2026-10-17, globales en `after_request` (entraron con N5, ADR-018) |
 | Paginación con techo | ❌ `GET /api/products` y `/api/orders` devuelven todo. El panel ya no los usa para contar (`/api/metrics/summary` agrega en el servidor, ADR-019). Con la carta de una repostería no duele; con `Order` crece para siempre |
@@ -129,6 +142,6 @@ El asistente de recetas manda una foto a la API de Anthropic y recibe un borrado
 Nada de esta lista está marcado como crítico hoy, así que no hay bloqueo abierto. Pasan a crítico — y bloquean release — si el proyecto se publica:
 
 1. ~~`JWT_SECRET_KEY` y `ADMIN_PASSWORD` con valor propio en `.env`~~ — resuelto (ADR-015). Al desplegar hay que **cargarlos en el entorno del host**: sin `JWT_SECRET_KEY` las sesiones se cortan en cada reinicio, y sin `ADMIN_EMAIL` no hay panel.
-2. Rate limit en login y contacto.
+2. ~~Rate limit en login y contacto.~~ — puesto el 2026-10-17 (ADR-026). **Al desplegar**: sin `ProxyFix` el tope cuenta todo el tráfico como una sola IP y deja de proteger (D25).
 3. ~~Headers de seguridad.~~ — puestos el 2026-10-17 con ADR-018.
 4. Firma del webhook, si se prende Mercado Pago.

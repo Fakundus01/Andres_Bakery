@@ -1,26 +1,27 @@
 # status.md · Andres Bakery
 
-**Versión:** 0.9.0 · **Última actualización:** 2026-10-17
+**Versión:** 0.10.0 · **Última actualización:** 2026-10-17
 
 ## 1 · Dónde estamos
 
-El repo tiene 4 meses de código y **estuvo 7 meses quieto** hasta el 2026-10-16, cuando se le aplicó el SDD por el flujo brownfield (R15). Desde entonces van cinco ciclos: T0–T3 el 16, y **T10–T14 el 17**.
+El repo tiene 4 meses de código y **estuvo 7 meses quieto** hasta el 2026-10-16, cuando se le aplicó el SDD por el flujo brownfield (R15). Desde entonces van siete ciclos: T0–T3 el 16, y **T10–T17 el 17**.
 
 **Salud medida hoy, no deducida:**
 
 | Check | Resultado |
 |---|---|
-| Tests del back | **151 OK** (eran 70 al cerrar T3) |
-| Tests del front | **49 OK** — Vitest, lógica pura (ADR-023). Eran 0 hasta hoy |
+| Tests del back | **192 OK** (eran 151 al cerrar T17, y 70 al cerrar T3) |
+| Tests del front | **55 OK** — Vitest, lógica pura (ADR-023). Eran 0 esta mañana |
 | Lint del front (eslint + tsc) | limpio |
 | Build del front | verde — 366,59 KB JS · 33,92 KB CSS |
-| Migraciones | **`0003` aplicada**. Probada sobre una copia antes que sobre la real, en los dos sentidos y desde base vacía |
+| Migraciones | **`0004` aplicada** (el mail del cliente pasó a opcional), probada para abajo y para arriba sobre la base real. Antes, **`0003`**. Probada sobre una copia antes que sobre la real, en los dos sentidos y desde base vacía |
 | App corriendo | back en `127.0.0.1:5000`, front en `127.0.0.1:5173`. Probado en navegador: giro por hover, subida de una foto real de punta a punta, panel con gráficos, perfil y `/cv` |
 | Responsive 390px | `/cv`, `/historia`, `/tienda` y `/admin`: cero desbordes, medido con `scrollWidth` vs `clientWidth` |
-| Archivos > 300 líneas | ninguno (el más largo es `CheckoutPage.tsx`, 278) |
+| Archivos > 300 líneas | ninguno. `CheckoutPage.tsx` era el más largo (278) y se partió en tres al crecer: queda en 227 |
 | Encontrado usando la página | el hover le borraba la rotación al dorso de la tarjeta (0.7.1). Lo vio el humano, no los tests ni el reviewer: **nadie había pasado el mouse por encima de una tarjeta ya dada vuelta** |
 | Revisión independiente | dos revisores que **re-ejecutaron** (R30/R31). Entre los dos encontraron **seis cosas reales**: el techo de gasto de la IA en memoria, una carrera que devolvía 500 en un endpoint público, un filtro de URL con un agujero de un carácter, rutas basura contadas como la portada, un gráfico que ignoraba el filtro de fechas, y dos tests que pasaban de casualidad. **Las seis quedaron corregidas con su test**, cada uno visto en rojo primero |
 | Dependencias | **0 avisos** en los dos lados (`npm audit` y `pip-audit`). Eran 16 y 57 |
+| Pedido de invitado | **probado en el navegador sin sesión**: carta → carrito → checkout → pedido #6, link de `wa.me` con el texto que arma el back, y el pedido visible en el panel de Andrea con nombre y teléfono |
 | Rama | `dev`, adelantada respecto de `main` |
 
 ## 2 · Avance por feature
@@ -41,8 +42,11 @@ Lo heredado (F01–F12) está Complete salvo lo anotado. De lo pedido el 2026-10
 | F52 | Panel lateral fijo o que se abre al acercarse | 100% | **Complete** — T15 |
 | F53 | La tarjeta gira con un clic en la foto | 100% | **Complete** — T15, reemplaza el hover de F42 |
 | F49 | Panel más fácil | 100% | **Complete** — la foto se sube, el borrador prellena |
+| F23 | Pedido por WhatsApp | 100% | **Complete** — T7, el back arma el mensaje (ADR-025) |
+| F31 | Invitado, cliente y admin | 100% | **Complete** — T7, el invitado ya compra sin cuenta |
+| F55 | Tope de requests por IP | 100% | **Complete** — T7, cierra D2 (ADR-026) |
 
-**Lo que sigue abierto de las tandas anteriores** (sin cambios en este ciclo): F19 y F20 (variantes e ingredientes desde el panel, 80% y 70%), F22 (que el checkout respete el flag por producto, 60%), F23 y F31 (WhatsApp y la ruta pública de pedido, T7), F24 (su texto y su foto), F32 (vista propia de cliente), F26 (PedidosYa, diferida) y F41 (deploy, diferida).
+**Lo que sigue abierto de las tandas anteriores** (sin cambios en este ciclo, salvo F23 y F31, que **cerraron**): F19 y F20 (variantes e ingredientes desde el panel, 80% y 70%), F22 (que el checkout respete el flag por producto, 60%), F24 (su texto y su foto), F32 (vista propia de cliente), F26 (PedidosYa, diferida) y F41 (deploy, diferida).
 
 > **F20 se movió un poco sin querer:** el asistente de IA propone ingredientes y el panel los **muestra para copiar**, porque guardarlos todavía no se puede. Cuando F20 cierre, ese bloque pasa a ser un clic.
 
@@ -65,7 +69,7 @@ Lo de 0.5.0 sigue igual salvo lo tachado. **D3 se cerró** y entraron tres deuda
 | ID | Deuda | Desde | Nota |
 |---|---|---|---|
 | D1 | Token de sesión en `localStorage`, no en cookie `httpOnly` | 2026-10-16 | sigue |
-| D2 | Sin rate limit en ningún endpoint | 2026-10-16 | **subió de prioridad**: `POST /api/uploads` es admin-only, pero `/api/metrics/view` es público y sin límite. Ya **no puede crear filas** (la lista blanca de rutas lo acota a ~39 por día) ni tirar un 500 (la carrera se cerró), pero sigue siendo una escritura con commit por request: un bot ensucia el número que ella mira y hace trabajar la base de arriba |
+| ~~D2~~ | ~~Sin rate limit en ningún endpoint~~ | **resuelta 2026-10-17** | ADR-026: topes por IP en el pedido público, el login, el registro y el contacto, con `Retry-After`. **`/api/metrics/view` quedó afuera a propósito**: cuenta visitas y limitarlo por IP sesgaría el número que ella mira. La nota vieja decía: **subió de prioridad**: `POST /api/uploads` es admin-only, pero `/api/metrics/view` es público y sin límite. Ya **no puede crear filas** (la lista blanca de rutas lo acota a ~39 por día) ni tirar un 500 (la carrera se cerró), pero sigue siendo una escritura con commit por request: un bot ensucia el número que ella mira y hace trabajar la base de arriba |
 | ~~D3~~ | ~~Sin headers de seguridad~~ | resuelta 2026-10-17 | globales en `after_request` (ADR-018) |
 | D4 | Firma del webhook de MP sin validar | 2026-10-16 | sigue |
 | D5 | Ninguna lista pagina | 2026-10-16 | el panel ya no depende de eso para contar (`/api/metrics/summary`) |
@@ -82,6 +86,8 @@ Lo de 0.5.0 sigue igual salvo lo tachado. **D3 se cerró** y entraron tres deuda
 | D15 | Mensajes de error de la API en inglés | 2026-10-16 | los nuevos (subida, IA, métricas) **salen en castellano**; los viejos siguen igual |
 | D9 | Varios `.py` del back arrancan con BOM | 2026-10-16 | cosmético |
 | ~~D23~~ | ~~16 avisos en el front~~ · ~~57 en el back~~ | resueltas 2026-10-17 | ADR-024. Los dos lados en **0**. La próxima auditoría: `pip install -r backend/requirements-dev.txt` y `python -m pip_audit` |
+| **D25** | **El tope por IP vive en la memoria del proceso** | 2026-10-17 | no sobrevive un reinicio y con N workers el tope real es N veces el configurado. Detrás de un proxy, `remote_addr` es el proxy: el deploy necesita `ProxyFix` o todo el tráfico cuenta como una sola IP. Se muda a Redis o al proxy cuando haya deploy (ADR-026) |
+| **D26** | **El pedido de invitado no se puede consultar después** | 2026-10-17 | quien pidió sin cuenta tiene su número y su mensaje de WhatsApp, y nada más: no hay una pantalla donde ver el estado. Hoy lo resuelve la conversación con Andrea, que es como ella trabaja. Si alguna vez hace falta, el camino es un link con token por pedido, no exponer `/api/orders/<id>` |
 | **D24** | **El logo dice "ANDRE'S BAKERY" y el sitio dice "Andres Bakery"** | 2026-10-17 | no se cambió solo: es el nombre de su marca y lo decide ella. Afecta el header, el `<title>`, el footer y los textos |
 | ~~D23-viejo~~ | **16 avisos de seguridad en las dependencias del front, 12 altos.** `react-router-dom` (la mayoría de modo SSR, que no usamos; **dos sí aplican**: open redirect por barra invertida y por ruta `//`), `vite` (tres altos, todos del servidor de desarrollo), `postcss`, `nanoid` y las de `eslint` | 2026-10-17 | medido al instalar Vitest, que **no** los trajo. Actualizar es R19: pide su OK y su verificación. `react-router-dom` se arregla con un salto de versión menor |
 | D10 | ~~`pip-audit` y `npm audit` sin correr~~ (R19) | 2026-10-16 | `npm audit` **corrió el 2026-10-17**: resultado en D23. `pip-audit` sigue pendiente | **ahora importa más**: entró `anthropic` como dependencia nueva |
@@ -89,11 +95,11 @@ Lo de 0.5.0 sigue igual salvo lo tachado. **D3 se cerró** y entraron tres deuda
 
 ## 5 · Próximo paso propuesto
 
-Con T10–T14 cerrados, por orden de lo que destraba más:
+Con T7 cerrado, el flujo de compra está completo de punta a punta por primera vez. Por orden de lo que destraba más:
 
-1. **T7 · Pedido por WhatsApp** (F23, F31). Sigue siendo lo que falta para que el invitado pueda comprar sin cuenta. Es el agujero más grande del flujo.
-2. **T4/T6 · Terminar el panel** (F19, F20): variantes e ingredientes desde la pantalla. Con F46 andando, los ingredientes que propone la IA pasarían de "copiá esto" a un clic.
-3. **D2 · Rate limit**, aunque sea en `/api/metrics/view`, `/api/auth/login` y `/api/contact`. Es barato y los tres están expuestos.
-4. **F41 · Deploy** (ADR-014). Ojo con lo nuevo: las fotos viven en el disco del back, y el disco de Render free **no persiste**. Antes del deploy hay que decidir dónde van (Cloudflare R2 o Supabase Storage, los dos free) o se pierden en cada reinicio.
+1. **T4/T6 · Terminar el panel** (F19, F20): variantes e ingredientes desde la pantalla. Con F46 andando, los ingredientes que propone la IA pasarían de "copiá esto" a un clic.
+2. **F41 · Deploy** (ADR-014). Ojo con lo nuevo: las fotos viven en el disco del back, y el disco de Render free **no persiste**. Antes del deploy hay que decidir dónde van (Cloudflare R2 o Supabase Storage, los dos free) o se pierden en cada reinicio. Y el tope por IP necesita `ProxyFix` (D25).
+3. **F32 · Vista propia de cliente**, separada de la mirada de admin.
+4. **D24 · El nombre de la marca**: el logo dice "ANDRE'S BAKERY" y el sitio "Andres Bakery". Lo decide ella; cuando lo diga, es un cambio de diez minutos en el header, el `<title>`, el footer y los textos.
 
 **Sin cambios:** F24 sigue esperando **la historia escrita y la foto de Andrea**, y ahora también **sus redes y su trayectoria** si quiere el CV publicado. Nada de eso se inventa.

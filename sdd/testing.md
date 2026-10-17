@@ -100,7 +100,7 @@ Estado medido el 2026-10-17 tras T16: **151 tests del back + 48 del front OK**, 
 | V3 · 5 × precio sin pedir al servidor | test de la función de total + navegador (pestaña Network vacía) | unit + navegador |
 | V4 · mínimo 6 no deja pedir 3 | test de servicio: `POST /api/orders` con qty 3 ⇒ 400 y no se crea fila | automatizado |
 | V5 · etiqueta visible y filtrable | test de API del filtro + navegador | automatizado + navegador |
-| V6 · WhatsApp con detalle y total, orden en DB | test del armado del mensaje (importes = los de la DB) + navegador | automatizado + navegador |
+| V6 · WhatsApp con detalle y total, orden en DB | ✅ `test_mensaje_whatsapp` (el renglón se calcula con el `unit_price` guardado, aunque el producto cambie de precio después) + `test_pedido_whatsapp` + navegador: pedido #6 real sin sesión | automatizado + navegador |
 | V7 · el total lo calcula el servidor | ya cubierto por `test_order_service.py`; **no puede volverse rojo** | automatizado |
 | V8 · panel operable en 375px | navegador, viewport de iPhone SE | navegador |
 | V9 · los tests siguen verdes tras la migración | el comando de §1 | automatizado |
@@ -109,12 +109,23 @@ Estado medido el 2026-10-17 tras T16: **151 tests del back + 48 del front OK**, 
 | V13 · las visitas no identifican a nadie | `test_metrics_service` compara las **columnas de la tabla** contra la lista esperada | automatizado |
 | V15 · dos visitas simultáneas no le dan 500 a nadie | `test_metrics_service` fuerza el choque contra el índice único | automatizado |
 | V16 · la foto limpia es la original menos sus metadatos, byte a byte | `test_image_file`: golden de bytes, no ausencia de strings | automatizado |
+| V17 · el invitado puede comprar sin cuenta | `test_api_pedido_whatsapp`: `POST /api/orders/whatsapp` **sin token** devuelve 201 y la fila queda con `user_id = None`. La misma llamada contra `/api/orders` da 401: esa era la pared | automatizado |
+| V18 · el envío no lo decide el cliente | `test_pedido_whatsapp` manda `shipping_amount` en `0`, `-5000` y basura: el total siempre sale con la tarifa configurada | automatizado |
+| V19 · el tope por IP corta de verdad | `test_api_pedido_whatsapp`: el cuarto pedido del minuto da **429** con `Retry-After` y **no** se guarda. Visto en rojo sacándole el decorador a la ruta: `AssertionError: 429 != 201` (R29) | automatizado |
 | V14 · el techo de gasto de la IA sobrevive a un reinicio | `test_ai_service`: una **instancia nueva** del servicio (= otro worker) sigue topada. Visto rojo contra el código viejo | automatizado |
 
 ## 5 · Cobertura mínima para dar algo por `done`
 
 1. Servicio nuevo o tocado del back ⇒ su test, verde.
-2. Los 151 existentes, verdes (V9). Un test que había pasado y ahora no, bloquea.
+2. Los **192** del back y los **55** del front, verdes (V9). Un test que había pasado y ahora no, bloquea.
 3. `npm run lint` y `npm run build`, limpios (V1).
 4. Si se tocó algo visible ⇒ revisado en navegador, en celular y en escritorio, y dicho en el handback.
 5. Si el cambio toca precios, mínimos o totales ⇒ el rojo se vio primero (R29).
+
+## 6 · Tests que estaban mal, y qué enseñaron
+
+Dos del 2026-10-17 (T7). Ninguno era un bug del código: eran tests que medían otra cosa de la que decían.
+
+**El tiempo falso tiene que ser distinto en cada paso.** El test de la ventana deslizante del limitador registraba dos intentos seguidos con el reloj congelado y después esperaba que, pasado el minuto, se liberara **un** lugar. Se liberaban los dos: las dos marcas tenían el mismo instante. El test fallaba con el código correcto. La versión buena separa los intentos diez segundos, que es lo que hace que la ventana *se deslice* en vez de vaciarse de golpe.
+
+**Un tope de prueba demasiado chico prueba otra cosa.** El test del recorte del mensaje usaba un tope de 60 caracteres esperando "entra el primer producto y el resto se resume". Con 60 no entraba ni el primero —el aviso del resto ocupa 57— así que el mensaje salía resumiendo los cuatro y la cuenta no daba. Con 100 el test mide lo que dice. Lección: cuando el caso de borde depende de dos largos, hay que calcular el número, no elegirlo a ojo.

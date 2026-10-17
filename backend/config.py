@@ -68,6 +68,16 @@ class Config:
     # armar un wa.me roto.
     WHATSAPP_PHONE = re.sub(r"\D", "", os.getenv("WHATSAPP_PHONE", ""))
 
+    # Topes del pedido publico (F23, ADR-025). No son reglas de negocio: son
+    # anti-basura de una ruta que cualquiera puede llamar. Andrea los puede
+    # subir por entorno si algun dia le encargan 40 productos distintos.
+    ORDER_MAX_LINES = int(os.getenv("ORDER_MAX_LINES", "30"))
+    ORDER_MAX_UNITS = int(os.getenv("ORDER_MAX_UNITS", "1000"))
+
+    # Tope de requests por IP (D2, ADR-026). En memoria del proceso: ver las
+    # limitaciones en services/rate_limit.py antes de confiarse.
+    RATE_LIMIT_ENABLED = _flag("RATE_LIMIT_ENABLED", "true")
+
     # Subida de fotos (F45, ADR-018). UPLOAD_DIR vacio => <raiz>/instance/uploads.
     UPLOAD_DIR = os.getenv("UPLOAD_DIR", "")
     UPLOAD_MAX_BYTES = int(os.getenv("UPLOAD_MAX_BYTES", str(4 * 1024 * 1024)))

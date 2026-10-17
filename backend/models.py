@@ -179,7 +179,10 @@ class Payment(db.Model):
 class OrderDelivery(db.Model):
     order_id = db.Column(db.Integer, db.ForeignKey("order.id"), primary_key=True)
     customer_name = db.Column(db.String(120), nullable=False)
-    customer_email = db.Column(db.String(255), nullable=False)
+    # Opcional desde el pedido de invitado (ADR-025): quien pide por WhatsApp
+    # deja nombre y telefono, y la conversacion sigue ahi. El telefono es el
+    # canal, asi que en ese pedido es el obligatorio.
+    customer_email = db.Column(db.String(255))
     customer_phone = db.Column(db.String(50))
     delivery_method = db.Column(db.String(50), default="delivery")
     address = db.Column(db.String(255))

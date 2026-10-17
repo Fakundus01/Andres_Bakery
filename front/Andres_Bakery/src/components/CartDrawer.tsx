@@ -1,4 +1,5 @@
-import { useNavigate } from "react-router-dom";
+import { useEffect, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowRight, ShoppingBag, X } from "lucide-react";
 
 import { useCart } from "../contexts/CartContext";
@@ -9,6 +10,20 @@ import { EmptyState } from "./ui";
 export function CartDrawer() {
   const navigate = useNavigate();
   const { bajar, closeCart, isCartOpen, items, openCart, removeItem, subir, subtotal } = useCart();
+
+  // El cajon tapa la pantalla entera. Su propio boton de "Ir al checkout" lo
+  // cierra, pero cambiar de ruta por cualquier otro link lo dejaba abierto
+  // encima de la pagina nueva (visto en el navegador al probar el pedido de
+  // invitado). Sin array de dependencias a proposito: `closeCart` se rearma en
+  // cada render y ponerlo ahi cerraria el carrito justo al agregar algo.
+  const { pathname } = useLocation();
+  const rutaAnterior = useRef(pathname);
+  useEffect(() => {
+    if (rutaAnterior.current !== pathname) {
+      rutaAnterior.current = pathname;
+      closeCart();
+    }
+  });
 
   return (
     <>

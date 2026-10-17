@@ -27,6 +27,20 @@ class NotFoundError(ServiceError):
     status_code = 404
 
 
+class RateLimitError(ServiceError):
+    """Demasiados requests de la misma clave (D2, ADR-026).
+
+    Lleva la espera para poder contestar `Retry-After`: sin ese header, un
+    cliente bien portado no tiene con que saber cuanto esperar.
+    """
+
+    status_code = 429
+
+    def __init__(self, message: str, *, espera_segundos: int = 60) -> None:
+        super().__init__(message)
+        self.espera_segundos = espera_segundos
+
+
 class ConfigurationError(ServiceError):
     status_code = 503
 

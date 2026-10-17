@@ -16,8 +16,14 @@ class NotificationService:
             }
 
         delivery = order.delivery
-        customer_email = (delivery.customer_email if delivery else "") or order.user.email
-        customer_name = (delivery.customer_name if delivery else "") or order.user.name
+        # El pedido de invitado no tiene usuario ni, a veces, mail (ADR-025):
+        # nada de esto puede ser un atributo de `order.user` a secas.
+        customer_email = (delivery.customer_email if delivery else "") or (
+            order.user.email if order.user else ""
+        )
+        customer_name = (delivery.customer_name if delivery else "") or (
+            order.user.name if order.user else "quien pidio"
+        )
         admin_email = current_app.config.get("ADMIN_EMAIL")
 
         order_lines = "\n".join(
@@ -55,11 +61,16 @@ class NotificationService:
         )
 
         result = {"customer": "skipped", "admin": "skipped"}
-        result["customer"] = self._send_email(
-            subject=f"Andres Bakery | Confirmaci\u00f3n de pedido #{order.id}",
-            recipients=[customer_email],
-            body=customer_body,
-        )
+        if customer_email:
+            result["customer"] = self._send_email(
+                subject=f"Andres Bakery | Confirmaci\u00f3n de pedido #{order.id}",
+                recipients=[customer_email],
+                body=customer_body,
+            )
+        else:
+            # Sin mail no hay a quien escribirle, y no es un error: el aviso a
+            # Andrea igual sale, que es el que mueve el pedido.
+            result["customer"] = "skipped: el pedido no dejo mail"
         if admin_email:
             result["admin"] = self._send_email(
                 subject=f"Andres Bakery | Nuevo pedido #{order.id}",

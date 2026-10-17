@@ -4,6 +4,79 @@ Semver `MAJOR.MINOR.PATCH` (R13). No se borra nada: lo viejo queda.
 
 ---
 
+## [0.10.0] · 2026-10-17 · El invitado ya puede comprar
+
+### Lo que estaba roto desde el principio (F23, F31, ADR-025)
+
+Alguien entraba, elegía dos cosas, llegaba al checkout y leía: *"Necesitás iniciar sesión para completar la compra"*, con el botón apagado. Para una repostería de barrio donde el pedido se cierra charlando por WhatsApp, pedir registro **antes** de poder hablar es la venta perdida. Era el agujero más viejo del flujo y estaba anotado como tal desde el primer día.
+
+Ahora hay `POST /api/orders/whatsapp`, **pública**: guarda el pedido y devuelve el mensaje ya escrito. Sin cuenta. Con cuenta, el pedido queda además en "mis pedidos".
+
+**El texto lo arma el servidor** con los importes de la base:
+
+```
+¡Hola Andrea! Te hago un pedido desde la web.
+
+Pedido #6
+- 12 x Cookies New York: $19.200
+Envío: $2.500
+Total: $21.700
+
+Nombre: Vecina del barrio
+Teléfono: 11 4455 6677
+Entrega: envío a Jose Hernandez 1234, Villa Maipú
+```
+
+Si ese texto lo armara el navegador, cualquiera le edita el total antes de mandarlo y a ella le llega un WhatsApp que dice $2.000 por algo de $12.000, con cara de pedido legítimo.
+
+**El mail pasó a opcional** (migración `0004`): quien pide por WhatsApp deja nombre y teléfono, que es el canal. Sin mail, el aviso a Andrea sale igual —es el que mueve el pedido— y el de confirmación al cliente no.
+
+**Un token vencido ya no arruina una compra:** si el navegador manda uno roto, se ignora y el pedido es de invitado, en vez de contestar 401.
+
+### Un agujero de plata que esta feature agrandaba
+
+`_resolve_shipping_amount` aceptaba el `shipping_amount` que mandara el cliente. Con token era discutible; en una ruta pública es **envío gratis a pedido**, y con un negativo el total queda por debajo del subtotal. Apareció escribiendo el test: lo iba a dejar anotado como deuda y es de los que se arreglan, no se anotan. El envío sale de `DELIVERY_FEE` y el request no opina. El test lo prueba con `0`, `-5000` y basura.
+
+### Topes por IP, que cierran D2 (ADR-026)
+
+Esta es la primera ruta sin login que **escribe** y que dispara un mail por request. Entró un limitador de ventana deslizante, y de paso cubre lo que estaba expuesto desde el día uno:
+
+| Ruta | Tope |
+|---|---|
+| `POST /api/orders/whatsapp` | 3 por minuto, 10 por hora |
+| `POST /api/auth/login` | 10 cada 5 minutos |
+| `POST /api/auth/register` | 5 por hora |
+| `POST /api/contact` | 5 por hora |
+
+Contesta `429` con `Retry-After`. **Vive en la memoria del proceso**: no sobrevive un reinicio y con varios workers el tope real se multiplica; detrás de un proxy hace falta `ProxyFix` o todo el tráfico cuenta como una IP sola. Queda escrito como **D25** en vez de vendido como más de lo que es.
+
+`/api/metrics/view` quedó **afuera a propósito**: cuenta visitas, y limitarlo por IP sesgaría el número que ella mira.
+
+### Encontrado usando la página
+
+El cajón del carrito tapaba la pantalla entera si cambiabas de ruta por un link: su propio botón de "Ir al checkout" lo cerraba, pero cualquier otro camino lo dejaba abierto encima de la página nueva. Salió probando el pedido de invitado en el navegador, no de un test. Ahora se cierra al cambiar de ruta.
+
+### Qué se partió para que entrara
+
+`CheckoutPage.tsx` tenía 278 líneas y esto la pasaba de 300 (R05). Quedó en 227, con la lógica en `useCheckout.ts`, el resumen en `ResumenDelPedido.tsx` y la pantalla de salida en `PedidoListo.tsx`.
+
+### Dos tests que estaban mal
+
+Ninguno era un bug del código. El de la ventana deslizante registraba dos intentos con el reloj congelado y esperaba que se liberara **un** lugar: se liberaban los dos. El del recorte del mensaje usaba un tope de 60 caracteres cuando el aviso de "y N productos más" ocupa 57, así que no entraba ni el primer renglón. Los dos quedaron anotados en `testing.md` §6.
+
+### Números
+
+| Antes (0.9.0) | Ahora (0.10.0) |
+|---|---|
+| 151 tests del back | **192** |
+| 55 del front | **55** (6 nuevos de `linkWhatsApp`, 49 de antes) |
+| El invitado no podía comprar | **compra**, probado en el navegador sin sesión |
+| D2 abierta desde el 2026-10-16 | **cerrada** |
+
+**Rojo medido** (R29): sacarle el decorador del tope a la ruta deja el test en `AssertionError: 429 != 201`.
+
+---
+
 ## [0.9.0] · 2026-10-17 · Las dependencias al dia, el logo de Andrea, y sus datos de verdad
 
 ### Seguridad de dependencias (ADR-024, R19, con OK del humano)

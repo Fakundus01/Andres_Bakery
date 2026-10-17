@@ -412,3 +412,58 @@ El primero era el *"tiembla y desaparece"*: `steps(5)` hacía caer el giro en 72
 **Dos comandos de test, no uno.** `harness.config.json` tenía una sola clave `test` para el back. Ahora hay dos suites y las dos tienen que estar verdes para que algo sea `done`: se agregó `test_front` y la nota que lo explica. No se juntaron en un solo comando a propósito: corren en runtimes distintos y conviene poder correr una sola mientras se trabaja.
 
 **Los datos de contacto de Andrea** salieron de su propia etiqueta de producto (un PDF vectorial, rasterizado con `pymupdf` a 900 dpi porque no tenía texto extraíble): Instagram **@andresbakery.ar** y teléfono **11-7059-5319**. Van en `backend/.env` y en la base, **nunca en el código**: el repo es público y, aunque ella los imprima en cada sticker, versionar el contacto de una persona es otra cosa. `pymupdf` se usó una sola vez para leer el PDF y no quedó como dependencia del proyecto.
+
+---
+
+## ADR-025 · El invitado pide por WhatsApp, y el mensaje lo arma el servidor
+
+**Fecha:** 2026-10-17 · **Estado:** Vigente · **Cierra:** F23, F31 · **Destraba:** el agujero más viejo del flujo
+
+**Contexto:** hasta hoy, alguien que entraba, elegía y llegaba al checkout se encontraba con *"Necesitás iniciar sesión para completar la compra"* y el botón apagado. `POST /api/orders` pide token (`orders.py:11`) y el servicio exige un `User` (`order_service.py:28`). Para una repostería de barrio donde el pedido se cierra charlando, pedir registro **antes** de poder hablar es la venta perdida. `Order.user_id` ya era opcional desde ADR-012: faltaba la ruta.
+
+**Decisión:** `POST /api/orders/whatsapp`, **pública**. Crea el pedido y devuelve `{order_id, total, phone, message}`. Si viene un token válido, el pedido queda atado a esa cuenta; si viene uno vencido o roto, se ignora y se trata como invitado —un token viejo en el navegador no puede ser la razón de que alguien no pueda comprar—.
+
+**El texto lo arma el back** (`services/mensaje_whatsapp.py`) con los importes de la base. Si lo armara el front, cualquiera edita el total antes de mandarlo y a Andrea le llega un mensaje que dice $2.000 por algo de $12.000, con cara de pedido legítimo. Es la misma razón por la que `validate_quantity` corre del lado del servidor (V4).
+
+**Lo que se descartó:**
+
+| | Opción | Por qué no |
+|---|---|---|
+| B | `POST /api/orders/<id>/whatsapp` con token, como estaba planeado en `contracts.md` | pide el token que el invitado no tiene, y con el id en la URL se lee el mensaje de **otro** pedido —nombre, dirección, teléfono— probando 1, 2, 3. Un IDOR escrito a mano |
+| C | Armar el mensaje en el front | los precios vendrían del cliente |
+| D | Cuenta "liviana" de invitado | una cuenta igual, con otro nombre |
+
+**El mail pasó a opcional** (migración `0004`). Quien pide por WhatsApp deja **nombre y teléfono**; el teléfono es el canal. Pedirle un mail que no va a usar es un campo más en la puerta. Sin mail, el aviso al cliente no sale y el de Andrea sí, que es el que mueve el pedido.
+
+**Topes del pedido**, porque la ruta es pública y escribe: 30 productos distintos y 1000 unidades por renglón (`ORDER_MAX_LINES`, `ORDER_MAX_UNITS`). No son reglas de negocio —son anti-basura— y se suben por entorno.
+
+**De paso, un agujero que no era de esta feature pero esta la agrandaba:** `_resolve_shipping_amount` aceptaba el `shipping_amount` que mandara el cliente. Con token era discutible; en una ruta pública es envío gratis a pedido, o peor, un envío **negativo** que deja el total por debajo del subtotal. Ahora el número sale de `DELIVERY_FEE` y el request no opina. El test lo prueba con `0`, `-5000` y basura.
+
+**El mensaje se corta a 1500 caracteres.** `wa.me` manda el texto en la URL y los clientes lo recortan. El corte se decide sobre los productos y nunca sobre el total ni la entrega: perder el renglón 29 se aguanta, perder la dirección no.
+
+---
+
+## ADR-026 · Tope de requests por IP, en memoria del proceso
+
+**Fecha:** 2026-10-17 · **Estado:** Vigente · **Cierra:** D2 (abierta desde el 2026-10-16)
+
+**Contexto:** ADR-025 abre la primera ruta pública que **escribe** y que, de paso, dispara un mail por request. Hasta hoy la única ruta pública que escribía era `/api/metrics/view`, que suma un entero. Y `/api/auth/login` y `/api/contact` estaban expuestos desde el día uno sin ningún tope.
+
+**Decisión:** un limitador de ventana deslizante en `services/rate_limit.py`, aplicado con el decorador `limitar(...)` de `routes/utils.py`:
+
+| Ruta | Tope |
+|---|---|
+| `POST /api/orders/whatsapp` | 3 por minuto, 10 por hora |
+| `POST /api/auth/login` | 10 cada 5 minutos |
+| `POST /api/auth/register` | 5 por hora |
+| `POST /api/contact` | 5 por hora |
+
+Contesta **429** con `Retry-After`: sin ese header, un cliente bien portado no tiene con qué saber cuánto esperar.
+
+**Ventana deslizante y no contador por minuto calendario**, porque el contador por minuto deja pasar el doble justo en el cambio de minuto.
+
+**Lo que NO es, dicho antes de que alguien se confíe:** vive en la memoria del proceso. No sobrevive un reinicio, y con N workers el tope real es N veces el configurado. Cuenta por IP, y detrás de un proxy `remote_addr` es el proxy: sin `ProxyFix` y un header de confianza, todo el tráfico entra como una sola clave. Para lo que hay hoy —un proceso, sin proxy— alcanza y es barato; en el deploy se muda a Redis o al proxy. Queda anotado en `security.md` y como **D25**.
+
+**Tiene techo de claves** (10.000, con desalojo LRU). Un limitador que guarda una entrada por IP sin límite es la fuga de memoria que venía a prevenir.
+
+**Apagable por configuración** (`RATE_LIMIT_ENABLED`), y apagado en los tests por default: si no, una suite que hace diez logins se cae por el limitador en vez de por lo que mide, y el test que falla no es el culpable.

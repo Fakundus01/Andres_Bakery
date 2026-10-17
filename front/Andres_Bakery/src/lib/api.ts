@@ -5,6 +5,7 @@ import type {
   DeliveryConfig,
   Order,
   OrderCreationPayload,
+  PedidoWhatsAppResponse,
   PerfilAndrea,
   ResumenMetricas,
   SubidaDeImagen,
@@ -166,6 +167,15 @@ export const ordersApi = {
       method: "POST",
       body: payload,
       token,
+    });
+  },
+  /** Pedido por WhatsApp (F23, ADR-025). El token es opcional a propósito:
+   *  sin cuenta se puede pedir igual, y con cuenta queda en "mis pedidos". */
+  crearPorWhatsApp(payload: OrderCreationPayload, token?: string | null) {
+    return apiRequest<PedidoWhatsAppResponse>("/api/orders/whatsapp", {
+      method: "POST",
+      body: payload,
+      token: token ?? undefined,
     });
   },
   updateStatus(id: number, status: string, token: string) {
