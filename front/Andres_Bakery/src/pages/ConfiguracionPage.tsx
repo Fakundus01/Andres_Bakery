@@ -1,7 +1,7 @@
 import { RotateCcw } from "lucide-react";
 
 import { SectionHeading } from "../components/ui";
-import { ESCALAS, NAV_MODOS, TEMAS, TIPOGRAFIAS } from "../preferencias/PreferencesProvider";
+import { ESCALAS, NAV_MODOS, PANELES_LATERALES, TEMAS, TIPOGRAFIAS } from "../preferencias/PreferencesProvider";
 import { usePreferences } from "../preferencias/usePreferences";
 
 export function ConfiguracionPage() {
@@ -18,7 +18,7 @@ export function ConfiguracionPage() {
 
       <GrupoOpciones
         titulo="Estación"
-        ayuda="Cambia toda la paleta. Es lo mismo que el selector del menú de arriba."
+        ayuda="Cambia toda la paleta del sitio. Se elige acá: el menú de arriba quedó solo con lo que se usa para comprar."
         opciones={TEMAS.map((tema) => ({
           id: tema.id,
           label: `${tema.icono} ${tema.label}`,
@@ -49,11 +49,25 @@ export function ConfiguracionPage() {
 
       <GrupoOpciones
         titulo="Dónde va el menú"
-        ayuda="El panel lateral está siempre disponible desde el botón de la hamburguesa."
+        ayuda="En celular siempre es el botón de la hamburguesa; esto decide cómo se ve en una pantalla grande."
         opciones={NAV_MODOS.map((modo) => ({ id: modo.id, label: modo.label, detalle: modo.detalle }))}
         activo={preferencias.navModo}
         onElegir={(valor) => setPreferencia("navModo", valor)}
       />
+
+      {preferencias.navModo === "drawer" ? (
+        <GrupoOpciones
+          titulo="Cómo se comporta el panel"
+          ayuda="Solo aplica al panel de la izquierda, en pantallas grandes."
+          opciones={PANELES_LATERALES.map((modo) => ({
+            id: modo.id,
+            label: modo.label,
+            detalle: modo.detalle,
+          }))}
+          activo={preferencias.panelLateral}
+          onElegir={(valor) => setPreferencia("panelLateral", valor)}
+        />
+      ) : null}
 
       <section className="pixel-panel p-6">
         <h2 className="font-display text-2xl font-bold text-tinta">Vista previa</h2>

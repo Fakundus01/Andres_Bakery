@@ -1,31 +1,37 @@
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { LogIn, LogOut, Menu, ShoppingBag, Sparkles, UserPlus } from "lucide-react";
+import { Menu, ShoppingBag, Sparkles } from "lucide-react";
 
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
-import { ThemeSwitcher } from "../preferencias/ThemeSwitcher";
 import { usePreferences } from "../preferencias/usePreferences";
 import { ENLACES_ADMIN, ENLACES_DESTACADOS, ENLACES_TODOS } from "./enlaces";
+import { MenuDeCuenta } from "./MenuDeCuenta";
 import { NavDrawer } from "./NavDrawer";
 
+/** El header tiene tres cosas y nada más (ADR-021): el menú (solo en celular),
+ *  la marca, y a la derecha el carrito y la cuenta.
+ *
+ *  Lo que estaba suelto acá arriba —el selector de estación, el nombre, salir,
+ *  ingresar y crear cuenta— se fue: la estación a Configuración y el resto
+ *  adentro del círculo de la cuenta. */
 export function SiteHeader() {
   const [drawerAbierto, setDrawerAbierto] = useState(false);
   const { itemCount } = useCart();
-  const { isLoggedIn, logout, user } = useAuth();
+  const { user } = useAuth();
   const { navModo } = usePreferences();
 
   const enlacesAdmin = user?.is_admin ? ENLACES_ADMIN : [];
-  // En "barra" el drawer sigue existiendo para lo que no entra arriba y para el celular.
-  const mostrarDestacados = navModo === "barra";
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b-[3px] border-borde bg-superficie">
-        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-40 flex min-h-[var(--alto-header)] items-center border-b-[3px] border-borde bg-superficie">
+        <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
+          {/* La hamburguesa es del celular. En pantalla grande el menú está en
+              la barra o en el panel lateral, y un botón más sería ruido. */}
           <button
             type="button"
-            className="btn-secondary p-2.5"
+            className="btn-secondary p-2.5 lg:hidden"
             onClick={() => setDrawerAbierto(true)}
             aria-label="Abrir menú"
           >
@@ -42,8 +48,8 @@ export function SiteHeader() {
             </div>
           </Link>
 
-          {mostrarDestacados ? (
-            <nav className="ml-2 hidden items-center gap-1 md:flex">
+          {navModo === "barra" ? (
+            <nav className="ml-2 hidden items-center gap-1 lg:flex">
               {ENLACES_DESTACADOS.map((enlace) => (
                 <NavLink
                   key={enlace.to}
@@ -60,11 +66,13 @@ export function SiteHeader() {
             </nav>
           ) : null}
 
-          {/* Todo lo de la cuenta vive acá, pegado a la derecha, siempre en el mismo lugar. */}
           <div className="ml-auto flex items-center gap-2">
-            <ThemeSwitcher className="hidden lg:flex" />
-
-            <Link to="/carrito" className="btn-secondary relative p-2.5" aria-label={`Ver el carrito, ${itemCount} productos`} title="Ver el carrito">
+            <Link
+              to="/carrito"
+              className="btn-secondary relative p-2.5"
+              aria-label={`Ver el carrito, ${itemCount} productos`}
+              title="Ver el carrito"
+            >
               <ShoppingBag className="h-5 w-5" />
               {itemCount > 0 ? (
                 <span className="absolute -bottom-2 -right-2 min-w-5 border-[3px] border-borde bg-acento px-1 text-xs font-bold leading-tight text-crema">
@@ -73,27 +81,7 @@ export function SiteHeader() {
               ) : null}
             </Link>
 
-            {isLoggedIn ? (
-              <>
-                <span className="hidden border-[3px] border-borde bg-superficie-alt px-3 py-2 text-sm font-bold text-tinta sm:block">
-                  {user?.name}
-                </span>
-                <button type="button" className="btn-secondary p-2.5" onClick={logout} aria-label="Cerrar sesión" title="Salir">
-                  <LogOut className="h-5 w-5" />
-                </button>
-              </>
-            ) : (
-              <>
-                <Link to="/ingresar" className="btn-primary px-3 py-2.5" title="Ingresar">
-                  <LogIn className="h-5 w-5" />
-                  <span className="hidden sm:inline">Ingresar</span>
-                </Link>
-                <Link to="/registro" className="btn-secondary hidden px-3 py-2.5 lg:inline-flex" title="Crear cuenta">
-                  <UserPlus className="h-5 w-5" />
-                  Crear cuenta
-                </Link>
-              </>
-            )}
+            <MenuDeCuenta />
           </div>
         </div>
       </header>

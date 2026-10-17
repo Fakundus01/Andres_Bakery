@@ -70,7 +70,7 @@ Todo esto entró con su ADR y su tarea en el mismo ciclo (R08). **F33 ya estaba 
 
 | ID | Feature | Estado | Tarea | ADR |
 |---|---|---|---|---|
-| F42 | La tarjeta **se da vuelta con el hover** donde hay mouse, sin perder el botón ni el "Agregar" | **Complete** | T10 | ADR-016 |
+| F42 | La tarjeta **se da vuelta** sin perder el botón ni el "Agregar" | **Complete** | T10 | ADR-016, **reemplazada por F53/ADR-022**: el disparador dejó de ser el hover |
 | F43 | **Redes sociales** de Andrea en su perfil (Instagram, TikTok y las que ella cargue) | **Complete** | T11 | ADR-017 |
 | F44 | **CV / perfil profesional**: trayectoria, estudios, qué sabe hacer, en una vista imprimible (`/cv`) | **Complete** | T11 | ADR-017 |
 | F45 | **Subir fotos desde el panel**, sin pegar links | **Complete** | T12 | ADR-018 |
@@ -78,6 +78,19 @@ Todo esto entró con su ADR y su tarea en el mismo ciclo (R08). **F33 ya estaba 
 | F47 | **Gráficos de ventas** en el panel: facturación por día, pedidos por estado, lo que más se pide | **Complete** | T13 | ADR-019 |
 | F48 | **Visitas a la página**, medidas sin cookies ni IP | **Complete** | T13 | ADR-019 |
 | F49 | **Panel más fácil**: la carta se carga con un formulario guiado por pasos, con la foto arriba | **Complete** | T12 | ADR-018 |
+
+## B4 · Pedido del humano el 2026-10-17 (cuarta tanda, por dictado)
+
+Todo sobre diseño, mirando lo que había quedado de las tandas anteriores.
+
+| ID | Feature | Estado | Tarea | ADR |
+|---|---|---|---|---|
+| F50 | **Header limpio**: hamburguesa solo en celular, la estación adentro de Configuración, y la cuenta como un círculo con iniciales que junta Perfil, Administrador, Configuración y Salir | **Complete** | T15 | ADR-021 |
+| F51 | **Perfil de quien usa el sitio** (`/cuenta`): sus datos y sus accesos | **Complete** | T15 | ADR-021 |
+| F52 | **Panel lateral elegible**: siempre abierto, o que se abra al acercarse | **Complete** | T15 | ADR-021 |
+| F53 | **La tarjeta gira con un clic en la foto**, no con el hover | **Complete** | T15 | ADR-022 |
+
+**F53 revierte parte de F42.** El hover se construyó, se probó con el humano y se cayó en la prueba: con la tarjeta girando al acercar el puntero, el botón "Agregar" se escapa justo cuando alguien va a apretarlo. Quedó el "Agregar" del dorso, que había entrado para tapar ese problema y resultó útil igual.
 
 **Por qué F44 (el CV) no es un desvío del proyecto.** El pedido fue textual: que un reclutador que entre a ver su emprendimiento encuentre ahí su CV. No cuesta ni una tabla nueva — es el mismo `SiteContent["profile"]` de F43 (ADR-017) — y el sitio ya es, de hecho, la prueba de que el emprendimiento existe. Lo único que hace falta que no está: **que ella cargue su trayectoria real**. Hasta entonces `/cv` muestra los huecos y no se linkea desde el perfil (misma regla que F24: no se inventa la biografía de una persona).
 

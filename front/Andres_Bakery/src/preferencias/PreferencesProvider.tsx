@@ -21,20 +21,32 @@ export const ESCALAS = [
 ] as const;
 
 export const NAV_MODOS = [
-  { id: "barra", label: "Barra arriba", detalle: "La Carta y Andrea siempre a la vista." },
-  { id: "drawer", label: "Panel lateral", detalle: "Arriba queda solo el logo y la cuenta." },
+  { id: "barra", label: "Barra arriba", detalle: "La Carta y Andrea, al lado del logo." },
+  { id: "drawer", label: "Panel a la izquierda", detalle: "El menú completo en una columna, al costado." },
+] as const;
+
+export const PANELES_LATERALES = [
+  { id: "fijo", label: "Siempre abierto", detalle: "Ocupa su lugar y no se mueve nunca." },
+  {
+    id: "hover",
+    label: "Se abre al acercarte",
+    detalle: "Queda una cinta angosta y se despliega cuando llevás el mouse.",
+  },
 ] as const;
 
 export type Tema = (typeof TEMAS)[number]["id"];
 export type Tipografia = (typeof TIPOGRAFIAS)[number]["id"];
 export type Escala = (typeof ESCALAS)[number]["id"];
 export type NavModo = (typeof NAV_MODOS)[number]["id"];
+export type PanelLateral = (typeof PANELES_LATERALES)[number]["id"];
 
 export type Preferencias = {
   tema: Tema;
   tipografia: Tipografia;
   escala: Escala;
   navModo: NavModo;
+  /** Solo cuenta con navModo = "drawer", y solo en escritorio. */
+  panelLateral: PanelLateral;
 };
 
 export const PREFERENCIAS_POR_DEFECTO: Preferencias = {
@@ -42,6 +54,9 @@ export const PREFERENCIAS_POR_DEFECTO: Preferencias = {
   tipografia: "pixel",
   escala: "normal",
   navModo: "barra",
+  // Si alguien elige el panel lateral, lo espera quieto: que se esconda es la
+  // opción, no el default.
+  panelLateral: "fijo",
 };
 
 const CLAVE_STORAGE = "andres-bakery:preferencias";
@@ -51,6 +66,7 @@ const VALIDOS: Record<keyof Preferencias, readonly { id: string }[]> = {
   tipografia: TIPOGRAFIAS,
   escala: ESCALAS,
   navModo: NAV_MODOS,
+  panelLateral: PANELES_LATERALES,
 };
 
 /** Solo acepta valores que existan hoy: si una preferencia vieja quedó guardada

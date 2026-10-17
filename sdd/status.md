@@ -1,6 +1,6 @@
 # status.md · Andres Bakery
 
-**Versión:** 0.6.0 · **Última actualización:** 2026-10-17
+**Versión:** 0.7.0 · **Última actualización:** 2026-10-17
 
 ## 1 · Dónde estamos
 
@@ -12,7 +12,7 @@ El repo tiene 4 meses de código y **estuvo 7 meses quieto** hasta el 2026-10-16
 |---|---|
 | Tests del back | **151 OK** (eran 70 al cerrar T3) |
 | Lint del front (eslint + tsc) | limpio |
-| Build del front | verde — 360,12 KB JS · 30,71 KB CSS |
+| Build del front | verde — 365,68 KB JS · 33,85 KB CSS |
 | Migraciones | **`0003` aplicada**. Probada sobre una copia antes que sobre la real, en los dos sentidos y desde base vacía |
 | App corriendo | back en `127.0.0.1:5000`, front en `127.0.0.1:5173`. Probado en navegador: giro por hover, subida de una foto real de punta a punta, panel con gráficos, perfil y `/cv` |
 | Responsive 390px | `/cv`, `/historia`, `/tienda` y `/admin`: cero desbordes, medido con `scrollWidth` vs `clientWidth` |
@@ -33,6 +33,10 @@ Lo heredado (F01–F12) está Complete salvo lo anotado. De lo pedido el 2026-10
 | F46 | Asistente de recetas con IA | 100% | **Complete, apagado** — necesita `ANTHROPIC_API_KEY` y la decisión de gastar |
 | F47 | Gráficos de ventas | 100% | **Complete** |
 | F48 | Visitas medidas sin cookies | 100% | **Complete** |
+| F50 | Header limpio + menú de cuenta | 100% | **Complete** — T15 |
+| F51 | `/cuenta`, el perfil de quien usa el sitio | 100% | **Complete** — T15 |
+| F52 | Panel lateral fijo o que se abre al acercarse | 100% | **Complete** — T15 |
+| F53 | La tarjeta gira con un clic en la foto | 100% | **Complete** — T15, reemplaza el hover de F42 |
 | F49 | Panel más fácil | 100% | **Complete** — la foto se sube, el borrador prellena |
 
 **Lo que sigue abierto de las tandas anteriores** (sin cambios en este ciclo): F19 y F20 (variantes e ingredientes desde el panel, 80% y 70%), F22 (que el checkout respete el flag por producto, 60%), F23 y F31 (WhatsApp y la ruta pública de pedido, T7), F24 (su texto y su foto), F32 (vista propia de cliente), F26 (PedidosYa, diferida) y F41 (deploy, diferida).

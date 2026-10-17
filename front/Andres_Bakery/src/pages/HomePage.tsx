@@ -111,7 +111,7 @@ export function HomePage() {
       <SectionHeading
         eyebrow="Lo más pedido"
         title="La carta de Andrea, con precio por unidad y qué lleva cada cosa"
-        description="Cada tarjeta se da vuelta y muestra los ingredientes. Si algo se vende de a 6, lo dice antes de que llegues al carrito."
+        description="Tocá la foto de una tarjeta y se da vuelta con los ingredientes. Si algo se vende de a 6, lo dice antes de que llegues al carrito."
       />
       {error ? <ErrorBanner message={error} /> : null}
       <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">

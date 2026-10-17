@@ -226,7 +226,7 @@ Decisiones con fecha y motivo, para no re-discutirlas. Una decisión no se borra
 
 ## ADR-016 · El hover da vuelta la tarjeta solo donde hay un mouse, y el dorso se queda con el botón de agregar
 
-**Fecha:** 2026-10-17 · **Estado:** Vigente · **Enmienda:** el comentario de `ProductCard.tsx` que descartaba el hover
+**Fecha:** 2026-10-17 · **Estado:** ~~Vigente~~ **Reemplazada el mismo día por ADR-022**: el hover se fue entero. Lo que sobrevive es el "Agregar" en el dorso, que resultó buena idea por otro motivo · **Enmienda:** el comentario de `ProductCard.tsx` que descartaba el hover
 
 **Contexto:** F33 se implementó con un botón (ícono de info) porque en celular no hay hover y una tarjeta que gira cuando pasás el dedo es una trampa. El humano pidió explícitamente el giro con hover.
 
@@ -336,3 +336,55 @@ Entonces entra **una** dependencia nueva, `anthropic` (oficial, activa, la que r
 El borrador se pide con **salida estructurada** (`output_config.format` con un esquema JSON), que es lo que hace cumplir la forma del lado del proveedor; el parseo propio de arriba sigue estando igual, porque la defensa no se delega. Esfuerzo `low`: mirar una foto y proponer una receta base no necesita más, y el techo de gasto agradece.
 
 **Descartado:** reconocer la imagen con un modelo local (no hay dónde correrlo: el back es un proceso chico en free tier), y publicar el borrador solo si la confianza es alta (no hay medida de confianza que valga para "esto es un brownie y lleva estos ingredientes", y el costo de equivocarse lo paga ella frente a un cliente).
+
+---
+
+## ADR-021 · El header se queda con tres cosas, y el resto vive en el círculo de la cuenta
+
+**Fecha:** 2026-10-17 · **Estado:** Vigente · **Enmienda:** ADR-011 (la barra corta y el drawer)
+
+**Contexto:** el header había juntado siete controles: hamburguesa, logo, Carta, Andrea, el selector de estación (cuatro íconos), el carrito, el nombre de quien entró, salir, ingresar y crear cuenta. En pantallas medianas se amontonaba, y tres de esos controles —la estación, salir, crear cuenta— no son lo que alguien viene a hacer a una repostería.
+
+**Decisión:** arriba quedan **tres cosas**: el menú (solo en celular), la marca, y a la derecha el **carrito** y **la cuenta**.
+
+- **La hamburguesa es del celular.** En pantalla grande el menú está en la barra o en el panel lateral; un botón más para abrir lo que ya está a la vista es ruido.
+- **La cuenta es un círculo con las iniciales** (`Facundo Moreno` ⇒ `FM`), que es también el botón de entrar para quien no tiene sesión. Adentro: **Perfil**, **Administrador** (solo Andrea), **Configuración** y **Salir**; sin sesión, **Ingresar**, **Crear cuenta** y **Configuración**.
+- **El selector de estación se va del header** a Configuración, donde ya estaba la misma opción. Eran cuatro íconos permanentes para algo que se toca una vez.
+- **Perfil es una pantalla nueva** (`/cuenta`): nombre, mail y los accesos a Mis pedidos, Configuración y —si corresponde— el panel. No inventa datos que no tenemos: hoy una cuenta son dos campos.
+
+**Por qué el círculo y no un botón con el nombre:** el nombre completo cambia de ancho con cada persona y empuja al carrito de lugar. Un círculo de tamaño fijo no se mueve, y las iniciales alcanzan para saber con qué cuenta estás.
+
+**El menú lateral, cuando se elige, tiene dos formas** (Configuración → "Cómo se comporta el panel"):
+
+- **Siempre abierto** (el default): ocupa su lugar en la grilla y no se mueve nunca.
+- **Se abre al acercarte**: queda una cinta de 28px y se despliega al pasar el mouse.
+
+En el modo que se esconde, el panel se dibuja **encima** del contenido y el lugar reservado no cambia: si empujara la página al abrirse, cada acercada del mouse movería todo el texto. Es el mismo problema que el de las tarjetas que temblaban, y se descarta por el mismo motivo.
+
+**Lo que se cuidó y no se ve:** el panel escondido se abre **también con el teclado**. La primera versión lo ocultaba con `visibility: hidden`, que saca los links del tabulador — y entonces no había forma de llegar al menú sin mouse. Se esconde con opacidad: un `Tab` enfoca el primer link, `focus-within` lo despliega. Medido: 4 tabulaciones desde el inicio de la página, y el panel pasa de 28 a 256px.
+
+---
+
+## ADR-022 · Las tarjetas se dan vuelta con un clic en la foto, nunca con el hover
+
+**Fecha:** 2026-10-17 · **Estado:** Vigente · **Reemplaza a:** ADR-016
+
+**Contexto:** ADR-016 puso el giro en el hover y, para que el botón "Agregar" no se escapara cuando la cara de adelante giraba, le dio al dorso su propio botón. Con el hover andando, el humano lo probó y dijo la frase que cierra el tema: *"vos tenés la imagen de primera vista y vas a ver un Agregar, y vos querés ir a tocar el Agregar y pum, se da vuelta la tarjeta"*.
+
+**Decisión:** **el giro es un clic en la foto.** Ni hover, ni demora, ni intención del puntero.
+
+- La **foto** es el botón que da vuelta la tarjeta, con un cartelito "Ver qué lleva" en la esquina para que se note que hace algo.
+- La cara de adelante queda con **un** botón a lo ancho: Agregar.
+- El dorso mantiene su Agregar (se puede comprar desde cualquiera de las dos caras) más "Ver la ficha" y "Volver".
+- Se fue el botón de info: la foto hace exactamente lo mismo y es un objetivo veinte veces más grande.
+
+**Por qué esto es mejor y no solo distinto:** girar pasa a ser algo que la persona **pide**, no algo que le **pasa** por mover el mouse. El botón principal de la carta deja de moverse solo, y la interacción es **la misma con dedo que con mouse** — lo que hace que `usePunteroFino` deje de hacer falta acá (sigue vivo para clasificar el dispositivo en las métricas).
+
+**Lo que se arregló en el camino, medido antes y después:**
+
+| | Antes | Después |
+|---|---|---|
+| Ancho mínimo de la tarjeta durante el giro | **124px** de 392 (dos cuadros seguidos de canto) | **201px**, y nunca pasa por los 90° |
+| Tarjetas que giraban al cruzar la grilla camino al carrito | **5 cambios de estado** en 150ms | **0** |
+
+El primero era el *"tiembla y desaparece"*: `steps(5)` hacía caer el giro en 72° y 108°, donde una tarjeta plana se ve de canto. Con `steps(3)` los ángulos son 0, 60, 120 y 180. El segundo desapareció solo al sacar el hover.

@@ -4,6 +4,47 @@ Semver `MAJOR.MINOR.PATCH` (R13). No se borra nada: lo viejo queda.
 
 ---
 
+## [0.7.0] · 2026-10-17 · T15: el header respira, y la tarjeta gira cuando se lo piden
+
+Una tanda entera de diseño, mirando lo construido el mismo dia.
+
+### El header tenia siete controles y ahora tiene tres (F50, F51, F52, ADR-021)
+
+Arriba se habian juntado la hamburguesa, el logo, Carta, Andrea, **cuatro iconos de estacion**, el carrito, el nombre de quien entro, salir, ingresar y crear cuenta. Quedan tres: el menu (solo en celular), la marca, y a la derecha el carrito y la cuenta.
+
+- **La hamburguesa es del celular.** En pantalla grande el menu ya esta a la vista, en la barra o en el panel lateral.
+- **La cuenta es un circulo con las iniciales** — "Facundo Moreno" da "FM" — y es tambien el boton de entrar para quien no tiene sesion. Adentro: Perfil, Administrador (solo Andrea), Configuracion y Salir. Sin sesion: Ingresar, Crear cuenta y Configuracion.
+- **El selector de estacion se fue a Configuracion**, donde ya estaba la misma opcion. Eran cuatro iconos fijos para algo que se toca una vez. `ThemeSwitcher.tsx` se borro: quedaba sin usar.
+- **Entro `/cuenta`**: nombre, mail y los accesos a Mis pedidos, Configuracion y el panel. No inventa campos que no existen.
+- **El panel lateral ahora se elige**: siempre abierto (default) o que se abra al acercarse. Medido: fijo ocupa 256px y corre el contenido; escondido deja una cinta de 28px y al abrirse **se dibuja encima**, sin mover ni un pixel de la pagina. Si empujara el texto al abrirse seria el mismo problema que las tarjetas que temblaban.
+
+**Lo que se cuido y no se ve:** el panel escondido se abre tambien con el teclado. La primera version lo ocultaba con `visibility: hidden`, que saca los links del tabulador y dejaba el menu inalcanzable sin mouse. Con opacidad, 4 tabulaciones lo despliegan.
+
+### La tarjeta gira con un clic en la foto (F53, ADR-022, reemplaza ADR-016)
+
+El hover duro medio dia. Lo probo el humano y lo dijo mejor que cualquier spec: *"vos tenes la imagen de primera vista y vas a ver un Agregar, y vos queres ir a tocar el Agregar y pum, se da vuelta la tarjeta"*.
+
+Ahora la **foto** es el boton, con un cartelito "Ver que lleva" para que se note. Girar pasa a ser algo que la persona pide, no algo que le pasa por mover el mouse, y es la misma interaccion con dedo que con mouse.
+
+De paso se arreglaron las dos cosas que el humano describio como "tiemblan y desaparecen", las dos **medidas antes y despues**:
+
+| | Antes | Despues |
+|---|---|---|
+| Ancho minimo durante el giro | **124px** de 392, dos cuadros seguidos de canto | **201px**, y nunca pasa por los 90 grados |
+| Tarjetas que giraban al cruzar la grilla | **5 cambios de estado** en 150ms | **0** |
+
+Lo primero era `steps(5)`, que hacia caer el giro justo en 72 y 108 grados. Con `steps(3)` los angulos son 0, 60, 120 y 180. Lo segundo se fue solo al sacar el hover.
+
+### Numeros
+
+| Antes (0.6.0) | Ahora (0.7.0) |
+|---|---|
+| 151 tests del back | **151**, sin cambios: esta tanda es de front |
+| JS 360,12 KB · CSS 30,71 KB | JS 365,68 KB · CSS 33,85 KB |
+| 7 controles en el header | **3** |
+
+---
+
 ## [0.6.0] · 2026-10-17 · T10-T14: el hover, el perfil con CV, las fotos, los graficos y la IA apagada
 
 Cinco pedidos del humano por dictado, con sus cinco ADR (016 a 020). Todo medido, nada deducido.

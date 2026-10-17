@@ -33,6 +33,10 @@
 
 /* Tamano de letra: mover el font-size de <html> escala TODO, porque las
    utilidades de Tailwind estan en rem. Un solo lugar, cero clases tocadas. */
+/* Alto del header. Lo usa el panel lateral para saber dónde empezar y hasta
+   dónde llegar. En rem para que acompañe al tamaño de letra elegido. */
+:root { --alto-header: 4.5rem; }
+
 :root[data-escala="chica"] { font-size: 14px; }
 :root[data-escala="normal"] { font-size: 16px; }
 :root[data-escala="grande"] { font-size: 18px; }
@@ -244,7 +248,15 @@
   .flip-carta-interior {
     display: grid;
     transform-style: preserve-3d;
-    transition: transform 320ms steps(5);
+    /* steps(3) y no steps(5). Medido: con 5 pasos el giro cae en 72 y 108
+       grados, donde una tarjeta plana se ve de canto — 124px de ancho sobre
+       392, dos cuadros seguidos. Eso es lo que se veia como "tiembla y
+       desaparece". Con 3 pasos los angulos son 0, 60, 120 y 180: nunca baja
+       del 50% de ancho y nunca pasa por los 90 grados, que es el angulo en
+       el que no se ve ninguna de las dos caras. */
+    transition: transform 240ms steps(3);
+    /* Capa propia: sin esto los bordes de 3px titilan mientras rota. */
+    will-change: transform;
   }
 
   .flip-carta[data-volteada="true"] .flip-carta-interior {

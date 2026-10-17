@@ -73,7 +73,7 @@ export function ShopPage() {
       <SectionHeading
         eyebrow="La carta"
         title="Todo lo que Andrea tiene para encargar"
-        description="Buscá por nombre, filtrá por categoría o por etiqueta. Cada tarjeta se da vuelta y te muestra qué lleva."
+        description="Buscá por nombre, filtrá por categoría o por etiqueta. Tocá la foto de cualquier tarjeta y se da vuelta para mostrarte qué lleva."
       />
 
       <section className="pixel-panel grid gap-4 p-5 md:grid-cols-[1fr_220px]">

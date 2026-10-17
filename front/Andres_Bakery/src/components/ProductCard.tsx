@@ -1,35 +1,30 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ChefHat, Info, RotateCcw, ShoppingBag } from "lucide-react";
+import { ChefHat, RotateCcw, ShoppingBag } from "lucide-react";
 
 import { textoRegla } from "../lib/cantidades";
 import { heroFallback } from "../lib/constants";
 import { formatCurrency } from "../lib/format";
 import { urlDeImagen } from "../lib/imagenes";
 import type { Product } from "../lib/types";
-import { usePunteroFino } from "../lib/usePunteroFino";
 import { TagBadge } from "./TagBadge";
 
-/** Se da vuelta con el hover donde hay mouse, y con el botón en todas partes
- *  (ADR-016). El botón no es el plan B: en celular es el único camino, y es
- *  también el del teclado. Por eso el dorso tiene su propio "Agregar": con el
- *  puntero encima, el de la cara de adelante no se puede clickear. */
+/** Se da vuelta **con un clic en la foto**, y con nada más (ADR-022).
+ *
+ *  Nunca con el hover: la cara de adelante tiene el "Agregar", y una tarjeta
+ *  que gira cuando el puntero se acerca le mueve ese botón justo a quien iba a
+ *  apretarlo. Girar tiene que ser algo que la persona pide, no algo que le
+ *  pasa por mover el mouse.
+ *
+ *  La foto es el control: es lo más grande de la tarjeta, funciona igual con
+ *  dedo que con mouse, y el cartelito de la esquina dice qué hace. */
 export function ProductCard({ product, onAddToCart }: { product: Product; onAddToCart: () => void }) {
   const [volteada, setVolteada] = useState(false);
-  const giraConElMouse = usePunteroFino();
   const regla = textoRegla(product);
   const etiquetas = product.tags ?? [];
 
-  const alEntrarElMouse = giraConElMouse ? () => setVolteada(true) : undefined;
-  const alSalirElMouse = giraConElMouse ? () => setVolteada(false) : undefined;
-
   return (
-    <div
-      className="flip-carta"
-      data-volteada={volteada}
-      onMouseEnter={alEntrarElMouse}
-      onMouseLeave={alSalirElMouse}
-    >
+    <div className="flip-carta" data-volteada={volteada}>
       <div className="flip-carta-interior">
         <article
           className="flip-cara product-card flex flex-col overflow-hidden"
@@ -37,11 +32,24 @@ export function ProductCard({ product, onAddToCart }: { product: Product; onAddT
           inert={volteada}
         >
           <div className="relative">
-            <img
-              src={urlDeImagen(product.image_url) || heroFallback[0].image}
-              alt={product.name}
-              className="h-56 w-full border-b-[3px] border-borde object-cover"
-            />
+            <button
+              type="button"
+              onClick={() => setVolteada(true)}
+              className="block w-full cursor-pointer"
+              aria-label={`Ver qué lleva ${product.name}`}
+            >
+              <img
+                src={urlDeImagen(product.image_url) || heroFallback[0].image}
+                alt={product.name}
+                className="h-56 w-full border-b-[3px] border-borde object-cover"
+              />
+              {/* Que se vea que la foto hace algo: sin esto, el giro es un
+                  secreto que solo encuentra quien clickea por curiosidad. */}
+              <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 border-[3px] border-borde bg-superficie px-2 py-1 text-xs font-bold text-tinta">
+                <RotateCcw className="h-3.5 w-3.5" />
+                Ver qué lleva
+              </span>
+            </button>
             {etiquetas.length > 0 ? (
               <ul className="absolute left-3 top-3 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2">
                 {etiquetas.map((tag) => (
@@ -89,20 +97,15 @@ export function ProductCard({ product, onAddToCart }: { product: Product; onAddT
               ) : null}
             </div>
 
-            <div className="mt-4 flex gap-2">
-              <button className="btn-primary flex-1 justify-center" type="button" onClick={onAddToCart} disabled={!product.available}>
+            <div className="mt-4">
+              <button
+                className="btn-primary w-full justify-center"
+                type="button"
+                onClick={onAddToCart}
+                disabled={!product.available}
+              >
                 <ShoppingBag className="h-4 w-4" />
                 Agregar
-              </button>
-              <button
-                className="btn-secondary px-3"
-                type="button"
-                onClick={() => setVolteada(true)}
-                aria-expanded={volteada}
-                aria-label={`Ver qué lleva ${product.name}`}
-                title="Ver qué lleva"
-              >
-                <Info className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -150,18 +153,15 @@ export function ProductCard({ product, onAddToCart }: { product: Product; onAddT
               <Link to={`/producto/${product.slug}`} className="btn-secondary px-3 py-2 text-sm">
                 Ver la ficha
               </Link>
-              {/* Con mouse, salir de la tarjeta ya la devuelve: el botón sería ruido. */}
-              {giraConElMouse ? null : (
-                <button
-                  className="btn-secondary px-3"
-                  type="button"
-                  onClick={() => setVolteada(false)}
-                  aria-label="Volver a la foto"
-                  title="Volver"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                </button>
-              )}
+              <button
+                className="btn-secondary px-3"
+                type="button"
+                onClick={() => setVolteada(false)}
+                aria-label="Volver a la foto"
+                title="Volver"
+              >
+                <RotateCcw className="h-4 w-4" />
+              </button>
             </div>
           </div>
         </article>
