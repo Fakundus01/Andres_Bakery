@@ -4,6 +4,37 @@ Semver `MAJOR.MINOR.PATCH` (R13). No se borra nada: lo viejo queda.
 
 ---
 
+## [0.7.1] · 2026-10-17 · El hover le borraba la rotacion al dorso
+
+Reportado por el humano usando la pagina: *"cuando esta dada vuelta, si vos le pasas el mouse, da vuelta otra vez, es como que quiere dar vuelta otra vez"*.
+
+**La causa, medida y no deducida.** Las dos caras de la tarjeta son `.product-card`, que tiene un efecto de hover para levantarse dos pixeles:
+
+```css
+.product-card:hover { transform: translate(-2px, -2px); }
+```
+
+El dorso se sostiene con `transform: rotateY(180deg)` de `.flip-cara-dorso`. **Es la misma propiedad**, y `.product-card:hover` (0,2,0) le gana en especificidad a `.flip-cara-dorso` (0,1,0). Con el mouse encima, el dorso perdia la rotacion:
+
+| estado | transform del dorso | angulo |
+|---|---|---|
+| dada vuelta, sin mouse | `matrix3d(-1, 0, 0, 0, …)` | **-180°** |
+| dada vuelta, **con mouse** | `matrix(1, 0, 0, 1, -2, -2)` | **0°** |
+
+El dorso se des-rotaba debajo del puntero. Con `backface-visibility: hidden` encima, el resultado se ve exactamente como lo describio: la tarjeta queriendo darse vuelta sola.
+
+**El arreglo son dos palabras:** el levantadito pasa a usar la propiedad **`translate`**, que es independiente y **se compone** con `transform` en vez de reemplazarlo.
+
+```css
+.product-card:hover { translate: -2px -2px; }
+```
+
+Verificado con el mouse de verdad: el dorso se queda en **-180° en los tres estados** (con mouse, sin mouse, y despues de cuatro pasadas seguidas), y el levantadito sigue andando en las dos caras (`translate: none` → `-2px -2px`).
+
+**La leccion, que sirve fuera de este proyecto:** un efecto de hover escrito con `transform` pisa cualquier `transform` que el elemento necesite para otra cosa. En algo que rota, se traslada o se escala por su cuenta, el hover va con `translate`/`rotate`/`scale`, que son propiedades aparte. Quedo anotado en el Cerebro.
+
+---
+
 ## [0.7.0] · 2026-10-17 · T15: el header respira, y la tarjeta gira cuando se lo piden
 
 Una tanda entera de diseño, mirando lo construido el mismo dia.

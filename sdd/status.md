@@ -1,6 +1,6 @@
 # status.md · Andres Bakery
 
-**Versión:** 0.7.0 · **Última actualización:** 2026-10-17
+**Versión:** 0.7.1 · **Última actualización:** 2026-10-17
 
 ## 1 · Dónde estamos
 
@@ -17,6 +17,7 @@ El repo tiene 4 meses de código y **estuvo 7 meses quieto** hasta el 2026-10-16
 | App corriendo | back en `127.0.0.1:5000`, front en `127.0.0.1:5173`. Probado en navegador: giro por hover, subida de una foto real de punta a punta, panel con gráficos, perfil y `/cv` |
 | Responsive 390px | `/cv`, `/historia`, `/tienda` y `/admin`: cero desbordes, medido con `scrollWidth` vs `clientWidth` |
 | Archivos > 300 líneas | ninguno (el más largo es `CheckoutPage.tsx`, 278) |
+| Encontrado usando la página | el hover le borraba la rotación al dorso de la tarjeta (0.7.1). Lo vio el humano, no los tests ni el reviewer: **nadie había pasado el mouse por encima de una tarjeta ya dada vuelta** |
 | Revisión independiente | dos revisores que **re-ejecutaron** (R30/R31). Entre los dos encontraron **seis cosas reales**: el techo de gasto de la IA en memoria, una carrera que devolvía 500 en un endpoint público, un filtro de URL con un agujero de un carácter, rutas basura contadas como la portada, un gráfico que ignoraba el filtro de fechas, y dos tests que pasaban de casualidad. **Las seis quedaron corregidas con su test**, cada uno visto en rojo primero |
 | Rama | `dev`, adelantada respecto de `main` |
 

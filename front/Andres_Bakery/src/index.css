@@ -125,11 +125,18 @@
       -4px 0 0 0 var(--color-borde),
       4px 0 0 0 var(--color-borde),
       8px 8px 0 0 var(--color-sombra);
-    transition: transform 120ms steps(2), box-shadow 120ms steps(2);
+    transition: translate 120ms steps(2), box-shadow 120ms steps(2);
   }
 
+  /* El levantadito usa la propiedad `translate`, NO `transform`.
+     Las dos caras de una tarjeta que gira son `.product-card`, y el dorso se
+     sostiene con `transform: rotateY(180deg)`. Como `.product-card:hover` gana
+     en especificidad, un `transform` acá le borraba la rotacion al dorso: con
+     el mouse encima pasaba de -180 a 0 grados y parecia que la tarjeta queria
+     darse vuelta sola. `translate` es una propiedad aparte y se compone con el
+     `transform` en vez de reemplazarlo. */
   .product-card:hover {
-    transform: translate(-2px, -2px);
+    translate: -2px -2px;
     box-shadow:
       0 -4px 0 0 var(--color-borde),
       0 4px 0 0 var(--color-borde),
