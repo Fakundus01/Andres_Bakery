@@ -1,14 +1,12 @@
-/** El numero sale de env, nunca del codigo. Solo digitos con pais, sin + ni espacios.
- *  Si no esta configurado, la UI lo dice en vez de armar un link roto. */
-const CRUDO = (import.meta.env.VITE_WHATSAPP_PHONE ?? "").replace(/\D/g, "");
-
-export const WHATSAPP_CONFIGURADO = CRUDO.length >= 10;
-
-export function linkWhatsApp(mensaje?: string) {
-  if (!WHATSAPP_CONFIGURADO) {
+/** El número de WhatsApp sale del back (`WHATSAPP_PHONE`), no del código ni
+ *  del .env del front: antes estaba en los dos lados y podían discrepar.
+ *  Si no está configurado, la UI lo dice en vez de armar un link roto. */
+export function linkWhatsApp(telefono: string | undefined | null, mensaje?: string) {
+  const digitos = (telefono ?? "").replace(/\D/g, "");
+  if (digitos.length < 10) {
     return null;
   }
-  const base = `https://wa.me/${CRUDO}`;
+  const base = `https://wa.me/${digitos}`;
   return mensaje ? `${base}?text=${encodeURIComponent(mensaje)}` : base;
 }
 
@@ -31,5 +29,10 @@ export const PREGUNTAS_FRECUENTES = [
     pregunta: "¿Puedo encargar algo especial?",
     respuesta:
       "Sí. Las tortas y las cajas para regalar se encargan con anticipación. Escribinos por WhatsApp con la idea, la fecha y para cuántas personas.",
+  },
+  {
+    pregunta: "¿Por qué algunas cosas se venden de a 6?",
+    respuesta:
+      "Porque se hornean en tanda. Cuando un producto tiene mínimo o se vende por paquete, la ficha lo aclara y el carrito suma de a esa cantidad.",
   },
 ];

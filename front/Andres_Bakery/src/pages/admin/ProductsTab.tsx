@@ -1,13 +1,16 @@
 import type { Dispatch, FormEvent, SetStateAction } from "react";
 
+import { TagBadge } from "../../components/TagBadge";
 import { Field } from "../../components/ui";
+import { textoRegla } from "../../lib/cantidades";
 import { heroFallback } from "../../lib/constants";
 import { formatCurrency } from "../../lib/format";
-import type { Product } from "../../lib/types";
+import type { Product, Tag } from "../../lib/types";
 import type { ProductForm } from "../../lib/ui-types";
 
 export function ProductsTab({
   products,
+  tags,
   productForm,
   setProductForm,
   editingProductId,
@@ -17,6 +20,7 @@ export function ProductsTab({
   onDelete,
 }: {
   products: Product[];
+  tags: Tag[];
   productForm: ProductForm;
   setProductForm: Dispatch<SetStateAction<ProductForm>>;
   editingProductId: number | null;
@@ -25,26 +29,124 @@ export function ProductsTab({
   onReset: () => void;
   onDelete: (productId: number) => void;
 }) {
+  const cambiar = <Clave extends keyof ProductForm>(clave: Clave, valor: ProductForm[Clave]) =>
+    setProductForm((current) => ({ ...current, [clave]: valor }));
+
+  const alternarEtiqueta = (tagId: number) =>
+    setProductForm((current) => ({
+      ...current,
+      tag_ids: current.tag_ids.includes(tagId)
+        ? current.tag_ids.filter((id) => id !== tagId)
+        : [...current.tag_ids, tagId],
+    }));
+
   return (
     <section className="grid gap-6 xl:grid-cols-[0.78fr_1.22fr]">
       <form className="pixel-panel space-y-4 p-6" onSubmit={onSubmit}>
-        <h3 className="font-display text-3xl font-semibold text-tinta">{editingProductId ? "Editar producto" : "Nuevo producto"}</h3>
-        <Field label="Nombre"><input className="field" value={productForm.name} onChange={(event) => setProductForm((current) => ({ ...current, name: event.target.value }))} required /></Field>
-        <Field label="Descripción"><textarea className="field min-h-28" value={productForm.description} onChange={(event) => setProductForm((current) => ({ ...current, description: event.target.value }))} /></Field>
+        <h3 className="font-display text-3xl font-semibold text-tinta">
+          {editingProductId ? "Editar producto" : "Nuevo producto"}
+        </h3>
+
+        <Field label="Nombre">
+          <input className="field" value={productForm.name} onChange={(event) => cambiar("name", event.target.value)} required />
+        </Field>
+        <Field label="Descripción">
+          <textarea className="field min-h-24" value={productForm.description} onChange={(event) => cambiar("description", event.target.value)} />
+        </Field>
+
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Precio"><input className="field" type="number" min="0" step="0.01" value={productForm.price} onChange={(event) => setProductForm((current) => ({ ...current, price: event.target.value }))} required /></Field>
-          <Field label="Categoría"><input className="field" value={productForm.category} onChange={(event) => setProductForm((current) => ({ ...current, category: event.target.value }))} /></Field>
+          <Field label="Precio de una unidad">
+            <input className="field" type="number" min="0" step="0.01" value={productForm.price} onChange={(event) => cambiar("price", event.target.value)} required />
+          </Field>
+          <Field label="Unidad">
+            <input className="field" value={productForm.unit_label} onChange={(event) => cambiar("unit_label", event.target.value)} placeholder="unidad, docena, kg..." />
+          </Field>
         </div>
-        <Field label="Imagen"><input className="field" value={productForm.image_url} onChange={(event) => setProductForm((current) => ({ ...current, image_url: event.target.value }))} placeholder="https://..." /></Field>
-        <label className="flex items-center gap-3 border-[3px] border-borde bg-superficie px-4 py-3 text-sm font-medium text-tinta-suave">
-          <input type="checkbox" checked={productForm.available} onChange={(event) => setProductForm((current) => ({ ...current, available: event.target.checked }))} />
-          Disponible en la tienda
-        </label>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="Mínimo de pedido">
+            <input className="field" type="number" min="1" step="1" value={productForm.min_qty} onChange={(event) => cambiar("min_qty", event.target.value)} />
+          </Field>
+          <Field label="Se vende de a">
+            <input className="field" type="number" min="1" step="1" value={productForm.qty_step} onChange={(event) => cambiar("qty_step", event.target.value)} />
+          </Field>
+        </div>
+        <p className="border-[3px] border-borde bg-superficie-alt p-3 text-xs leading-5 text-tinta-suave">
+          Si pusieras mínimo 6 y "de a" 6, el cliente puede pedir 6, 12 o 18; nunca 7. Dejalos en 1 si
+          se vende de uno en uno.
+        </p>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="Categoría">
+            <input className="field" value={productForm.category} onChange={(event) => cambiar("category", event.target.value)} />
+          </Field>
+          <Field label="Imagen">
+            <input className="field" value={productForm.image_url} onChange={(event) => cambiar("image_url", event.target.value)} placeholder="https://..." />
+          </Field>
+        </div>
+
+        <Field label="Aviso de preparación">
+          <input className="field" value={productForm.prep_note} onChange={(event) => cambiar("prep_note", event.target.value)} placeholder="Se encarga con 48 h de anticipación" />
+        </Field>
+
+        <Field label="Receta paso a paso (opcional)">
+          <textarea
+            className="field min-h-32"
+            value={productForm.steps}
+            onChange={(event) => cambiar("steps", event.target.value)}
+            placeholder={"Un paso por línea.\nDerretir el chocolate...\nBatir los huevos..."}
+          />
+        </Field>
+        <p className="text-xs leading-5 text-tinta-tenue">
+          Si lo dejás vacío, la ficha del producto no muestra la sección de receta. Un paso por línea.
+        </p>
+
+        {tags.length > 0 ? (
+          <div>
+            <p className="text-sm font-semibold text-tinta-suave">Etiquetas</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {tags.map((tag) => (
+                <button
+                  key={tag.id}
+                  type="button"
+                  aria-pressed={productForm.tag_ids.includes(tag.id)}
+                  onClick={() => alternarEtiqueta(tag.id)}
+                  className={`border-[3px] border-borde px-3 py-1.5 text-xs font-bold uppercase ${
+                    productForm.tag_ids.includes(tag.id) ? "bg-acento text-crema" : "bg-superficie-alt text-tinta"
+                  }`}
+                >
+                  {tag.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="border-[3px] border-dashed border-borde p-3 text-xs leading-5 text-tinta-suave">
+            Todavía no creaste ninguna etiqueta. Se crean en la pestaña Etiquetas.
+          </p>
+        )}
+
+        <div className="space-y-2">
+          {(
+            [
+              ["available", "Disponible en la carta"],
+              ["allows_delivery", "Se puede enviar"],
+              ["allows_pickup", "Se puede retirar"],
+            ] as const
+          ).map(([clave, etiqueta]) => (
+            <label key={clave} className="flex items-center gap-3 border-[3px] border-borde bg-superficie px-4 py-3 text-sm font-medium text-tinta-suave">
+              <input type="checkbox" checked={productForm[clave]} onChange={(event) => cambiar(clave, event.target.checked)} />
+              {etiqueta}
+            </label>
+          ))}
+        </div>
+
         <div className="flex flex-wrap gap-3">
           <button className="btn-primary" type="submit">{editingProductId ? "Guardar cambios" : "Crear producto"}</button>
           <button className="btn-secondary" type="button" onClick={onReset}>Limpiar</button>
         </div>
       </form>
+
       <div className="grid gap-4 md:grid-cols-2">
         {products.map((product) => (
           <article key={product.id} className="pixel-panel overflow-hidden p-0">
@@ -57,13 +159,52 @@ export function ProductsTab({
                 </div>
                 <span className="bg-tinta px-3 py-1 text-xs font-semibold text-crema">{product.available ? "Activo" : "Oculto"}</span>
               </div>
+
+              {product.tags && product.tags.length > 0 ? (
+                <ul className="mt-3 flex flex-wrap gap-2">
+                  {product.tags.map((tag) => (
+                    <li key={tag.id}>
+                      <TagBadge tag={tag} torcido={false} />
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+
               <p className="mt-3 text-sm leading-6 text-tinta-suave">{product.description}</p>
-              <div className="mt-4 flex items-center justify-between">
-                <p className="text-lg font-semibold text-tinta">{formatCurrency(product.price)}</p>
-                <div className="flex gap-2">
-                  <button className="btn-secondary" type="button" onClick={() => { setEditingProductId(product.id); setProductForm({ name: product.name, description: product.description ?? "", price: String(product.price), category: product.category, image_url: product.image_url ?? "", available: product.available }); }}>Editar</button>
-                  <button className="btn-secondary" type="button" onClick={() => onDelete(product.id)}>Eliminar</button>
-                </div>
+
+              <p className="mt-3 text-xs font-bold text-tinta-tenue">
+                {formatCurrency(product.price)} por {product.unit_label}
+                {textoRegla(product) ? ` · ${textoRegla(product)}` : ""}
+                {product.steps ? " · con receta" : ""}
+              </p>
+
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  className="btn-secondary"
+                  type="button"
+                  onClick={() => {
+                    setEditingProductId(product.id);
+                    setProductForm({
+                      name: product.name,
+                      description: product.description ?? "",
+                      steps: product.steps ?? "",
+                      prep_note: product.prep_note ?? "",
+                      price: String(product.price),
+                      unit_label: product.unit_label,
+                      min_qty: String(product.min_qty),
+                      qty_step: String(product.qty_step),
+                      category: product.category,
+                      image_url: product.image_url ?? "",
+                      available: product.available,
+                      allows_pickup: product.allows_pickup,
+                      allows_delivery: product.allows_delivery,
+                      tag_ids: (product.tags ?? []).map((tag) => tag.id),
+                    });
+                  }}
+                >
+                  Editar
+                </button>
+                <button className="btn-secondary" type="button" onClick={() => onDelete(product.id)}>Eliminar</button>
               </div>
             </div>
           </article>

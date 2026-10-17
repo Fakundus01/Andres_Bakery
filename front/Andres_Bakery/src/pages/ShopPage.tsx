@@ -3,26 +3,54 @@ import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { ProductCard } from "../components/ProductCard";
 import { EmptyState, ErrorBanner, LoadingPanel, SectionHeading } from "../components/ui";
 import { useCart } from "../contexts/CartContext";
-import { productsApi } from "../lib/api";
+import { productsApi, tagsApi } from "../lib/api";
 import { getErrorMessage } from "../lib/format";
-import type { Product } from "../lib/types";
+import type { Product, Tag } from "../lib/types";
 
 export function ShopPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
+  const [tagSlug, setTagSlug] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const deferredSearch = useDeferredValue(search);
   const { addItem } = useCart();
 
+  // El filtro por etiqueta lo resuelve el back (`?tag=`), no un filtrado en
+  // memoria: es la misma consulta que usa el link compartible.
   useEffect(() => {
+    let vigente = true;
     setLoading(true);
     productsApi
+      .list({ tag: tagSlug || undefined, soloDisponibles: true })
+      .then((data) => {
+        if (vigente) {
+          setProducts(data);
+        }
+      })
+      .catch((reason: unknown) => {
+        if (vigente) {
+          setError(getErrorMessage(reason));
+        }
+      })
+      .finally(() => {
+        if (vigente) {
+          setLoading(false);
+        }
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [tagSlug]);
+
+  useEffect(() => {
+    tagsApi
       .list()
-      .then((data) => setProducts(data.filter((product) => product.available)))
-      .catch((reason: unknown) => setError(getErrorMessage(reason)))
-      .finally(() => setLoading(false));
+      .then(setTags)
+      // Sin etiquetas la carta funciona igual: no vale la pena un error rojo.
+      .catch(() => setTags([]));
   }, []);
 
   const categories = useMemo(
@@ -43,9 +71,9 @@ export function ShopPage() {
   return (
     <div className="space-y-10 pb-10">
       <SectionHeading
-        eyebrow="Tienda"
-        title="Vendé mejor con una grilla clara, rápida y con mejor jerarquía visual"
-        description="El catálogo ahora tiene filtros, búsqueda, CTA consistente y una estética menos improvisada y más boutique."
+        eyebrow="La carta"
+        title="Todo lo que Andrea tiene para encargar"
+        description="Buscá por nombre, filtrá por categoría o por etiqueta. Cada tarjeta se da vuelta y te muestra qué lleva."
       />
 
       <section className="pixel-panel grid gap-4 p-5 md:grid-cols-[1fr_220px]">
@@ -73,6 +101,37 @@ export function ShopPage() {
             ))}
           </select>
         </div>
+
+        {tags.length > 0 ? (
+          <div className="md:col-span-2">
+            <p className="text-sm font-semibold text-tinta-suave">Etiquetas</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                aria-pressed={tagSlug === ""}
+                onClick={() => setTagSlug("")}
+                className={`border-[3px] border-borde px-3 py-1.5 text-xs font-bold ${
+                  tagSlug === "" ? "bg-acento text-crema" : "bg-superficie-alt text-tinta"
+                }`}
+              >
+                Todo
+              </button>
+              {tags.map((tag) => (
+                <button
+                  key={tag.id}
+                  type="button"
+                  aria-pressed={tagSlug === tag.slug}
+                  onClick={() => setTagSlug(tag.slug)}
+                  className={`border-[3px] border-borde px-3 py-1.5 text-xs font-bold uppercase tracking-wide ${
+                    tagSlug === tag.slug ? "bg-acento text-crema" : "bg-superficie-alt text-tinta"
+                  }`}
+                >
+                  {tag.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </section>
 
       {loading ? <LoadingPanel label="Cargando catálogo" /> : null}
@@ -80,7 +139,7 @@ export function ShopPage() {
       {!loading && !error && filteredProducts.length === 0 ? (
         <EmptyState
           title="No encontramos productos con ese filtro"
-          description="Probá cambiar la categoría o limpiar la búsqueda para ver todo el catálogo cargado por la admin."
+          description="Probá cambiar la categoría, sacar la etiqueta o limpiar la búsqueda para ver toda la carta."
         />
       ) : null}
 

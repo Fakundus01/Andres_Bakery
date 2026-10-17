@@ -2,12 +2,13 @@ import { useNavigate } from "react-router-dom";
 import { ArrowRight, ShoppingBag, X } from "lucide-react";
 
 import { useCart } from "../contexts/CartContext";
+import { QuantityPicker } from "./QuantityPicker";
 import { formatCurrency } from "../lib/format";
 import { EmptyState } from "./ui";
 
 export function CartDrawer() {
   const navigate = useNavigate();
-  const { closeCart, isCartOpen, items, openCart, removeItem, subtotal, updateQuantity } = useCart();
+  const { bajar, closeCart, isCartOpen, items, openCart, removeItem, subir, subtotal } = useCart();
 
   return (
     <>
@@ -36,16 +37,17 @@ export function CartDrawer() {
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <p className="font-semibold text-tinta">{item.name}</p>
-                        <p className="mt-1 text-sm text-tinta-tenue">{formatCurrency(item.price)} c/u</p>
+                        <p className="mt-1 text-sm text-tinta-tenue">{formatCurrency(item.price)} por {item.unit_label}</p>
                       </div>
                       <button type="button" className="text-sm font-semibold text-tinta-tenue" onClick={() => removeItem(item.id)}>Quitar</button>
                     </div>
                     <div className="mt-4 flex items-center justify-between">
-                      <div className="flex items-center gap-2 border-[3px] border-borde bg-superficie p-1">
-                        <button className="px-3 py-1 text-sm" type="button" onClick={() => updateQuantity(item.id, item.quantity - 1)}>-</button>
-                        <span className="min-w-8 text-center text-sm font-semibold">{item.quantity}</span>
-                        <button className="px-3 py-1 text-sm" type="button" onClick={() => updateQuantity(item.id, item.quantity + 1)}>+</button>
-                      </div>
+                      <QuantityPicker
+                        product={item}
+                        cantidad={item.quantity}
+                        onSubir={() => subir(item.id)}
+                        onBajar={() => bajar(item.id)}
+                      />
                       <strong className="text-tinta">{formatCurrency(item.price * item.quantity)}</strong>
                     </div>
                   </div>

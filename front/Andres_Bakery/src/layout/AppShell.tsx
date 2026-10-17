@@ -8,6 +8,7 @@ import { CarritoPage } from "../pages/CarritoPage";
 import { CheckoutPage } from "../pages/CheckoutPage";
 import { ConfiguracionPage } from "../pages/ConfiguracionPage";
 import { HomePage } from "../pages/HomePage";
+import { ProductPage } from "../pages/ProductPage";
 import { LoginPage } from "../pages/LoginPage";
 import { OrdersPage } from "../pages/OrdersPage";
 import { RegisterPage } from "../pages/RegisterPage";
@@ -23,6 +24,7 @@ export function AppShell() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/tienda" element={<ShopPage />} />
+          <Route path="/producto/:slug" element={<ProductPage />} />
           <Route path="/historia" element={<AboutPage />} />
           <Route path="/configuracion" element={<ConfiguracionPage />} />
           <Route path="/carrito" element={<CarritoPage />} />

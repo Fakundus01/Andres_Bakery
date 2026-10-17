@@ -1,12 +1,14 @@
 import type {
   AuthPayload,
   CheckoutResponse,
+  DeliveryConfig,
   Order,
   OrderCreationPayload,
   OrderCreationResponse,
   Product,
-  Recipe,
+  ProductWritePayload,
   SiteContent,
+  Tag,
   User,
   PaymentMethod,
 } from "./types";
@@ -81,17 +83,28 @@ export const authApi = {
 };
 
 export const productsApi = {
-  list() {
-    return apiRequest<Product[]>("/api/products");
+  list(filtros: { tag?: string; soloDisponibles?: boolean } = {}) {
+    const query = new URLSearchParams();
+    if (filtros.tag) {
+      query.set("tag", filtros.tag);
+    }
+    if (filtros.soloDisponibles) {
+      query.set("available", "1");
+    }
+    const sufijo = query.toString();
+    return apiRequest<Product[]>(`/api/products${sufijo ? `?${sufijo}` : ""}`);
   },
-  create(product: Partial<Product>, token: string) {
+  getBySlug(slug: string) {
+    return apiRequest<Product>(`/api/products/${encodeURIComponent(slug)}`);
+  },
+  create(product: ProductWritePayload, token: string) {
     return apiRequest<{ id: number }>("/api/products", {
       method: "POST",
       body: product,
       token,
     });
   },
-  update(id: number, product: Partial<Product>, token: string) {
+  update(id: number, product: ProductWritePayload, token: string) {
     return apiRequest<{ status: string }>(`/api/products/${id}`, {
       method: "PUT",
       body: product,
@@ -100,32 +113,6 @@ export const productsApi = {
   },
   remove(id: number, token: string) {
     return apiRequest<{ status: string }>(`/api/products/${id}`, {
-      method: "DELETE",
-      token,
-    });
-  },
-};
-
-export const recipesApi = {
-  list() {
-    return apiRequest<Recipe[]>("/api/recipes");
-  },
-  create(recipe: Partial<Recipe>, token: string) {
-    return apiRequest<{ id: number }>("/api/recipes", {
-      method: "POST",
-      body: recipe,
-      token,
-    });
-  },
-  update(id: number, recipe: Partial<Recipe>, token: string) {
-    return apiRequest<{ status: string }>(`/api/recipes/${id}`, {
-      method: "PUT",
-      body: recipe,
-      token,
-    });
-  },
-  remove(id: number, token: string) {
-    return apiRequest<{ status: string }>(`/api/recipes/${id}`, {
       method: "DELETE",
       token,
     });
@@ -162,7 +149,36 @@ export const paymentsApi = {
   },
 };
 
+export const tagsApi = {
+  list() {
+    return apiRequest<Tag[]>("/api/tags");
+  },
+  create(tag: { name: string; color_token?: string; sort_order?: number }, token: string) {
+    return apiRequest<{ id: number; slug: string }>("/api/tags", {
+      method: "POST",
+      body: tag,
+      token,
+    });
+  },
+  update(id: number, tag: Partial<Tag> & { sort_order?: number }, token: string) {
+    return apiRequest<{ status: string }>(`/api/tags/${id}`, {
+      method: "PUT",
+      body: tag,
+      token,
+    });
+  },
+  remove(id: number, token: string) {
+    return apiRequest<{ status: string }>(`/api/tags/${id}`, {
+      method: "DELETE",
+      token,
+    });
+  },
+};
+
 export const siteApi = {
+  getDelivery() {
+    return apiRequest<DeliveryConfig>("/api/site/delivery");
+  },
   getAbout() {
     return apiRequest<SiteContent>("/api/site/about");
   },

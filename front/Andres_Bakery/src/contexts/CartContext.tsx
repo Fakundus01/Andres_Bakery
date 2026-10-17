@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { acomodarCantidad, bajarCantidad, cantidadInicial, subirCantidad } from "../lib/cantidades";
 import type { Product } from "../lib/types";
 
 export interface CartItem extends Product {
@@ -17,31 +18,49 @@ interface CartContextValue {
   isCartOpen: boolean;
   openCart: () => void;
   closeCart: () => void;
-  addItem: (product: Product) => void;
+  addItem: (product: Product, cantidad?: number) => void;
   removeItem: (productId: number) => void;
-  updateQuantity: (productId: number, quantity: number) => void;
+  /** Suma un salto del producto (de a 6 si se vende de a 6). */
+  subir: (productId: number) => void;
+  /** Resta un salto; por debajo del mínimo saca el producto del carrito. */
+  bajar: (productId: number) => void;
   clearCart: () => void;
   itemCount: number;
   subtotal: number;
 }
 
-const CART_STORAGE_KEY = "andres-bakery-cart";
+// La clave lleva version: un carrito guardado antes de T3 no tiene slug ni
+// unidad y arrastra el precio viejo. Mostrarlo seria mentirle al cliente, asi
+// que se descarta en vez de intentar completarlo a mano.
+const CART_STORAGE_KEY = "andres-bakery-cart-v2";
+const CLAVES_VIEJAS = ["andres-bakery-cart"];
 const CartContext = createContext<CartContextValue | null>(null);
 
-export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>(() => {
-    const stored = localStorage.getItem(CART_STORAGE_KEY);
-    if (!stored) {
-      return [];
-    }
+function leerCarritoGuardado(): CartItem[] {
+  for (const vieja of CLAVES_VIEJAS) {
+    localStorage.removeItem(vieja);
+  }
 
-    try {
-      return JSON.parse(stored) as CartItem[];
-    } catch {
-      localStorage.removeItem(CART_STORAGE_KEY);
-      return [];
-    }
-  });
+  const stored = localStorage.getItem(CART_STORAGE_KEY);
+  if (!stored) {
+    return [];
+  }
+
+  try {
+    const guardado = JSON.parse(stored) as CartItem[];
+    return guardado
+      .filter((item) => Boolean(item?.slug && item?.unit_label))
+      // El producto pudo cambiar de mínimo o de salto despues de guardarse:
+      // se acomoda al entrar y no recien en el checkout.
+      .map((item) => ({ ...item, quantity: acomodarCantidad(item, item.quantity) }));
+  } catch {
+    localStorage.removeItem(CART_STORAGE_KEY);
+    return [];
+  }
+}
+
+export function CartProvider({ children }: { children: ReactNode }) {
+  const [items, setItems] = useState<CartItem[]>(leerCarritoGuardado);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   const persist = (next: CartItem[]) => {
@@ -49,19 +68,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems(next);
   };
 
-  const addItem = (product: Product) => {
+  const addItem = (product: Product, cantidad?: number) => {
     const existing = items.find((item) => item.id === product.id);
     if (existing) {
       persist(
         items.map((item) =>
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item,
+          item.id === product.id
+            ? { ...item, quantity: subirCantidad(item, item.quantity) }
+            : item,
         ),
       );
       setIsCartOpen(true);
       return;
     }
 
-    persist([...items, { ...product, quantity: 1 }]);
+    const inicial = cantidad ? acomodarCantidad(product, cantidad) : cantidadInicial(product);
+    persist([...items, { ...product, quantity: inicial }]);
     setIsCartOpen(true);
   };
 
@@ -69,14 +91,29 @@ export function CartProvider({ children }: { children: ReactNode }) {
     persist(items.filter((item) => item.id !== productId));
   };
 
-  const updateQuantity = (productId: number, quantity: number) => {
-    if (quantity <= 0) {
-      removeItem(productId);
+  const subir = (productId: number) => {
+    persist(
+      items.map((item) =>
+        item.id === productId ? { ...item, quantity: subirCantidad(item, item.quantity) } : item,
+      ),
+    );
+  };
+
+  const bajar = (productId: number) => {
+    const item = items.find((candidato) => candidato.id === productId);
+    if (!item) {
       return;
     }
 
+    const siguiente = bajarCantidad(item, item.quantity);
+    if (siguiente === 0) {
+      removeItem(productId);
+      return;
+    }
     persist(
-      items.map((item) => (item.id === productId ? { ...item, quantity } : item)),
+      items.map((candidato) =>
+        candidato.id === productId ? { ...candidato, quantity: siguiente } : candidato,
+      ),
     );
   };
 
@@ -96,7 +133,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       closeCart: () => setIsCartOpen(false),
       addItem,
       removeItem,
-      updateQuantity,
+      subir,
+      bajar,
       clearCart,
       itemCount,
       subtotal,

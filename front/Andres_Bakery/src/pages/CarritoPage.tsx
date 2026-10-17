@@ -1,15 +1,17 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Minus, Plus, Trash2 } from "lucide-react";
+import { ArrowRight, Trash2 } from "lucide-react";
 
+import { QuantityPicker } from "../components/QuantityPicker";
 import { EmptyState, SectionHeading } from "../components/ui";
 import { useCart } from "../contexts/CartContext";
+import { useSiteConfig } from "../contexts/SiteConfigContext";
 import { heroFallback } from "../lib/constants";
-import { DELIVERY_FEE } from "../lib/constants";
 import { formatCurrency } from "../lib/format";
 
 export function CarritoPage() {
-  const { closeCart, items, removeItem, subtotal, updateQuantity } = useCart();
+  const { bajar, closeCart, items, removeItem, subir, subtotal } = useCart();
+  const { config, cargando } = useSiteConfig();
 
   // Agregar al carrito abre el panel rapido. Estando en esta pagina sobra,
   // y encima la tapa: aca el carrito ya esta a la vista.
@@ -46,30 +48,23 @@ export function CarritoPage() {
               />
 
               <div className="flex-1">
-                <h2 className="font-display text-xl font-bold text-tinta">{item.name}</h2>
-                <p className="mt-1 text-sm text-tinta-tenue">{formatCurrency(item.price)} cada uno</p>
+                <h2 className="font-display text-xl font-bold text-tinta">
+                  <Link to={`/producto/${item.slug}`} className="hover:text-acento">
+                    {item.name}
+                  </Link>
+                </h2>
+                <p className="mt-1 text-sm text-tinta-tenue">
+                  {formatCurrency(item.price)} por {item.unit_label}
+                </p>
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="flex items-center border-[3px] border-borde bg-superficie">
-                  <button
-                    type="button"
-                    className="px-3 py-2 text-tinta hover:bg-superficie-alt"
-                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                    aria-label={`Sacar uno de ${item.name}`}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </button>
-                  <span className="min-w-10 text-center font-display text-lg font-bold text-tinta">{item.quantity}</span>
-                  <button
-                    type="button"
-                    className="px-3 py-2 text-tinta hover:bg-superficie-alt"
-                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                    aria-label={`Sumar uno de ${item.name}`}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                </div>
+                <QuantityPicker
+                  product={item}
+                  cantidad={item.quantity}
+                  onSubir={() => subir(item.id)}
+                  onBajar={() => bajar(item.id)}
+                />
 
                 <p className="min-w-28 text-right font-display text-xl font-bold text-acento">
                   {formatCurrency(item.price * item.quantity)}
@@ -97,18 +92,33 @@ export function CarritoPage() {
               <dd className="font-bold text-tinta">{formatCurrency(subtotal)}</dd>
             </div>
             <div className="flex items-center justify-between">
-              <dt className="text-tinta-suave">Envío en Villa Maipú</dt>
-              <dd className="font-bold text-tinta">{formatCurrency(DELIVERY_FEE)}</dd>
+              <dt className="text-tinta-suave">
+                {config ? `Envío en ${config.zone_name}` : "Envío"}
+              </dt>
+              <dd className="font-bold text-tinta">
+                {config ? formatCurrency(config.fee) : cargando ? "..." : "a confirmar"}
+              </dd>
             </div>
             <div className="flex items-center justify-between border-t-[3px] border-borde pt-3">
-              <dt className="font-display text-lg font-bold text-tinta">Con envío</dt>
-              <dd className="font-display text-lg font-bold text-acento">{formatCurrency(subtotal + DELIVERY_FEE)}</dd>
+              <dt className="font-display text-lg font-bold text-tinta">
+                {config ? "Con envío" : "Total sin envío"}
+              </dt>
+              <dd className="font-display text-lg font-bold text-acento">
+                {formatCurrency(subtotal + (config?.fee ?? 0))}
+              </dd>
             </div>
           </dl>
 
-          <p className="mt-4 border-[3px] border-borde bg-superficie-alt p-3 text-xs leading-5 text-tinta-suave">
-            Si retirás por el domicilio de Andrea no pagás envío. Se elige en el paso siguiente.
-          </p>
+          {config ? (
+            <p className="mt-4 border-[3px] border-borde bg-superficie-alt p-3 text-xs leading-5 text-tinta-suave">
+              Si retirás por {config.pickup_address} no pagás envío. Se elige en el paso siguiente.
+            </p>
+          ) : (
+            <p className="mt-4 border-[3px] border-dashed border-borde p-3 text-xs leading-5 text-tinta-suave">
+              No pudimos traer el costo del envío. El total de arriba es solo de los productos: el
+              envío se confirma en el checkout.
+            </p>
+          )}
 
           <Link to="/checkout" className="btn-primary mt-5 w-full justify-center">
             Continuar

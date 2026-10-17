@@ -1,10 +1,12 @@
 import { Link } from "react-router-dom";
 import { MapPin, MessageCircle, Truck } from "lucide-react";
 
+import { useSiteConfig } from "../contexts/SiteConfigContext";
 import { linkWhatsApp, PEDIDOS_YA_URL } from "../lib/contacto";
 
 export function SiteFooter() {
-  const whatsapp = linkWhatsApp();
+  const { config } = useSiteConfig();
+  const whatsapp = linkWhatsApp(config?.whatsapp_phone);
 
   return (
     <footer className="border-t-[4px] border-borde bg-superficie">

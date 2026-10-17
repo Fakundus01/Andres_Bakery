@@ -3,18 +3,41 @@ import { Navigate } from "react-router-dom";
 
 import { ErrorBanner, LoadingPanel, SectionHeading, StatCard } from "../../components/ui";
 import { useAuth } from "../../contexts/AuthContext";
-import { ordersApi, productsApi, recipesApi, siteApi, usersApi } from "../../lib/api";
+import { ordersApi, productsApi, siteApi, tagsApi, usersApi } from "../../lib/api";
 import { formatCurrency, getErrorMessage } from "../../lib/format";
-import type { Order, Product, Recipe, User } from "../../lib/types";
-import type { DashboardTab, ProductForm, RecipeForm } from "../../lib/ui-types";
+import type { Order, Product, Tag, User } from "../../lib/types";
+import type { DashboardTab, ProductForm, TagForm } from "../../lib/ui-types";
 import { OrdersTab } from "./OrdersTab";
 import { OverviewTab } from "./OverviewTab";
 import { ProductsTab } from "./ProductsTab";
-import { RecipesTab } from "./RecipesTab";
 import { StoryTab } from "./StoryTab";
+import { TagsTab } from "./TagsTab";
 
-const emptyProductForm: ProductForm = { name: "", description: "", price: "", category: "general", image_url: "", available: true };
-const emptyRecipeForm: RecipeForm = { title: "", summary: "", ingredients: "", steps: "", image_url: "", category: "general", status: "published" };
+const emptyProductForm: ProductForm = {
+  name: "",
+  description: "",
+  steps: "",
+  prep_note: "",
+  price: "",
+  unit_label: "unidad",
+  min_qty: "1",
+  qty_step: "1",
+  category: "general",
+  image_url: "",
+  available: true,
+  allows_pickup: true,
+  allows_delivery: true,
+  tag_ids: [],
+};
+const emptyTagForm: TagForm = { name: "", color_token: "acento", sort_order: "0" };
+
+const PESTANAS: Array<{ key: DashboardTab; label: string }> = [
+  { key: "overview", label: "Resumen" },
+  { key: "products", label: "La carta" },
+  { key: "tags", label: "Etiquetas" },
+  { key: "orders", label: "Pedidos" },
+  { key: "story", label: "Tu historia" },
+];
 
 export function AdminPage() {
   const { isLoggedIn, token, user } = useAuth();
@@ -23,14 +46,14 @@ export function AdminPage() {
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [aboutContent, setAboutContent] = useState("");
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
-  const [editingRecipeId, setEditingRecipeId] = useState<number | null>(null);
+  const [editingTagId, setEditingTagId] = useState<number | null>(null);
   const [productForm, setProductForm] = useState<ProductForm>(emptyProductForm);
-  const [recipeForm, setRecipeForm] = useState<RecipeForm>(emptyRecipeForm);
+  const [tagForm, setTagForm] = useState<TagForm>(emptyTagForm);
 
   const loadDashboard = async () => {
     if (!token) {
@@ -39,15 +62,15 @@ export function AdminPage() {
     setLoading(true);
     setError("");
     try {
-      const [productsData, recipesData, ordersData, usersData, aboutData] = await Promise.all([
+      const [productsData, tagsData, ordersData, usersData, aboutData] = await Promise.all([
         productsApi.list(),
-        recipesApi.list(),
+        tagsApi.list(),
         ordersApi.list(token),
         usersApi.list(token),
         siteApi.getAbout(),
       ]);
       setProducts(productsData);
-      setRecipes(recipesData);
+      setTags(tagsData);
       setOrders(ordersData);
       setUsers(usersData);
       setAboutContent(aboutData.content || "");
@@ -71,9 +94,9 @@ export function AdminPage() {
       revenue,
       paidOrders,
       customers: users.filter((currentUser) => !currentUser.is_admin).length,
-      catalog: products.length,
+      sinPrecio: products.filter((product) => product.price === 0).length,
     };
-  }, [orders, products.length, users]);
+  }, [orders, products, users]);
 
   if (!isLoggedIn) {
     return <Navigate to="/ingresar" replace />;
@@ -87,16 +110,26 @@ export function AdminPage() {
     setProductForm(emptyProductForm);
   };
 
-  const resetRecipeForm = () => {
-    setEditingRecipeId(null);
-    setRecipeForm(emptyRecipeForm);
+  const resetTagForm = () => {
+    setEditingTagId(null);
+    setTagForm(emptyTagForm);
   };
+
+  const recargar = () =>
+    startTransition(() => {
+      void loadDashboard();
+    });
 
   const handleProductSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFeedback("");
     try {
-      const payload = { ...productForm, price: Number(productForm.price) };
+      const payload = {
+        ...productForm,
+        price: Number(productForm.price),
+        min_qty: Number(productForm.min_qty || 1),
+        qty_step: Number(productForm.qty_step || 1),
+      };
       if (editingProductId) {
         await productsApi.update(editingProductId, payload, token);
       } else {
@@ -104,47 +137,52 @@ export function AdminPage() {
       }
       setFeedback("Producto guardado correctamente.");
       resetProductForm();
-      startTransition(() => {
-        void loadDashboard();
-      });
+      recargar();
     } catch (reason: unknown) {
       setError(getErrorMessage(reason));
     }
   };
 
-  const handleRecipeSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleTagSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFeedback("");
     try {
-      if (editingRecipeId) {
-        await recipesApi.update(editingRecipeId, recipeForm, token);
+      const payload = {
+        name: tagForm.name,
+        color_token: tagForm.color_token,
+        sort_order: Number(tagForm.sort_order || 0),
+      };
+      if (editingTagId) {
+        await tagsApi.update(editingTagId, payload, token);
       } else {
-        await recipesApi.create(recipeForm, token);
+        await tagsApi.create(payload, token);
       }
-      setFeedback("Receta guardada correctamente.");
-      resetRecipeForm();
-      startTransition(() => {
-        void loadDashboard();
-      });
+      setFeedback("Etiqueta guardada.");
+      resetTagForm();
+      recargar();
     } catch (reason: unknown) {
       setError(getErrorMessage(reason));
     }
   };
 
   const handleDeleteProduct = async (productId: number) => {
-    await productsApi.remove(productId, token);
-    setFeedback("Producto eliminado.");
-    startTransition(() => {
-      void loadDashboard();
-    });
+    try {
+      await productsApi.remove(productId, token);
+      setFeedback("Producto eliminado.");
+      recargar();
+    } catch (reason: unknown) {
+      setError(getErrorMessage(reason));
+    }
   };
 
-  const handleDeleteRecipe = async (recipeId: number) => {
-    await recipesApi.remove(recipeId, token);
-    setFeedback("Receta eliminada.");
-    startTransition(() => {
-      void loadDashboard();
-    });
+  const handleDeleteTag = async (tagId: number) => {
+    try {
+      await tagsApi.remove(tagId, token);
+      setFeedback("Etiqueta eliminada. Los productos que la tenían siguen igual.");
+      recargar();
+    } catch (reason: unknown) {
+      setError(getErrorMessage(reason));
+    }
   };
 
   const handleSaveStory = async () => {
@@ -160,9 +198,7 @@ export function AdminPage() {
     try {
       await ordersApi.updateStatus(orderId, status, token);
       setFeedback(`Pedido #${orderId} actualizado a ${status}.`);
-      startTransition(() => {
-        void loadDashboard();
-      });
+      recargar();
     } catch (reason: unknown) {
       setError(getErrorMessage(reason));
     }
@@ -170,34 +206,43 @@ export function AdminPage() {
 
   return (
     <div className="space-y-8 pb-10">
-      <SectionHeading eyebrow="Dashboard" title="Un panel admin mucho más comercial y menos improvisado" description="Métricas, gestión del catálogo, recetas publicadas, pedidos y contenido institucional desde una misma superficie." />
+      <SectionHeading
+        eyebrow="Tu panel"
+        title="Todo lo que vendés, desde una sola pantalla"
+        description="Cargá la carta con precio por unidad, mínimo de pedido, receta y etiquetas; mirá los pedidos y escribí tu historia."
+      />
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard title="Facturación total" value={formatCurrency(metrics.revenue)} detail="Suma de pedidos creados" />
         <StatCard title="Pedidos pagos" value={String(metrics.paidOrders)} detail="Pagos confirmados" />
-        <StatCard title="Clientes" value={String(metrics.customers)} detail="Usuarios no admin" />
-        <StatCard title="Productos" value={String(metrics.catalog)} detail="Dulces cargados en catálogo" />
+        <StatCard title="Clientes" value={String(metrics.customers)} detail="Cuentas que no son admin" />
+        <StatCard
+          title="Productos en la carta"
+          value={String(products.length)}
+          detail={metrics.sinPrecio > 0 ? `${metrics.sinPrecio} todavía sin precio` : "Todos con precio"}
+        />
       </section>
       <div className="flex flex-wrap gap-3">
-        {[
-          { key: "overview", label: "Overview" },
-          { key: "products", label: "Productos" },
-          { key: "recipes", label: "Recetas" },
-          { key: "orders", label: "Pedidos" },
-          { key: "story", label: "Contenido" },
-        ].map((tab) => (
-          <button key={tab.key} type="button" className={activeTab === tab.key ? "btn-primary" : "btn-secondary"} onClick={() => setActiveTab(tab.key as DashboardTab)}>
+        {PESTANAS.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            className={activeTab === tab.key ? "btn-primary" : "btn-secondary"}
+            onClick={() => setActiveTab(tab.key)}
+          >
             {tab.label}
           </button>
         ))}
       </div>
-      {loading ? <LoadingPanel label="Cargando dashboard" /> : null}
+      {loading ? <LoadingPanel label="Cargando el panel" /> : null}
       {error ? <ErrorBanner message={error} /> : null}
       {feedback ? <div className="pixel-panel-plano bg-exito-suave px-5 py-4 text-sm text-tinta">{feedback}</div> : null}
+
       {activeTab === "overview" ? <OverviewTab orders={orders} users={users} /> : null}
 
       {activeTab === "products" ? (
         <ProductsTab
           products={products}
+          tags={tags}
           productForm={productForm}
           setProductForm={setProductForm}
           editingProductId={editingProductId}
@@ -208,16 +253,16 @@ export function AdminPage() {
         />
       ) : null}
 
-      {activeTab === "recipes" ? (
-        <RecipesTab
-          recipes={recipes}
-          recipeForm={recipeForm}
-          setRecipeForm={setRecipeForm}
-          editingRecipeId={editingRecipeId}
-          setEditingRecipeId={setEditingRecipeId}
-          onSubmit={handleRecipeSubmit}
-          onReset={resetRecipeForm}
-          onDelete={(recipeId) => void handleDeleteRecipe(recipeId)}
+      {activeTab === "tags" ? (
+        <TagsTab
+          tags={tags}
+          tagForm={tagForm}
+          setTagForm={setTagForm}
+          editingTagId={editingTagId}
+          setEditingTagId={setEditingTagId}
+          onSubmit={handleTagSubmit}
+          onReset={resetTagForm}
+          onDelete={(tagId) => void handleDeleteTag(tagId)}
         />
       ) : null}
 

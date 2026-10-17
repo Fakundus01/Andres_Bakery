@@ -1,10 +1,9 @@
 import type { PaymentMethod } from "./types";
 import type { Slide } from "./ui-types";
 
-// TODO(T9/C4 del SDD): el costo de envio tiene que venir del back (DELIVERY_FEE),
-// no estar duplicado aca. Se mueve cuando se haga retiro/envio de verdad.
-export const DELIVERY_FEE = 2500;
-export const DEFAULT_NEIGHBORHOOD = "Villa Maipú";
+// El costo del envio y la zona ya NO viven aca: salen de /api/site/delivery,
+// que lee el entorno del back (C4). La ciudad queda porque el back no la
+// expone todavia y el checkout la necesita para armar la direccion.
 export const DEFAULT_CITY = "General San Martín";
 
 export const heroFallback: Slide[] = [
