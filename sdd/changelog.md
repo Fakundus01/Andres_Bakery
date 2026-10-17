@@ -4,6 +4,62 @@ Semver `MAJOR.MINOR.PATCH` (R13). No se borra nada: lo viejo queda.
 
 ---
 
+## [0.9.0] · 2026-10-17 · Las dependencias al dia, el logo de Andrea, y sus datos de verdad
+
+### Seguridad de dependencias (ADR-024, R19, con OK del humano)
+
+Primera auditoria del repo, siete meses despues de la ultima actividad.
+
+| | antes | despues |
+|---|---|---|
+| Front (`npm audit`) | 16 avisos, 12 altos | **0** |
+| Back (`pip-audit`) | 57 avisos en 6 paquetes | **0** |
+
+El back estaba peor y nadie lo sabia: **PyJWT** —lo que valida el token del panel— y **Werkzeug** —que procesa cada request— eran los mas atrasados. No son dependencias de build que se quedan en la maquina: son la puerta y la cerradura.
+
+Front sin `--force` (solo saltos compatibles): `react-router-dom` 7.13.0 -> 7.18.4, `vite` 7.3.1 -> 7.3.7, y por arrastre postcss, nanoid, rollup, source-map-js y browserslist. **El arreglo tocaba solo el lockfile**: los rangos ya permitian las versiones sanas y lo que nos tenia clavados en las vulnerables era el `package-lock.json`. Por eso se subieron tambien los minimos declarados — el piso de seguridad es una decision escrita y no el resultado de cuando se corrio el ultimo install.
+
+Back: flask 3.0.2 -> 3.1.3, werkzeug 3.0.1 -> 3.1.9, PyJWT 2.10.1 -> 2.15.1, requests 2.34.2, urllib3 2.8.0, pip 26.2.1. Se desinstalo **stripe**, que estaba en el venv sin que nadie lo importara desde T0. Entro `requirements-dev.txt` con `pip-audit`, para que la auditoria sea repetible y no dependa de acordarse del comando.
+
+De yapa, PyJWT 2.15 avisa si la clave HMAC tiene menos de 32 bytes: la de los tests tenia 11 (la real del `.env` tiene 64).
+
+### El logo (F54)
+
+Andrea mando el suyo. Venia en JPEG con fondo negro de WhatsApp: se le devolvio la transparencia —umbral de 24 por canal, porque el contorno mas oscuro del dibujo suma 63, asi que no se come nada del trazo—, se recorto el aire y quedo en 640x375. Va en el header, y recortado a la carita, de favicon: el logo entero no se lee a 32px. **El original queda intacto** en `material-cliente/logo/`.
+
+### Sus datos de verdad (F36, F43)
+
+La etiqueta de producto que mando es un PDF vectorial sin texto extraible. Se rasterizo con `pymupdf` a 900 dpi y ahi estaban, impresos en cada sticker que ella pega:
+
+- Instagram **@andresbakery.ar**
+- Telefono **11-7059-5319**
+
+Cargados donde corresponde y **no en el codigo**: el telefono en `backend/.env` como `WHATSAPP_PHONE=5491170595319` (formato `wa.me` de celular argentino: 54 + 9 + area + numero), que esta en `.gitignore`; las redes en el perfil, que vive en la base. El repo es publico y estos son datos de contacto de una persona: que sean publicos en su etiqueta no es razon para versionarlos.
+
+Esto destraba **B2** (F23/F36 ya tienen numero) y le pone contenido real a F43.
+
+### Lo que marco el reviewer (25 mutaciones, 20 mutantes muertos)
+
+- **El aviso de sesion vencida no decia de que token hablaba**, asi que un 401 lento de la sesion vieja cerraba la nueva. El reviewer lo reprodujo demorando una respuesta 9 segundos. Ahora el evento lleva el token y se compara.
+- **`ticksDelEje(NaN)` devolvia `[0, NaN]`** y dejaba el grafico en blanco sin error. Alcanzable con que a un punto de la serie le falte el `value`.
+- **La subida de fotos no disparaba el aviso** (no pasa por `apiRequest`): dejaba el panel fingiendo que anda.
+- **`acomodarCantidad` redondeaba al mas cercano**: en un producto de a 6, pedir 9 terminaba en 12. Ahora redondea para abajo. Entre darle de menos y cobrarle de mas a alguien, de menos.
+- El carrito aceptaba un `quantity` que no fuera numero y propagaba `NaN` hasta el total.
+- El comentario decia *"y la pagina lo dice"* y la pagina no decia nada: ahora la pantalla de ingreso avisa que la sesion vencio.
+- `apiRequest` solo leia `data.error`; los errores de token vienen en `msg`, asi que todo quedaba en un "Error 401" pelado.
+- `formatoCorto` mezclaba `$ 0` con `$5K` en el mismo eje.
+- Tests endurecidos donde sobrevivieron mutantes: iniciales en minuscula, el rango 1..200 del eje (el unico entero que delataba el multiplo 2.5 era el **9**, y no estaba en la lista de doce), `undefined` en la regla de cantidades, `NaN` e `Infinity`.
+
+### Numeros
+
+| Antes (0.8.0) | Ahora (0.9.0) |
+|---|---|
+| 48 tests de front | **49** |
+| 151 del back | 151 |
+| 16 + 57 avisos de seguridad | **0 + 0** |
+
+---
+
 ## [0.8.0] · 2026-10-17 · T16: el front tiene tests, y los tests ya encontraron cosas
 
 Aprobada la dependencia (ADR-023), entra **Vitest** para la logica pura del front. **48 tests** sobre las iniciales de la cuenta, las imagenes, la regla de cantidades, el eje de los graficos, el saneado de preferencias y la sesion guardada.

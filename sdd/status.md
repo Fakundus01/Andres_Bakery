@@ -1,6 +1,6 @@
 # status.md · Andres Bakery
 
-**Versión:** 0.8.0 · **Última actualización:** 2026-10-17
+**Versión:** 0.9.0 · **Última actualización:** 2026-10-17
 
 ## 1 · Dónde estamos
 
@@ -11,7 +11,7 @@ El repo tiene 4 meses de código y **estuvo 7 meses quieto** hasta el 2026-10-16
 | Check | Resultado |
 |---|---|
 | Tests del back | **151 OK** (eran 70 al cerrar T3) |
-| Tests del front | **48 OK** — Vitest, lógica pura (ADR-023). Eran 0 hasta hoy |
+| Tests del front | **49 OK** — Vitest, lógica pura (ADR-023). Eran 0 hasta hoy |
 | Lint del front (eslint + tsc) | limpio |
 | Build del front | verde — 366,59 KB JS · 33,92 KB CSS |
 | Migraciones | **`0003` aplicada**. Probada sobre una copia antes que sobre la real, en los dos sentidos y desde base vacía |
@@ -20,6 +20,7 @@ El repo tiene 4 meses de código y **estuvo 7 meses quieto** hasta el 2026-10-16
 | Archivos > 300 líneas | ninguno (el más largo es `CheckoutPage.tsx`, 278) |
 | Encontrado usando la página | el hover le borraba la rotación al dorso de la tarjeta (0.7.1). Lo vio el humano, no los tests ni el reviewer: **nadie había pasado el mouse por encima de una tarjeta ya dada vuelta** |
 | Revisión independiente | dos revisores que **re-ejecutaron** (R30/R31). Entre los dos encontraron **seis cosas reales**: el techo de gasto de la IA en memoria, una carrera que devolvía 500 en un endpoint público, un filtro de URL con un agujero de un carácter, rutas basura contadas como la portada, un gráfico que ignoraba el filtro de fechas, y dos tests que pasaban de casualidad. **Las seis quedaron corregidas con su test**, cada uno visto en rojo primero |
+| Dependencias | **0 avisos** en los dos lados (`npm audit` y `pip-audit`). Eran 16 y 57 |
 | Rama | `dev`, adelantada respecto de `main` |
 
 ## 2 · Avance por feature
@@ -50,7 +51,7 @@ Lo heredado (F01–F12) está Complete salvo lo anotado. De lo pedido el 2026-10
 | # | Bloqueo | Quién lo destraba |
 |---|---|---|
 | B1 | F24: falta **su historia escrita y una foto**. El perfil, las redes y el CV ya tienen dónde entrar | Andrea → `material-cliente/` |
-| B2 | F23 no tiene número de WhatsApp | Andrea |
+| ~~B2~~ | ~~F23 no tiene número de WhatsApp~~ | **destrabado el 2026-10-17**: salió de la etiqueta que mandó ella (11-7059-5319). Cargado en `backend/.env`, fuera de git |
 | B4 | F22 no tiene zona ni costo de envío reales | Andrea |
 | B5 | F07 (Mercado Pago) no tiene credenciales | Andrea, o se queda apagado (ADR-002) |
 | **B7** | **F46 no tiene `ANTHROPIC_API_KEY`**, y prenderlo cuesta plata (`costs.md`: ~USD 0,02 por borrador). Está construido y testeado con un cliente falso | el humano decide: la llave y el gasto |
@@ -80,7 +81,9 @@ Lo de 0.5.0 sigue igual salvo lo tachado. **D3 se cerró** y entraron tres deuda
 | D14 | El carrito guarda una foto del producto en `localStorage` | 2026-10-16 | sigue |
 | D15 | Mensajes de error de la API en inglés | 2026-10-16 | los nuevos (subida, IA, métricas) **salen en castellano**; los viejos siguen igual |
 | D9 | Varios `.py` del back arrancan con BOM | 2026-10-16 | cosmético |
-| **D23** | **16 avisos de seguridad en las dependencias del front, 12 altos.** `react-router-dom` (la mayoría de modo SSR, que no usamos; **dos sí aplican**: open redirect por barra invertida y por ruta `//`), `vite` (tres altos, todos del servidor de desarrollo), `postcss`, `nanoid` y las de `eslint` | 2026-10-17 | medido al instalar Vitest, que **no** los trajo. Actualizar es R19: pide su OK y su verificación. `react-router-dom` se arregla con un salto de versión menor |
+| ~~D23~~ | ~~16 avisos en el front~~ · ~~57 en el back~~ | resueltas 2026-10-17 | ADR-024. Los dos lados en **0**. La próxima auditoría: `pip install -r backend/requirements-dev.txt` y `python -m pip_audit` |
+| **D24** | **El logo dice "ANDRE'S BAKERY" y el sitio dice "Andres Bakery"** | 2026-10-17 | no se cambió solo: es el nombre de su marca y lo decide ella. Afecta el header, el `<title>`, el footer y los textos |
+| ~~D23-viejo~~ | **16 avisos de seguridad en las dependencias del front, 12 altos.** `react-router-dom` (la mayoría de modo SSR, que no usamos; **dos sí aplican**: open redirect por barra invertida y por ruta `//`), `vite` (tres altos, todos del servidor de desarrollo), `postcss`, `nanoid` y las de `eslint` | 2026-10-17 | medido al instalar Vitest, que **no** los trajo. Actualizar es R19: pide su OK y su verificación. `react-router-dom` se arregla con un salto de versión menor |
 | D10 | ~~`pip-audit` y `npm audit` sin correr~~ (R19) | 2026-10-16 | `npm audit` **corrió el 2026-10-17**: resultado en D23. `pip-audit` sigue pendiente | **ahora importa más**: entró `anthropic` como dependencia nueva |
 | ~~D11~~, ~~D12~~, ~~D13~~ | | resueltas | ver 0.4.0 y 0.5.0 |
 

@@ -89,6 +89,7 @@ Todo sobre diseño, mirando lo que había quedado de las tandas anteriores.
 | F51 | **Perfil de quien usa el sitio** (`/cuenta`): sus datos y sus accesos | **Complete** | T15 | ADR-021 |
 | F52 | **Panel lateral elegible**: siempre abierto, o que se abra al acercarse | **Complete** | T15 | ADR-021 |
 | F53 | **La tarjeta gira con un clic en la foto**, no con el hover | **Complete** | T15 | ADR-022 |
+| F54 | **Su logo de verdad** en el header y de favicon, y sus datos de contacto reales | **Complete** | T17 | ADR-024 |
 
 **F53 revierte parte de F42.** El hover se construyó, se probó con el humano y se cayó en la prueba: con la tarjeta girando al acercar el puntero, el botón "Agregar" se escapa justo cuando alguien va a apretarlo. Quedó el "Agregar" del dorso, que había entrado para tapar ese problema y resultó útil igual.
 
