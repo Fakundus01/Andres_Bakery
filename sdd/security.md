@@ -75,13 +75,15 @@ El asistente de recetas manda una foto a la API de Anthropic y recibe un borrado
 | La llave vive en el entorno, nunca en el repo ni en el front | ✅ `ANTHROPIC_API_KEY` por `.env`, listada en `.env.example` sin valor. El front **nunca** la ve: llama a `/api/ai/recipe-draft`, que es admin-only |
 | Apagado por default | ✅ sin llave o con `AI_ENABLED=false` ⇒ **503** con mensaje explicativo, y el botón del panel no se renderiza |
 | Solo admin | ✅ `@admin_required`. Un endpoint que cuesta plata por llamada no se deja público |
-| Techo de gasto | ✅ `AI_DAILY_LIMIT` (default 25 borradores/día), contado en proceso. Pasado el techo, 429 |
+| Techo de gasto | ✅ `AI_DAILY_LIMIT` (default 25 borradores/día), contado **contra la base** (`SiteContent["ai_usage"]`). Pasado el techo, 429. Se descuenta **antes** de llamar al modelo: una llamada que sale y después falla ya se pagó |
 | La salida del modelo es **dato**, no instrucción (R26) | ✅ se acepta solo JSON con la forma esperada; cada campo recortado a su largo y cada lista a su cantidad; lo que no está en el esquema se descarta. No se ejecuta, no se concatena en una consulta, no se guarda sin que ella lo vea |
 | Inyección por la imagen | ✅ considerada: una foto puede traer texto escrito adentro y el modelo lo lee. El prompt lo dice y el parseo de salida lo contiene. **No hay forma de impedir que el modelo lea el texto de la imagen**: lo que se garantiza es que nada de eso cambie el comportamiento del back |
 | Nunca decide sobre alérgenos | ✅ el borrador **no propone etiquetas**. "Sin TACC" lo pone Andrea, es su declaración (§3) y un modelo adivinándolo es un problema de salud |
 | Nada se publica solo | ✅ el borrador prellena el formulario; publicar sigue siendo un clic suyo |
 | Se avisa que lo escribió una IA | ✅ cartel en el panel, junto al borrador |
 | Datos personales al proveedor | ✅ se manda **la foto del producto y nada más**: ni nombre de cliente, ni pedidos, ni mails |
+
+**Revisado bajo ataque el 2026-10-17** (R31, security-reviewer independiente que re-ejecutó): se intentó gastar sin llave, saltar el techo, hacerle leer `/uploads/../../backend/.env` y variantes, y devolverle al parser una respuesta fuera de esquema. Todo se sostuvo **menos una**: el techo diario era un contador **en memoria del proceso**, así que reiniciar el back lo volvía a cero y con varios workers el techo real era N veces el configurado. Se corrigió en el mismo ciclo (contador en la base) y el test que lo prueba se vio **rojo** primero contra el código viejo: `AssertionError: ServiceError not raised`.
 
 **Lo que falta:** el paquete universal de SDD trae `seguridad.md` con los niveles y `playbooks/ia-en-el-producto.md` (R12), y **ninguno de los dos vino con este proyecto** — en `sdd/` no están. Los controles de arriba se escribieron desde el pedido de R27, no copiados de ese playbook. Si el humano los tiene, conviene traerlos y cruzar la lista.
 

@@ -10,13 +10,14 @@ El repo tiene 4 meses de código y **estuvo 7 meses quieto** hasta el 2026-10-16
 
 | Check | Resultado |
 |---|---|
-| Tests del back | **136 OK** (eran 70 al cerrar T3) |
+| Tests del back | **138 OK** (eran 70 al cerrar T3) |
 | Lint del front (eslint + tsc) | limpio |
 | Build del front | verde — 360,12 KB JS · 30,71 KB CSS |
 | Migraciones | **`0003` aplicada**. Probada sobre una copia antes que sobre la real, en los dos sentidos y desde base vacía |
 | App corriendo | back en `127.0.0.1:5000`, front en `127.0.0.1:5173`. Probado en navegador: giro por hover, subida de una foto real de punta a punta, panel con gráficos, perfil y `/cv` |
 | Responsive 390px | `/cv`, `/historia`, `/tienda` y `/admin`: cero desbordes, medido con `scrollWidth` vs `clientWidth` |
 | Archivos > 300 líneas | ninguno (el más largo es `CheckoutPage.tsx`, 278) |
+| Revisión independiente | dos revisores que **re-ejecutaron** (R30/R31): funcional y de seguridad. El de seguridad encontró que el techo de gasto de la IA era un contador en memoria; se corrigió en el ciclo |
 | Rama | `dev`, adelantada respecto de `main` |
 
 ## 2 · Avance por feature

@@ -69,6 +69,14 @@ Los limites son el 90% de la feature:
 
 Entra **una dependencia nueva**, `anthropic`, y entra apagada: `ai_service.py` la importa adentro de la funcion, asi que si no esta instalada el back arranca igual. La primera version de la ADR decia "sin dependencia, con `requests`" y se corrigio al leer la documentacion del proveedor: mantener a mano el formato de una API viva no es lo mismo que leer un `.env` (ADR-015). Los numeros estan en `costs.md`: **~USD 0,021 por borrador**, USD 0,21/mes para diez productos nuevos, USD 16/mes en el peor caso contra el techo.
 
+### Lo que encontro la revision independiente (R30/R31)
+
+Dos revisores que **re-ejecutaron** todo, ninguno de los dos el que implemento. El de seguridad ataco N4 y N5 con archivos hostiles, rutas con `../`, SSRF y respuestas fuera de esquema: **se sostuvo todo menos una cosa**.
+
+El **techo de gasto de la IA era un contador en memoria del proceso**. Reiniciar el back lo volvia a cero, y con varios workers el techo real pasaba a ser N veces el configurado, en silencio. Para un limite cuyo unico proposito es acotar plata, eso es la promesa rota. Ahora el contador vive en la base (`SiteContent["ai_usage"]`) y se descuenta **antes** de llamar al modelo, porque una llamada que sale y despues falla igual se paga.
+
+El test que lo prueba se vio **rojo primero** contra el codigo viejo (R29): `AssertionError: ServiceError not raised`.
+
 ### Lo que se encontro probando
 
 - **`PanelApiTestCase` heredaba de `BackendApiTestCase`** y unittest corria la suite entera del padre otra vez: 13 tests nuevos aparecian como 23. El arnes de la app de test se mudo a `support.py`, que `discover` no carga.
@@ -79,7 +87,7 @@ Entra **una dependencia nueva**, `anthropic`, y entra apagada: `ai_service.py` l
 
 | Antes (0.5.0) | Ahora (0.6.0) |
 |---|---|
-| 70 tests | **136 tests**, todos verdes |
+| 70 tests | **138 tests**, todos verdes |
 | JS 326,85 KB · CSS 29,22 KB | JS 360,12 KB · CSS 30,71 KB |
 | migracion 0002 | **0003** (`page_view`), probada sobre copia, en los dos sentidos y desde base vacia |
 | 5 pestanas en el panel | 6, con graficos y perfil |

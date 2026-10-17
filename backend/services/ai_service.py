@@ -1,16 +1,21 @@
 from __future__ import annotations
 
 import base64
-from datetime import date, datetime
+from datetime import datetime
 import json
 
 from flask import current_app
 
+from ..extensions import db
+from ..models import SiteContent
 from .exceptions import ConfigurationError, ServiceError, ValidationError
 from .upload_service import PREFIJO_PUBLICO, upload_service
 
 
 AVISO = "Lo escribio una IA mirando la foto. Leelo y corregilo antes de publicar."
+
+# El contador del techo diario vive en la base, no en memoria (ver _consumir).
+CLAVE_USO = "ai_usage"
 
 # El pedido es corto a proposito: cada token de entrada se paga, y las reglas
 # que importan son tres. La de los alergenos no es negociable (ADR-020).
@@ -105,18 +110,17 @@ class RecipeDraftService:
 
     def __init__(self, client: AnthropicRecipeClient | None = None) -> None:
         self.client = client or AnthropicRecipeClient()
-        self._dia = date.min
-        self._usados = 0
 
     def draft(self, data: dict) -> dict:
         self._verificar_que_este_prendido()
-        self._verificar_el_techo()
 
         imagen, media_type = self._leer_la_foto(data.get("image_url"))
         pista = str(data.get("hint") or "").strip()[:LARGO_CORTO]
 
+        # Se descuenta ANTES de llamar: una llamada que sale y despues falla ya
+        # se pago. El techo es de plata, no de respuestas utiles.
+        self._consumir()
         crudo = self.client.draft(imagen=imagen, media_type=media_type, pista=pista)
-        self._usados += 1
         return self._recortar(crudo)
 
     def _verificar_que_este_prendido(self) -> None:
@@ -129,17 +133,40 @@ class RecipeDraftService:
                 "Falta la clave ANTHROPIC_API_KEY en el .env del back para usar el asistente."
             )
 
-    def _verificar_el_techo(self) -> None:
-        hoy = datetime.utcnow().date()
-        if hoy != self._dia:
-            self._dia = hoy
-            self._usados = 0
+    def _consumir(self) -> None:
+        """Descuenta un borrador del techo del dia, contra la base.
+
+        El contador vive en SiteContent y no en memoria del proceso. Un
+        contador en RAM miente de dos formas que importan justo cuando importa
+        el gasto: reiniciar el back lo vuelve a cero, y con varios workers cada
+        uno tiene el suyo, asi que el techo real pasa a ser N veces el
+        configurado sin que nadie se entere.
+        """
         tope = int(current_app.config.get("AI_DAILY_LIMIT") or 0)
-        if tope and self._usados >= tope:
+        hoy = datetime.utcnow().date().isoformat()
+
+        fila = db.session.get(SiteContent, CLAVE_USO)
+        usados = 0
+        if fila:
+            try:
+                guardado = json.loads(fila.content)
+                if guardado.get("day") == hoy:
+                    usados = int(guardado.get("count") or 0)
+            except (ValueError, TypeError):
+                usados = 0
+
+        if tope and usados >= tope:
             raise ServiceError(
                 f"Ya se usaron los {tope} borradores de hoy. Manana se reinicia.",
                 status_code=429,
             )
+
+        texto = json.dumps({"day": hoy, "count": usados + 1})
+        if fila:
+            fila.content = texto
+        else:
+            db.session.add(SiteContent(key=CLAVE_USO, content=texto))
+        db.session.commit()
 
     def _leer_la_foto(self, image_url: object) -> tuple[bytes, str]:
         """Solo fotos ya subidas al propio sitio.

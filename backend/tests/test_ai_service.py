@@ -130,6 +130,35 @@ class RecipeDraftServiceTestCase(BackendServiceTestCase):
         self.assertEqual(capturado.exception.status_code, 429)
         self.assertEqual(len(self.client.llamadas), 2)
 
+    def test_reiniciar_el_back_no_regala_borradores_nuevos(self) -> None:
+        """El techo cuenta contra la base, no contra la memoria del proceso.
+
+        Un contador en RAM miente justo cuando importa: reiniciar lo vuelve a
+        cero, y con varios workers cada uno tiene el suyo. Lo encontro el
+        security-reviewer del 2026-10-17.
+        """
+        self.app.config["AI_DAILY_LIMIT"] = 2
+        self.service.draft({"image_url": self.subida["url"]})
+        self.service.draft({"image_url": self.subida["url"]})
+
+        otro_proceso = RecipeDraftService(client=FakeRecipeClient())
+
+        with self.assertRaises(ServiceError) as capturado:
+            otro_proceso.draft({"image_url": self.subida["url"]})
+
+        self.assertEqual(capturado.exception.status_code, 429)
+        self.assertEqual(otro_proceso.client.llamadas, [])
+
+    def test_una_foto_que_no_existe_no_gasta_del_techo(self) -> None:
+        self.app.config["AI_DAILY_LIMIT"] = 1
+
+        with self.assertRaises(ValidationError):
+            self.service.draft({"image_url": "/uploads/" + "b" * 32 + ".jpg"})
+
+        # El techo sigue entero: no se llamo al modelo, no se pago nada.
+        borrador = self.service.draft({"image_url": self.subida["url"]})
+        self.assertEqual(borrador["notice"], AVISO)
+
     def test_solo_acepta_fotos_ya_subidas_al_propio_sitio(self) -> None:
         """Una URL cualquiera convertiria al back en un proxy (SSRF)."""
         for intento in (

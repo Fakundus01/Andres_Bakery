@@ -7,7 +7,7 @@
 Los mismos que `harness.config.json`. **Siempre desde la raíz del repo**: los imports del back son `backend.*`.
 
 ```bash
-# Back: 136 tests, unittest (NO pytest: el venv no lo tiene)
+# Back: 138 tests, unittest (NO pytest: el venv no lo tiene)
 backend/.venv/Scripts/python.exe -m unittest discover -s backend/tests -t . -q
 
 # Front: eslint + tsc (los dos proyectos de TS)
@@ -17,7 +17,7 @@ cd front/Andres_Bakery && npm run lint
 cd front/Andres_Bakery && npm run build
 ```
 
-Estado medido el 2026-10-17 tras T10-T14: **136 tests OK**, lint limpio, build en verde (360,12 KB de JS, 30,71 KB de CSS).
+Estado medido el 2026-10-17 tras T10-T14: **138 tests OK**, lint limpio, build en verde (360,12 KB de JS, 30,71 KB de CSS).
 
 ## 2 · Qué hay cubierto hoy
 
@@ -78,11 +78,12 @@ Estado medido el 2026-10-17 tras T10-T14: **136 tests OK**, lint limpio, build e
 | V11 · una foto subida no conserva metadatos | `test_image_file` + `test_upload_service` leen **los bytes del archivo guardado** | automatizado |
 | V12 · lo que devuelve el modelo no entra crudo | `test_ai_service`: un borrador con `tags`, `precio` y `sql` sale con las siete claves de siempre | automatizado |
 | V13 · las visitas no identifican a nadie | `test_metrics_service` compara las **columnas de la tabla** contra la lista esperada | automatizado |
+| V14 · el techo de gasto de la IA sobrevive a un reinicio | `test_ai_service`: una **instancia nueva** del servicio (= otro worker) sigue topada. Visto rojo contra el código viejo | automatizado |
 
 ## 5 · Cobertura mínima para dar algo por `done`
 
 1. Servicio nuevo o tocado del back ⇒ su test, verde.
-2. Los 136 existentes, verdes (V9). Un test que había pasado y ahora no, bloquea.
+2. Los 138 existentes, verdes (V9). Un test que había pasado y ahora no, bloquea.
 3. `npm run lint` y `npm run build`, limpios (V1).
 4. Si se tocó algo visible ⇒ revisado en navegador, en celular y en escritorio, y dicho en el handback.
 5. Si el cambio toca precios, mínimos o totales ⇒ el rojo se vio primero (R29).
