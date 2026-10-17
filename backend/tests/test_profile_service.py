@@ -61,6 +61,20 @@ class ProfileServiceTestCase(BackendServiceTestCase):
         self.service.update_profile({"photo_url": "//evil.example.com/x.jpg"})
         self.assertEqual(self.service.get_profile()["photo_url"], "")
 
+    def test_una_ruta_con_barra_invertida_no_se_cuela_como_ruta_propia(self) -> None:
+        """Los navegadores leen la barra invertida como una barra.
+
+        Asi que "/\\evil.example.com/x.jpg" pasa por ruta del sitio y termina
+        pidiendole la foto a otro host. Lo encontro el reviewer del 2026-10-17
+        probandolo contra el parser de URL de verdad.
+        """
+        for intento in ("/\\evil.example.com/x.jpg", "/\\/evil.example.com/x.jpg", "/uploads\\x.jpg"):
+            self.service.update_profile({"photo_url": intento, "cv": {"file_url": intento}})
+
+            perfil = self.service.get_profile()
+            self.assertEqual(perfil["photo_url"], "", intento)
+            self.assertEqual(perfil["cv"]["file_url"], "", intento)
+
     def test_recorta_los_textos_largos_y_las_listas_infinitas(self) -> None:
         self.service.update_profile(
             {

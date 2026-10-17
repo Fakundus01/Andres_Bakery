@@ -55,7 +55,9 @@ class UploadServiceTestCase(BackendServiceTestCase):
         with self.assertRaises(ValidationError):
             self.service.guardar(b"%PDF-1.7\n%fake pdf\n")
 
-        self.assertEqual(list(self.carpeta.glob("*")) if self.carpeta.exists() else [], [])
+        # Sin el `if`: la rama que se tomaba comparaba [] contra [] y no probaba
+        # nada. Lo que importa es que no se creo ni la carpeta.
+        self.assertFalse(self.carpeta.exists())
 
     def test_un_archivo_mas_grande_que_el_tope_se_rechaza(self) -> None:
         self.app.config["UPLOAD_MAX_BYTES"] = 1024
@@ -68,6 +70,20 @@ class UploadServiceTestCase(BackendServiceTestCase):
     def test_no_llego_nada(self) -> None:
         with self.assertRaises(ValidationError):
             self.service.guardar(b"")
+
+    def test_lo_que_queda_en_disco_es_exactamente_lo_que_valido_el_servicio(self) -> None:
+        """El archivo guardado y el que el limpiador aprobo son el mismo.
+
+        Sin esto, entre validar y escribir podria colarse cualquier cosa y
+        ningun test lo notaria.
+        """
+        from backend.services.image_file import limpiar
+
+        respuesta = self.service.guardar(JPEG_REAL)
+
+        guardado = (self.carpeta / respuesta["filename"]).read_bytes()
+        self.assertEqual(guardado, limpiar(JPEG_REAL).data)
+        self.assertEqual(len(guardado), respuesta["bytes"])
 
     def test_ruta_de_solo_acepta_el_nombre_que_genera_el_servidor(self) -> None:
         respuesta = self.service.guardar(JPEG_REAL)

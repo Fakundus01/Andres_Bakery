@@ -44,6 +44,21 @@ class ImageFileTestCase(unittest.TestCase):
         self.assertNotIn(b"<script>", limpia.data)
         self.assertNotIn(b"PK\x03\x04", limpia.data)
 
+    def test_la_foto_limpia_es_exactamente_la_original_sin_sus_metadatos(self) -> None:
+        """Golden de bytes: no alcanza con que "no este el EXIF".
+
+        Los demas asserts de este archivo son ausencias (no esta JFIF, no esta
+        <script>) y una medida, y todos son compatibles con un parser que
+        mastique mal la data comprimida y devuelva un JPEG roto. Este compara
+        byte a byte contra lo unico que deberia haber pasado: que se cayera el
+        segmento APP0 y nada mas.
+        """
+        largo_app0 = int.from_bytes(JPEG_REAL[4:6], "big")
+        esperado = JPEG_REAL[:2] + JPEG_REAL[2 + 2 + largo_app0 :]
+
+        self.assertEqual(limpiar(JPEG_REAL).data, esperado)
+        self.assertEqual(len(JPEG_REAL) - len(esperado), largo_app0 + 2)
+
     def test_limpiar_dos_veces_da_lo_mismo(self) -> None:
         una = limpiar(JPEG_REAL)
         otra = limpiar(una.data)
@@ -94,8 +109,11 @@ class ImageFileTestCase(unittest.TestCase):
 
         falsa = PNG_FIRMA + _chunk(b"IHDR", ihdr_gigante) + armada[armada.index(b"IDAT") - 4 :]
 
-        with self.assertRaises(ImagenInvalida):
+        with self.assertRaises(ImagenInvalida) as capturado:
             limpiar(falsa)
+
+        # Que falle por el tamano y no porque el empalme rompio el CRC.
+        self.assertIn("40000x40000", str(capturado.exception))
 
     def test_un_ejecutable_disfrazado_de_foto_no_pasa(self) -> None:
         with self.assertRaises(ImagenInvalida):
@@ -119,7 +137,9 @@ class ImageFileTestCase(unittest.TestCase):
         with self.assertRaises(ImagenInvalida) as capturado:
             limpiar(webp)
 
-        self.assertIn("JPG", str(capturado.exception))
+        # "WEBP" y no "JPG": el mensaje generico de fallback tambien dice "JPG",
+        # asi que este test pasaba igual con la rama del WEBP borrada.
+        self.assertIn("WEBP", str(capturado.exception))
 
     def test_un_jpeg_cortado_a_la_mitad_no_pasa(self) -> None:
         with self.assertRaises(ImagenInvalida):

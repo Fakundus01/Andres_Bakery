@@ -10,14 +10,14 @@ El repo tiene 4 meses de código y **estuvo 7 meses quieto** hasta el 2026-10-16
 
 | Check | Resultado |
 |---|---|
-| Tests del back | **138 OK** (eran 70 al cerrar T3) |
+| Tests del back | **151 OK** (eran 70 al cerrar T3) |
 | Lint del front (eslint + tsc) | limpio |
 | Build del front | verde — 360,12 KB JS · 30,71 KB CSS |
 | Migraciones | **`0003` aplicada**. Probada sobre una copia antes que sobre la real, en los dos sentidos y desde base vacía |
 | App corriendo | back en `127.0.0.1:5000`, front en `127.0.0.1:5173`. Probado en navegador: giro por hover, subida de una foto real de punta a punta, panel con gráficos, perfil y `/cv` |
 | Responsive 390px | `/cv`, `/historia`, `/tienda` y `/admin`: cero desbordes, medido con `scrollWidth` vs `clientWidth` |
 | Archivos > 300 líneas | ninguno (el más largo es `CheckoutPage.tsx`, 278) |
-| Revisión independiente | dos revisores que **re-ejecutaron** (R30/R31): funcional y de seguridad. El de seguridad encontró que el techo de gasto de la IA era un contador en memoria; se corrigió en el ciclo |
+| Revisión independiente | dos revisores que **re-ejecutaron** (R30/R31). Entre los dos encontraron **seis cosas reales**: el techo de gasto de la IA en memoria, una carrera que devolvía 500 en un endpoint público, un filtro de URL con un agujero de un carácter, rutas basura contadas como la portada, un gráfico que ignoraba el filtro de fechas, y dos tests que pasaban de casualidad. **Las seis quedaron corregidas con su test**, cada uno visto en rojo primero |
 | Rama | `dev`, adelantada respecto de `main` |
 
 ## 2 · Avance por feature
@@ -58,13 +58,15 @@ Lo de 0.5.0 sigue igual salvo lo tachado. **D3 se cerró** y entraron tres deuda
 | ID | Deuda | Desde | Nota |
 |---|---|---|---|
 | D1 | Token de sesión en `localStorage`, no en cookie `httpOnly` | 2026-10-16 | sigue |
-| D2 | Sin rate limit en ningún endpoint | 2026-10-16 | **subió de prioridad**: `POST /api/uploads` es admin-only, pero `/api/metrics/view` es público y sin límite. Un bot puede inflar el contador de visitas. No se corrompe nada y no cuesta plata, pero ensucia el número que ella mira |
+| D2 | Sin rate limit en ningún endpoint | 2026-10-16 | **subió de prioridad**: `POST /api/uploads` es admin-only, pero `/api/metrics/view` es público y sin límite. Ya **no puede crear filas** (la lista blanca de rutas lo acota a ~39 por día) ni tirar un 500 (la carrera se cerró), pero sigue siendo una escritura con commit por request: un bot ensucia el número que ella mira y hace trabajar la base de arriba |
 | ~~D3~~ | ~~Sin headers de seguridad~~ | resuelta 2026-10-17 | globales en `after_request` (ADR-018) |
 | D4 | Firma del webhook de MP sin validar | 2026-10-16 | sigue |
 | D5 | Ninguna lista pagina | 2026-10-16 | el panel ya no depende de eso para contar (`/api/metrics/summary`) |
 | D6 | Respuestas de escritura inconsistentes | 2026-10-16 | sigue |
 | D7 | Cero tests de front | 2026-10-16 | **crece**: hay lógica propia que lo amerita (`ejeY`, `normalizar_ruta` del lado del front, `urlDeImagen`). Lo de arriba se probó en navegador, no con tests |
 | D8 | Retención y borrado de datos personales sin definir | 2026-10-16 | sigue. Las visitas **no** agrandan esto: son contadores sin persona (ADR-019) |
+| **D19** | **Se tira el perfil de color de la foto.** El limpiador descarta el chunk `iCCP`/los APPn, así que una foto de iPhone en Display P3 conserva sus píxeles pero pierde el perfil y el navegador la dibuja como sRGB | 2026-10-17 | lo marcó el reviewer y es **de producto, no de seguridad**: en una repostería la foto *es* el producto y el corrimiento de color se ve. Hoy es el precio de no tener `Pillow`; se resuelve igual que D16 |
+| **D20** | **La llamada real al SDK de Anthropic no tiene test.** El parseo de la respuesta sí (`leer_respuesta`, que salió afuera justo para eso); lo que no se ejercita nunca es `messages.create` | 2026-10-17 | es la frontera con una librería de terceros. Si algún día cambia la forma del pedido, lo vamos a ver en producción y no en los tests |
 | **D16** | **WEBP y HEIC se rechazan.** HEIC es el default de iPhone | 2026-10-17 | el mensaje lo nombra y dice qué hacer, pero si ella saca fotos con iPhone lo va a ver seguido. Se arregla con `Pillow` o convirtiendo en el navegador antes de subir |
 | **D17** | **Lo subido no se borra nunca.** Cambiar la foto de un producto deja la anterior en disco | 2026-10-17 | nadie la ve (el nombre es aleatorio), pero ocupa lugar. Hace falta un barrido de huérfanas |
 | **D18** | **No hay cuota de disco** para las subidas | 2026-10-17 | 4 MB por archivo, infinitos archivos. Con un solo admin no es urgente; al deployar, sí |

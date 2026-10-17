@@ -5,6 +5,7 @@ from datetime import datetime
 import json
 
 from flask import current_app
+from sqlalchemy.exc import IntegrityError
 
 from ..extensions import db
 from ..models import SiteContent
@@ -72,7 +73,11 @@ class AnthropicRecipeClient:
 
         respuesta = cliente.messages.create(
             model=current_app.config.get("AI_MODEL") or "claude-opus-5-5",
-            max_tokens=2000,
+            # El borrador son ~700 tokens, pero en este modelo el razonamiento
+            # sale del mismo presupuesto: con 2000 la respuesta podia llegar
+            # cortada y el error le echaba la culpa al modelo. max_tokens es un
+            # techo, no un cargo: solo se paga lo que se genera.
+            max_tokens=8000,
             system=INSTRUCCIONES,
             output_config={"effort": "low", "format": {"type": "json_schema", "schema": ESQUEMA}},
             messages=[
@@ -93,11 +98,7 @@ class AnthropicRecipeClient:
             ],
         )
 
-        texto = next((bloque.text for bloque in respuesta.content if bloque.type == "text"), "")
-        try:
-            return json.loads(texto)
-        except ValueError as exc:
-            raise ServiceError("El asistente devolvio algo que no se pudo leer.", status_code=502) from exc
+        return leer_respuesta(respuesta)
 
 
 class RecipeDraftService:
@@ -146,14 +147,7 @@ class RecipeDraftService:
         hoy = datetime.utcnow().date().isoformat()
 
         fila = db.session.get(SiteContent, CLAVE_USO)
-        usados = 0
-        if fila:
-            try:
-                guardado = json.loads(fila.content)
-                if guardado.get("day") == hoy:
-                    usados = int(guardado.get("count") or 0)
-            except (ValueError, TypeError):
-                usados = 0
+        usados = _usados_hoy(fila, hoy)
 
         if tope and usados >= tope:
             raise ServiceError(
@@ -164,9 +158,21 @@ class RecipeDraftService:
         texto = json.dumps({"day": hoy, "count": usados + 1})
         if fila:
             fila.content = texto
-        else:
-            db.session.add(SiteContent(key=CLAVE_USO, content=texto))
-        db.session.commit()
+            db.session.commit()
+            return
+
+        db.session.add(SiteContent(key=CLAVE_USO, content=texto))
+        try:
+            db.session.commit()
+        except IntegrityError:
+            # Otro proceso creo la fila entre la lectura y la escritura: se
+            # relee y se suma sobre la suya, en vez de salir con un 500.
+            db.session.rollback()
+            fila = db.session.get(SiteContent, CLAVE_USO)
+            if fila is None:
+                raise
+            fila.content = json.dumps({"day": hoy, "count": _usados_hoy(fila, hoy) + 1})
+            db.session.commit()
 
     def _leer_la_foto(self, image_url: object) -> tuple[bytes, str]:
         """Solo fotos ya subidas al propio sitio.
@@ -197,6 +203,61 @@ class RecipeDraftService:
             "steps": _lista(datos.get("steps"), MAX_PASOS, LARGO_LARGO),
             "notice": AVISO,
         }
+
+
+def leer_respuesta(respuesta: object) -> dict:
+    """Saca el JSON de lo que contesto el modelo, o explica por que no se pudo.
+
+    Vive afuera del cliente para que se pueda probar sin la libreria ni la red:
+    es el unico pedazo del camino real que no cubria el fake (lo marco el
+    reviewer del 2026-10-17).
+
+    Primero **por que** termino: un rechazo de los clasificadores vuelve con
+    HTTP 200 y sin texto, y quedarse sin presupuesto corta el JSON a la mitad.
+    Los dos casos se explican en castellano en vez de culpar al modelo de
+    "devolvio algo ilegible".
+    """
+    motivo = getattr(respuesta, "stop_reason", None)
+    if motivo == "refusal":
+        raise ServiceError(
+            "El asistente no quiso describir esa foto. Proba con otra o escribi la receta a mano.",
+            status_code=502,
+        )
+    if motivo == "max_tokens":
+        raise ServiceError(
+            "La respuesta del asistente quedo cortada. Proba de nuevo con una foto mas simple.",
+            status_code=502,
+        )
+
+    bloques = getattr(respuesta, "content", None) or []
+    texto = next((bloque.text for bloque in bloques if getattr(bloque, "type", None) == "text"), "")
+    try:
+        cargado = json.loads(texto)
+    except ValueError as exc:
+        raise ServiceError("El asistente devolvio algo que no se pudo leer.", status_code=502) from exc
+    return cargado if isinstance(cargado, dict) else {}
+
+
+def _usados_hoy(fila: SiteContent | None, hoy: str) -> int:
+    """Cuantos borradores van hoy segun la fila guardada.
+
+    Un JSON que no es un objeto (`123`, `[1]`) hacia estallar el `.get` con un
+    AttributeError que el `except (ValueError, TypeError)` no atrapaba. Solo se
+    llega editando la base a mano, pero el techo de gasto no es el lugar para
+    confiar en que el dato guardado tiene la forma esperada.
+    """
+    if fila is None:
+        return 0
+    try:
+        guardado = json.loads(fila.content)
+    except (ValueError, TypeError):
+        return 0
+    if not isinstance(guardado, dict) or guardado.get("day") != hoy:
+        return 0
+    try:
+        return max(0, int(guardado.get("count") or 0))
+    except (ValueError, TypeError):
+        return 0
 
 
 def _texto(valor: object, tope: int) -> str:

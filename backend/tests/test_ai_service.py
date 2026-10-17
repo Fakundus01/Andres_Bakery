@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from uuid import uuid4
 
-from backend.services.ai_service import AVISO, RecipeDraftService
+from backend.services.ai_service import AVISO, RecipeDraftService, leer_respuesta
 from backend.services.exceptions import ConfigurationError, ServiceError, ValidationError
 from backend.services.upload_service import UploadService
 from backend.tests.imagenes_de_prueba import JPEG_REAL
@@ -27,6 +27,48 @@ class FakeRecipeClient:
     def draft(self, *, imagen: bytes, media_type: str, pista: str) -> dict:
         self.llamadas.append({"bytes": len(imagen), "media_type": media_type, "pista": pista})
         return self.respuesta
+
+
+class RespuestaFalsa:
+    """Lo que devuelve el SDK, con la forma justa que mira `leer_respuesta`."""
+
+    def __init__(self, texto: str = "", stop_reason: str | None = "end_turn") -> None:
+        self.stop_reason = stop_reason
+        self.content = [Bloque(texto)] if texto else []
+
+
+class Bloque:
+    def __init__(self, texto: str) -> None:
+        self.type = "text"
+        self.text = texto
+
+
+class LeerRespuestaTestCase(BackendServiceTestCase):
+    """El unico pedazo del camino real que el fake no cubria (reviewer R30)."""
+
+    def test_un_json_bien_formado_sale_como_dict(self) -> None:
+        self.assertEqual(leer_respuesta(RespuestaFalsa('{"name": "Brownie"}')), {"name": "Brownie"})
+
+    def test_si_el_modelo_se_niega_lo_dice_en_castellano(self) -> None:
+        with self.assertRaises(ServiceError) as capturado:
+            leer_respuesta(RespuestaFalsa("", stop_reason="refusal"))
+
+        self.assertEqual(capturado.exception.status_code, 502)
+        self.assertIn("no quiso", str(capturado.exception))
+
+    def test_si_se_quedo_sin_presupuesto_no_le_echa_la_culpa_al_modelo(self) -> None:
+        with self.assertRaises(ServiceError) as capturado:
+            leer_respuesta(RespuestaFalsa('{"name": "Brow', stop_reason="max_tokens"))
+
+        self.assertIn("cortada", str(capturado.exception))
+
+    def test_una_respuesta_sin_texto_no_revienta(self) -> None:
+        with self.assertRaises(ServiceError):
+            leer_respuesta(RespuestaFalsa(""))
+
+    def test_un_json_que_no_es_objeto_sale_vacio(self) -> None:
+        self.assertEqual(leer_respuesta(RespuestaFalsa("[1, 2, 3]")), {})
+        self.assertEqual(leer_respuesta(RespuestaFalsa("123")), {})
 
 
 class RecipeDraftServiceTestCase(BackendServiceTestCase):
@@ -173,6 +215,20 @@ class RecipeDraftServiceTestCase(BackendServiceTestCase):
                 self.service.draft({"image_url": intento})
 
         self.assertEqual(self.client.llamadas, [])
+
+    def test_un_contador_guardado_con_basura_no_regala_ni_rompe(self) -> None:
+        """Un JSON que no es un objeto hacia estallar el `.get` con AttributeError."""
+        from backend.extensions import db
+        from backend.models import SiteContent
+
+        db.session.add(SiteContent(key="ai_usage", content="[1, 2, 3]"))
+        db.session.commit()
+        self.app.config["AI_DAILY_LIMIT"] = 1
+
+        self.service.draft({"image_url": self.subida["url"]})
+
+        with self.assertRaises(ServiceError):
+            self.service.draft({"image_url": self.subida["url"]})
 
     def test_una_foto_que_no_esta_en_el_servidor_se_rechaza(self) -> None:
         with self.assertRaises(ValidationError):

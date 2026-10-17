@@ -77,6 +77,20 @@ El **techo de gasto de la IA era un contador en memoria del proceso**. Reiniciar
 
 El test que lo prueba se vio **rojo primero** contra el codigo viejo (R29): `AssertionError: ServiceError not raised`.
 
+El **reviewer funcional** re-ejecuto los tres comandos (dieron lo afirmado), audito los tests y ataco el codigo nuevo. Encontro cinco cosas mas, todas corregidas con su test:
+
+- **Una carrera que devolvia 500 en un endpoint publico.** Dos visitas simultaneas a la misma ruta el mismo dia veian las dos que la fila no existia, las dos insertaban, y la segunda chocaba contra el indice unico — justo lo que el docstring de la ruta promete que no pasa. Ahora el contador sube con un UPDATE atomico y el choque se resuelve sumando sobre la fila del otro. De paso, el `views = views + 1` resuelto en Python perdia cuentas.
+- **El filtro de URL tenia un agujero de un caracter.** Descartaba `//otro-host` pero dejaba pasar `/\otro-host`: el parser de URL de los navegadores lee la barra invertida como una barra. Lo probo contra el parser de verdad, no de memoria.
+- **Lo vacio contaba como la portada.** `normalizar_ruta` le pegaba un `/` adelante a cualquier cosa, asi que `""`, `"?x=1"` y `"#abajo"` terminaban sumando visitas a `/`.
+- **El grafico de estados ignoraba el filtro de fechas** mientras vivia en la misma grilla que cuelga del selector de 7/30/90 dias: un pedido de hace dos anios aparecia en el panel de la semana.
+- **Dos tests pasaban de casualidad**: el del WEBP afirmaba que el mensaje decia "JPG", y el mensaje generico de "no es una imagen" tambien lo dice (con la rama del WEBP borrada seguia verde); y un `assertEqual` comparaba `[]` contra `[]`.
+
+Y dos del codigo que habia entrado horas antes: el `_consumir` nuevo repetia la misma carrera, y reventaba con `AttributeError` si el contador guardado no era un objeto.
+
+Lo que **no** pudo romper, despues de empujar fuerte: el parser de imagenes escrito a mano (21 entradas hostiles, ninguna lo colgo ni lo hizo leer fuera de rango) y la matematica del grafico (un solo punto, todos los valores en cero, el mouse fuera del SVG: ninguna division por cero ni indice fuera del array).
+
+Quedaron anotadas dos deudas que salieron de ahi: **D19** (se tira el perfil de color de la foto: en una reposteria la foto *es* el producto) y **D20** (la llamada al SDK no tiene test; el parseo de la respuesta ahora si).
+
 ### Lo que se encontro probando
 
 - **`PanelApiTestCase` heredaba de `BackendApiTestCase`** y unittest corria la suite entera del padre otra vez: 13 tests nuevos aparecian como 23. El arnes de la app de test se mudo a `support.py`, que `discover` no carga.
@@ -87,7 +101,7 @@ El test que lo prueba se vio **rojo primero** contra el codigo viejo (R29): `Ass
 
 | Antes (0.5.0) | Ahora (0.6.0) |
 |---|---|
-| 70 tests | **138 tests**, todos verdes |
+| 70 tests | **151 tests**, todos verdes |
 | JS 326,85 KB · CSS 29,22 KB | JS 360,12 KB · CSS 30,71 KB |
 | migracion 0002 | **0003** (`page_view`), probada sobre copia, en los dos sentidos y desde base vacia |
 | 5 pestanas en el panel | 6, con graficos y perfil |

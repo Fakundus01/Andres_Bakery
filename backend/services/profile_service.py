@@ -53,8 +53,13 @@ def _url(valor: object, *, relativa: bool = False, mailto: bool = False) -> str:
         return crudo
     if mailto and bajo.startswith("mailto:"):
         return crudo
-    # Una ruta propia del sitio ("/uploads/ab12.jpg"): nunca "//otro-host".
-    if relativa and crudo.startswith("/") and not crudo.startswith("//"):
+    # Una ruta propia del sitio ("/uploads/ab12.jpg"), nunca otro host.
+    #
+    # No alcanza con descartar "//": el parser de URL de los navegadores trata
+    # la barra invertida como una barra, asi que "/\\evil.com/x.jpg" tambien
+    # sale a un host ajeno. Una ruta legitima de este sitio no tiene ninguna
+    # barra invertida, asi que se rechaza entera.
+    if relativa and crudo.startswith("/") and not crudo.startswith("//") and "\\" not in crudo:
         return crudo
     return ""
 

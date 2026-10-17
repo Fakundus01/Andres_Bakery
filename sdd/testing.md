@@ -7,7 +7,7 @@
 Los mismos que `harness.config.json`. **Siempre desde la raíz del repo**: los imports del back son `backend.*`.
 
 ```bash
-# Back: 138 tests, unittest (NO pytest: el venv no lo tiene)
+# Back: 151 tests, unittest (NO pytest: el venv no lo tiene)
 backend/.venv/Scripts/python.exe -m unittest discover -s backend/tests -t . -q
 
 # Front: eslint + tsc (los dos proyectos de TS)
@@ -17,7 +17,7 @@ cd front/Andres_Bakery && npm run lint
 cd front/Andres_Bakery && npm run build
 ```
 
-Estado medido el 2026-10-17 tras T10-T14: **138 tests OK**, lint limpio, build en verde (360,12 KB de JS, 30,71 KB de CSS).
+Estado medido el 2026-10-17 tras T10-T14: **151 tests OK**, lint limpio, build en verde (360,12 KB de JS, 30,71 KB de CSS).
 
 ## 2 · Qué hay cubierto hoy
 
@@ -53,6 +53,13 @@ Estado medido el 2026-10-17 tras T10-T14: **138 tests OK**, lint limpio, build e
 
 **Lo que se verificó en navegador el 2026-10-17** (R07), no con tests: el giro por hover y que el dorso tenga su "Agregar"; la subida de una foto real de punta a punta (archivo elegido → guardado → servido → mostrado en el formulario y en la carta); el panel con sus gráficos; `/historia` con las redes; `/cv`; y 390px sin desbordes en cuatro rutas.
 
+**Lo que enseñó la revisión del 2026-10-17 sobre estos mismos tests** (R30: el reviewer no solo corre la suite, la audita):
+
+- **Un test puede pasar por el motivo equivocado.** El del WEBP afirmaba que el mensaje contenía `"JPG"`… y el mensaje genérico de "no es una imagen" también lo contiene. Con la rama del WEBP borrada, seguía verde. Ahora afirma `"WEBP"`.
+- **Un `assertEqual` puede ser una tautología.** `assertEqual(list(carpeta.glob("*")) if carpeta.exists() else [], [])` comparaba `[]` contra `[]`, porque en ese test la carpeta nunca llega a crearse. Ahora dice `assertFalse(carpeta.exists())`, que es lo que se quería decir.
+- **Afirmar ausencias no alcanza.** Todos los asserts sobre imágenes eran "no está el EXIF", "no está el `<script>`" — compatibles con un limpiador que mastique mal la imagen y devuelva un JPEG roto. Entró un **golden de bytes**: la foto limpia tiene que ser *exactamente* la original menos el segmento APP0, y lo que queda en disco tiene que ser *exactamente* lo que el validador aprobó.
+- **Los bugs de concurrencia no se ven leyendo.** Las dos carreras (el contador de visitas y el de la IA) estaban en código que se lee perfecto. Se prueban forzando el interleaving, no esperando que ocurra.
+
 **Hueco grande:** **cero tests de front**. No hay runner instalado, y ahora hay lógica propia que lo pide (`ejeY`, `urlDeImagen`, el gate de `usePunteroFino`). Dos bugs de este ciclo —el eje que etiquetaba "1" dos veces y el texto de 5px en celular— se encontraron **mirando la pantalla**, que es exactamente lo que un test hubiera atrapado antes.
 
 ## 3 · Estrategia
@@ -78,12 +85,14 @@ Estado medido el 2026-10-17 tras T10-T14: **138 tests OK**, lint limpio, build e
 | V11 · una foto subida no conserva metadatos | `test_image_file` + `test_upload_service` leen **los bytes del archivo guardado** | automatizado |
 | V12 · lo que devuelve el modelo no entra crudo | `test_ai_service`: un borrador con `tags`, `precio` y `sql` sale con las siete claves de siempre | automatizado |
 | V13 · las visitas no identifican a nadie | `test_metrics_service` compara las **columnas de la tabla** contra la lista esperada | automatizado |
+| V15 · dos visitas simultáneas no le dan 500 a nadie | `test_metrics_service` fuerza el choque contra el índice único | automatizado |
+| V16 · la foto limpia es la original menos sus metadatos, byte a byte | `test_image_file`: golden de bytes, no ausencia de strings | automatizado |
 | V14 · el techo de gasto de la IA sobrevive a un reinicio | `test_ai_service`: una **instancia nueva** del servicio (= otro worker) sigue topada. Visto rojo contra el código viejo | automatizado |
 
 ## 5 · Cobertura mínima para dar algo por `done`
 
 1. Servicio nuevo o tocado del back ⇒ su test, verde.
-2. Los 138 existentes, verdes (V9). Un test que había pasado y ahora no, bloquea.
+2. Los 151 existentes, verdes (V9). Un test que había pasado y ahora no, bloquea.
 3. `npm run lint` y `npm run build`, limpios (V1).
 4. Si se tocó algo visible ⇒ revisado en navegador, en celular y en escritorio, y dicho en el handback.
 5. Si el cambio toca precios, mínimos o totales ⇒ el rojo se vio primero (R29).

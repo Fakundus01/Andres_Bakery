@@ -34,6 +34,7 @@
 |---|---|
 | Hash de contraseña | ✅ `werkzeug.security` (`models.py:31`), nunca texto plano |
 | Autorización ≠ autenticación | ✅ `payment_service.py` compara `order.user_id` contra la identidad del token; `admin_required` protege las rutas de admin |
+| URL que escribe el admin y después sale en un `href` | ✅ lista blanca de esquemas en `ProfileService`. Corregido el 2026-10-17: descartar `//` no alcanzaba — el parser de URL de los navegadores lee la barra invertida como una barra, así que `/\evil.com/x.jpg` pasaba por ruta propia y salía a otro host. Ahora cualquier barra invertida la descarta |
 | Sesión en cookie `httpOnly` | ❌ el token va a **`localStorage`** (`AuthContext.tsx:33-73`). Un XSS lo lee |
 | Vencimiento de sesión | ⚠️ el default de flask-jwt-extended (15 min de access token); no está declarado en `config.py` |
 | Rate limit en login | ❌ no hay, en ningún endpoint |
@@ -96,6 +97,7 @@ El asistente de recetas manda una foto a la API de Anthropic y recibe un borrado
 | Tipo por contenido, no por extensión | ✅ se parsea la estructura: marcadores `FFD8…FFD9` en JPEG, firma + chunks en PNG. El `Content-Type` del navegador y el nombre del archivo **no deciden nada** |
 | Metadatos fuera | ✅ el archivo se **reescribe**: se van EXIF (incluido el GPS de la foto del celular), XMP, ICC y comentarios |
 | Archivo políglota | ✅ muere en la reescritura: lo que sale es solo lo que el parser entendió |
+| Lo que sobrevive a la limpieza | ⚠️ **precisión**: se conserva la data comprimida tal cual, así que un admin podría esconder bytes arbitrarios adentro. "Se reescribe sin metadatos" **no** quiere decir "el resultado es una imagen válida": un archivo con estructura correcta y relleno adentro pasa. No es ejecutable (tipo fijo + `nosniff`) y subir es admin-only, pero conviene no leer la promesa de más |
 | Nombre generado por el servidor | ✅ `secrets.token_hex(16)` + extensión del tipo detectado. El nombre que manda el cliente se descarta ⇒ no hay path traversal posible |
 | Fuera del árbol de código y del repo | ✅ `instance/uploads/`, con `.gitignore` |
 | Nunca se ejecuta lo subido | ✅ lo sirve `GET /uploads/<nombre>` con `Content-Type` fijo, `nosniff` y sin interpretar nada |
