@@ -198,3 +198,26 @@ Decisiones con fecha y motivo, para no re-discutirlas. Una decisión no se borra
 
 **Pendiente de decidir cuando toque:** el host del back y el proveedor de Postgres van a su propia ADR, con los números en `costs.md`. **Hoy no hay ninguna config de Vercel en el repo:** se verificó.
 
+
+---
+
+## ADR-015 · El `.env` se lee con 40 líneas propias, no con `python-dotenv`
+
+**Fecha:** 2026-10-16 · **Estado:** Vigente
+
+**Contexto:** `backend/.env` era decorativo. Nadie llamaba a `load_dotenv()` y el back corría con los defaults de `config.py` (**D12**), entre ellos `ADMIN_PASSWORD=admin123` en un repo público (**D13**). Para sacar esos defaults hay que poder leer el archivo primero.
+
+**Decisión:** `backend/env_file.py` — `parse_env` + `load_env_file`, sin dependencias nuevas. Se llama desde `config.py` **antes** de la clase `Config`, porque sus `os.getenv` se resuelven al importarse.
+
+**Por qué no `python-dotenv`:** es la opción obvia y está viva, pero es una dependencia nueva y lo que necesitábamos son 40 líneas: partir por `=`, ignorar comentarios, sacar comillas y **no pisar lo que ya está en el entorno**. La API quedó igual a la suya a propósito: cambiar de opinión es borrar un archivo y poner `load_dotenv()` en su lugar.
+
+**Precedencia:** entorno > `.env` > default del código. El deploy y un `VAR=x` suelto en la terminal le ganan al archivo; está testeado (`test_does_not_overwrite_what_the_environment_already_said`).
+
+**Lo que se cae de acá:**
+
+- `ADMIN_EMAIL` y `ADMIN_PASSWORD` **sin default**. Sin email configurado no se crea ningún admin: el panel queda sin dueño antes que con una clave publicada.
+- `ensure_admin()` **deja de reescribir la contraseña en cada arranque**. Si Andrea la cambia, la suya gana. Para rotarla hay `ADMIN_PASSWORD_RESET=true`, de una sola vez y avisando por log.
+- Sin `JWT_SECRET_KEY` en el entorno se usa **una al azar por proceso**: reiniciar cierra las sesiones, pero nadie firma un token de admin con una clave que está en el repo.
+- Los tests **no leen** `backend/.env` (`backend/tests/__init__.py` apunta `ENV_FILE` a un archivo que no existe): si lo leyeran, pasarían o fallarían según lo que cada máquina tenga cargado.
+
+**Pendiente:** el `.env` local quedó con `admin@local.test` y una clave aleatoria. El mail real de Andrea **ya está en el historial de git** (`config.py:34` del commit viejo) y eso no se deshace reescribiendo el presente.

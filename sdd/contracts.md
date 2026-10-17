@@ -34,7 +34,13 @@ Errores: `{"error": "<mensaje>"}` con el status de la excepción (`services/exce
 
 **Deuda de contrato:** ninguna lista pagina (`security.md` N6) y las respuestas de escritura son inconsistentes — unas devuelven `{id}`, otras `{status}`. No se arregla en este ciclo; queda anotado.
 
-## 2 · Lo que cambia con T3/T4 (propuesta)
+## 2 · Lo que cambia con T3/T4 — **implementado el 2026-10-16**
+
+Esto dejo de ser propuesta: esta construido y con tests. Tres diferencias respecto de lo que decia este documento, todas por necesidad del panel:
+
+- `Tag` devuelve tambien **`sort_order`**. Sin eso, editar una etiqueta desde el panel le reseteaba el orden a 0.
+- `POST /api/products` y `POST /api/tags` devuelven **`{id, slug}`**, no solo `{id}`: el panel necesita el slug para linkear la ficha recien creada.
+- `GET /api/site/delivery` devuelve ademas **`whatsapp_phone`** y **`payments_enabled`**. Con eso el front dejo de tener su propio `VITE_WHATSAPP_PHONE` (el numero vivia en dos lados y podian discrepar) y sabe si mostrar el pago online o el camino por WhatsApp.
 
 ### `Product` — forma nueva
 

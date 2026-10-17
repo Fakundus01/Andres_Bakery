@@ -22,11 +22,11 @@
 |---|---|
 | `.gitignore` con `.env` | ✅ está, y `*.db` y `.venv/` también |
 | `.env.example` sin valores | ✅ existe en `backend/` |
-| Secretos fuera del código | ⚠️ **no**: `config.py:34` tiene un email real como default de `ADMIN_EMAIL`, y `JWT_SECRET_KEY` cae a `"dev-secret-change"` y `ADMIN_PASSWORD` a `"admin123"`. No existe `backend/.env`, así que **hoy corre con esos defaults** |
+| Secretos fuera del código | ✅ **sí** desde el 2026-10-16 (ADR-015): `ADMIN_EMAIL` y `ADMIN_PASSWORD` sin default — sin ellos no se crea admin —, `JWT_SECRET_KEY` cae a una clave **al azar por proceso**, y `backend/env_file.py` lee el `.env` de verdad. El email real **ya quedó en el historial de git** y eso no se deshace |
 | Dependencias sin vulnerabilidades | ❓ sin auditar. `pip-audit` y `npm audit` pendientes (R19: el repo estuvo 7 meses quieto) |
 | HTTPS | n/a: no hay deploy |
 
-**Acción:** crear `backend/.env` con valores propios; mover el email real de `config.py` a env sin default; correr las dos auditorías. Lo del email **ya está en el historial de git**: si se considera dato sensible, se asume que quedó.
+**Acción pendiente:** correr `pip-audit` y `npm audit` (R19, D10). Lo de los secretos quedó cerrado: ver **ADR-015**. Queda un control nuevo que no existía antes — `ensure_admin()` ya no reescribe la contraseña del admin en cada arranque, así que la clave que Andrea elija desde el panel es la que vale; para rotarla a mano hay `ADMIN_PASSWORD_RESET=true`, de una sola vez.
 
 ### N1 · Identidad
 
@@ -87,7 +87,7 @@
 
 Nada de esta lista está marcado como crítico hoy, así que no hay bloqueo abierto. Pasan a crítico — y bloquean release — si el proyecto se publica:
 
-1. `JWT_SECRET_KEY` y `ADMIN_PASSWORD` con valor propio en `.env`, no el default.
+1. ~~`JWT_SECRET_KEY` y `ADMIN_PASSWORD` con valor propio en `.env`~~ — resuelto (ADR-015). Al desplegar hay que **cargarlos en el entorno del host**: sin `JWT_SECRET_KEY` las sesiones se cortan en cada reinicio, y sin `ADMIN_EMAIL` no hay panel.
 2. Rate limit en login y contacto.
 3. Headers de seguridad.
 4. Firma del webhook, si se prende Mercado Pago.

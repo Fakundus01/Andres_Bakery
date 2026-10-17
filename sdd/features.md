@@ -28,19 +28,19 @@ Estados (§5 del master): Specified 20% → Planned 40% → Tasked 60% → In Pr
 | F13 | Partir `App.tsx` en módulos ≤300 líneas | **Complete** | T1 | — (R05, FIJA) |
 | F14 | Tokens de diseño + estética pixel pastel | **Complete** | T2 | F13 |
 | F15 | 4 temas estacionales con selector persistido | **Complete** | T2 | F14 |
-| F16 | `Product` absorbe la receta (modelo nuevo) | Planned | T3 | ADR-010 (migraciones) |
-| F17 | Precio por unidad: `unit_label`, `min_qty`, `qty_step` | Planned | T3 | F16 |
-| F18 | Selector de cantidad con total en vivo ("5 brownies = $X") | Planned | T6 | F17 |
-| F19 | Variantes de tamaño para lo que se vende entero | Planned | T3 | F16 |
-| F20 | Ingredientes relacionales visibles en la carta | Planned | T4+T6 | F16, revive F12 |
-| F21 | Etiquetas que crea ella (sin TACC, vegano…) + filtro | Planned | T3+T6 | F16 |
-| F22 | Retiro / envío por producto + zona y costo de una sola fuente | Planned | T9 | F16 |
+| F16 | `Product` absorbe la receta (modelo nuevo) | **Complete** | T3 | `Recipe` borrada; su contenido migro a `Product` sin perder filas |
+| F17 | Precio por unidad: `unit_label`, `min_qty`, `qty_step` | **Complete** | T3 | validado **del lado del servidor**, no solo en el carrito (V4) |
+| F18 | Selector de cantidad con total en vivo ("5 brownies = $X") | **Complete** | T3 | `QuantityPicker`: salta de a `qty_step` en ficha, carrito y panel rapido |
+| F19 | Variantes de tamaño para lo que se vende entero | **In Progress** | T3 | modelo, API y selector en la ficha listos; **falta cargarlas desde el panel** |
+| F20 | Ingredientes relacionales visibles en la carta | **In Progress** | T4 | se ven en el dorso y en la ficha; **falta elegirlos desde el panel** |
+| F21 | Etiquetas que crea ella (sin TACC, vegano…) + filtro | **Complete** | T3 | CRUD en el panel + filtro `?tag=` resuelto por el back |
+| F22 | Retiro / envío por producto + zona y costo de una sola fuente | **In Progress** | T9 | `allows_pickup`/`allows_delivery` y `/api/site/delivery` listos (mata el 2500 hardcodeado, C4); falta que el checkout respete el flag por producto |
 | F23 | Pedido por WhatsApp (`wa.me` con mensaje armado por el back) | Planned | T7 | F16 |
 | F24 | Cartilla de Andrea: historia, foto, cómo llegó a ser repostera | **In Progress** | T8 | la página existe en `/historia`; falta **su texto y su foto** |
-| F25 | Ficha de producto con descripción larga, ingredientes y etiquetas | Planned | T6 | F20, F21 |
+| F25 | Ficha de producto con descripción larga, ingredientes y etiquetas | **Complete** | T3 | `/producto/<slug>`; el slug **no se mueve** si ella corrige el nombre |
 | F26 | Link de salida a PedidosYa | **Deferred** | T7 | todavía no tiene tienda; la quiere a futuro (ADR-008) |
 | F27 | Higiene: borrar `front/api/*.js`, sacar `stripe`, crear `.env` | **Complete** | T0 | — |
-| F28 | Receta paso a paso publicada en la ficha (`Product.steps`) | Planned | T3+T6 | F16 (ADR-001 enmendada) |
+| F28 | Receta paso a paso publicada en la ficha (`Product.steps`) | **Complete** | T3 | un paso por linea; vacia ⇒ la seccion no se renderiza (V10) |
 
 ## B2 · Pedido del humano el 2026-10-16 (segunda tanda, por dictado)
 
@@ -50,16 +50,16 @@ Todavía **sin tarea asignada**: entran al backlog, no al código, hasta decidir
 |---|---|---|---|
 | F29 | Navegación: menos ítems arriba **o** drawer lateral, elegible | **Complete** | ADR-011 |
 | F30 | Pantalla de **Configuración**: tema, tipografía, tamaño de letra, posición del nav | **Complete** | F14-F15 |
-| F31 | **Tres roles explícitos**: invitado (sin login), cliente (con login), admin (Andrea) | Planned | ADR-012. Necesita `Order.user_id` opcional ⇒ **T3** |
+| F31 | **Tres roles explícitos**: invitado (sin login), cliente (con login), admin (Andrea) | **In Progress** | `Order.user_id` **ya es opcional** y el serializer tolera el pedido sin usuario. Falta la ruta publica de pedido: va con T7 (el mensaje lo arma el back) |
 | F32 | Catálogo con pestaña/vista propia de cliente, separada de la mirada de admin | Planned | F31 |
-| F33 | Tarjetas de la carta que **se dan vuelta** | **Complete** | los ingredientes aparecen cuando existan (T3) |
+| F33 | Tarjetas de la carta que **se dan vuelta** | **Complete** | con T3 ya muestran ingredientes, etiquetas y el aviso de preparacion |
 | F34 | Carrito con **vista propia** (`/carrito`) | **Complete** | — |
 | F35 | Rehacer el "Soporte guiado" | **Complete** | ADR-013: ahora es un panel de Ayuda |
-| F36 | Contacto por **WhatsApp** desde soporte | **Complete** | falta cargar `VITE_WHATSAPP_PHONE` para que aparezca |
+| F36 | Contacto por **WhatsApp** desde soporte | **Complete** | el numero salio del `.env` del front: ahora viene del back (`WHATSAPP_PHONE`), una sola fuente. Sigue sin cargarse |
 | F37 | **Placeholder de PedidosYa** en el footer | **Complete** | dice "próximamente" hasta que tenga tienda |
-| F38 | **Responsive** | In Progress | verificado a 390px: carta, carrito y header sin scroll horizontal. Faltan checkout y panel |
+| F38 | **Responsive** | **Complete** | 390px medido con `scrollWidth` vs `clientWidth` en carta, ficha, carrito, **checkout y panel**: cero desbordes |
 | F39 | Login/Register **a la derecha del todo** | **Complete** | F29 |
-| F40 | Más vistas propias | In Progress | hechas `/carrito`, `/configuracion`, `/historia`. Falta la ficha de producto |
+| F40 | Más vistas propias | **Complete** | `/carrito`, `/configuracion`, `/historia` y ahora `/producto/<slug>` |
 | F41 | **Deploy**: el front a Vercel | **Deferred** | ADR-014: después de T3 |
 
 **Lo que se midió del soporte actual (F35), no opinión:** ocupa el alto completo del viewport y tapa el header; la fila de respuestas rápidas está debajo del historial, así que **cada mensaje la empuja y terminás tocando otro botón** (pasó en la prueba: clic en "Medios de pago", respondió "Pedidos personalizados"); hay dos barras de scroll anidadas; y es un FAQ de 3 botones más un formulario de contacto disfrazado de conversación.

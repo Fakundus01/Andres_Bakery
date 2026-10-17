@@ -1,6 +1,6 @@
 # status.md · Andres Bakery
 
-**Versión:** 0.1.0 · **Última actualización:** 2026-10-16
+**Versión:** 0.5.0 · **Última actualización:** 2026-10-16
 
 ## 1 · Dónde estamos
 
@@ -10,10 +10,12 @@ El repo tiene 4 meses de código (15 commits, el último el 2026-03-08) y **estu
 
 | Check | Resultado |
 |---|---|
-| Tests del back | 19 OK |
+| Tests del back | **70 OK** (eran 19 antes de T3) |
 | Lint del front (eslint + tsc) | limpio |
-| Build del front | verde — 296 KB JS · **27 KB CSS** (bajó de 41: los tokens borraron utilidades repetidas) |
-| App corriendo | back en `127.0.0.1:5000` y front en `localhost:5174` (5173 ocupado). Home, tienda y carrito verificados en navegador |
+| Build del front | verde — 326,85 KB JS · 29,22 KB CSS |
+| Migraciones | `0002` aplicada. Probada sobre **una copia** antes que sobre la base real, en los dos sentidos y desde base vacía |
+| App corriendo | back en `127.0.0.1:5000`, front en `127.0.0.1:5188`. Flujo completo probado en navegador hasta el pedido #4 |
+| Responsive 390px | carta, ficha, carrito, **checkout y panel**: cero desbordes, medido con `scrollWidth` vs `clientWidth` |
 | Rama | `dev`, adelantada respecto de `main` |
 
 ## 2 · Avance por feature
@@ -24,21 +26,27 @@ Lo heredado (F01–F12) está Complete salvo lo anotado. Lo pedido el 2026-10-16
 |---|---|---|---|
 | F13 | Partir `App.tsx` | 100% | **Complete** |
 | F14–F15 | Estética pixel + 4 temas | 100% | **Complete** |
-| F16–F17 | Modelo nuevo + precio por unidad | 40% | Planned |
-| F18–F19 | Cantidad con total en vivo + variantes | 40% | Planned |
-| F20–F21 | Ingredientes + etiquetas | 40% | Planned |
-| F22–F23 | Retiro/envío + WhatsApp | 40% | Planned |
+| F16–F17 | Modelo nuevo + precio por unidad | 100% | **Complete** |
+| F18 | Cantidad con total en vivo | 100% | **Complete** |
+| F19 | Variantes de tamaño | 80% | **In Progress** — falta cargarlas desde el panel |
+| F20 | Ingredientes relacionales | 70% | **In Progress** — se ven; falta elegirlos desde el panel |
+| F21 | Etiquetas + filtro | 100% | **Complete** |
+| F22 | Retiro/envío por producto | 60% | **In Progress** — flags y `/api/site/delivery` listos; falta que el checkout los respete |
+| F23 | Pedido por WhatsApp | 40% | Planned — T7 |
 | F24 | Cartilla de Andrea | 70% | **In Progress** — la página está; falta su texto y su foto |
 | F29–F30 | Nav configurable + Configuración | 100% | **Complete** |
 | F33–F34 | Tarjetas que giran + carrito propio | 100% | **Complete** |
 | F35–F37 | Ayuda, WhatsApp y PedidosYa | 100% | **Complete** |
-| F31–F32 | Tres roles + vista de cliente | 40% | Planned — esperan T3 |
-| F25 | Ficha de producto | 40% | Planned |
+| F31 | Tres roles explícitos | 60% | **In Progress** — `Order.user_id` ya es opcional; falta la ruta pública (T7) |
+| F32 | Vista de cliente separada | 40% | Planned |
+| F25 | Ficha de producto | 100% | **Complete** — `/producto/<slug>` |
+| F38 | Responsive | 100% | **Complete** |
+| F40 | Más vistas propias | 100% | **Complete** |
 | F26 | Link a PedidosYa | 20% | **Deferred** — todavía no tiene tienda |
 | F27 | Higiene | 100% | **Complete** |
-| F28 | Receta paso a paso en la ficha | 40% | Planned |
+| F28 | Receta paso a paso en la ficha | 100% | **Complete** |
 
-Nada arranca hasta el OK de este `sdd/` (R08/R15).
+T0, T1, T2, las cuatro secciones de UI y **T3** están cerradas.
 
 ## 3 · Bloqueos
 
@@ -65,14 +73,20 @@ Ninguno bloquea T0, T1, T2 ni T3. El trabajo puede arrancar igual.
 | D6 | Respuestas de escritura inconsistentes (`{id}` vs `{status}`) | 2026-10-16 | |
 | D7 | Cero tests de front | 2026-10-16 | |
 | D8 | Retención y borrado de datos personales sin definir (Ley 25.326) | 2026-10-16 | |
-| D12 | **`backend/.env` no lo lee nadie**: no hay `python-dotenv` ni `load_dotenv()`. El `.env` creado en T0 es inerte y el back sigue corriendo con los defaults de `config.py` | 2026-10-16 | bloquea que `WHATSAPP_PHONE`, `PAYMENTS_ENABLED` y un `JWT_SECRET_KEY` real sirvan de algo ⇒ hay que resolverlo **antes de T7** |
-| D13 | `config.py:34-35` trae `ADMIN_EMAIL` y `ADMIN_PASSWORD=admin123` como defaults **en un repo público**, y `BootstrapService.ensure_admin()` le reescribe esa password al admin **en cada arranque** | 2026-10-16 | hoy solo corre local. El día que se despliegue, cualquiera que leyó el repo entra al panel. Ver `security.md` N1 |
-| D9 | Varios `.py` del back arrancan con BOM | 2026-10-16 | cosmético |
+| ~~D12~~ | ~~`backend/.env` no lo lee nadie~~ | resuelta 2026-10-16 | `backend/env_file.py` lo carga antes de `Config` (ADR-015). `PAYMENTS_ENABLED` y `WHATSAPP_PHONE` ya existen en `Config`; **todavía no los lee ningún servicio** (pagos ⇒ T4, WhatsApp ⇒ T7) |
+| ~~D13~~ | ~~`admin123` como default en un repo público, reescrito en cada arranque~~ | resuelta 2026-10-16 | `ADMIN_EMAIL`/`ADMIN_PASSWORD` sin default, `ensure_admin()` no pisa la clave y `ADMIN_PASSWORD_RESET` rota a pedido. Sin `JWT_SECRET_KEY` se usa una al azar por proceso. El mail real **sigue en el historial de git** |
+| D14 | El carrito guarda una **foto del producto** (nombre y precio) en `localStorage`. Si Andrea cambia el precio, el carrito sigue mostrando el viejo hasta vaciarlo | 2026-10-16 | el total **lo recalcula el servidor**, así que no se cobra de menos; lo que miente es la pantalla. Se arregla releyendo los productos al cargar el carrito |
+| D15 | Los mensajes de error de la API están **en inglés** y la UI los muestra tal cual (`product 3 is sold in steps of 6 unidad`) | 2026-10-16 | el front los previene antes de llegar, así que hoy casi no se ven. Al traducirlos, que sea en un solo lugar |
+| D9 | Varios `.py` del back arrancan con BOM | 2026-10-16 | cosmético — `services/__init__.py` ya quedó sin BOM |
 | D10 | `pip-audit` y `npm audit` sin correr tras 7 meses quietos (R19) | 2026-10-16 | |
 | ~~D11~~ | ~~`front/.env` apunta a `default-profile.svg`~~ | resuelta en T0 | el path quedó bien. Se vio además que **nadie lee** `VITE_PROFILE_DEFAULT`: queda para T8/F24 |
 
 ## 5 · Próximo paso propuesto
 
-**T0, T1, T2 y las cuatro secciones de UI (nav, configuración, ayuda, carta+carrito) cerradas el 2026-10-16.** El siguiente ciclo es **T2** (tokens de diseño, estética pixel y los 4 temas estacionales), que ahora puede arrancar porque los componentes ya existen por separado.
+**T3 cerrada el 2026-10-16**, junto con **D12** y **D13** (el `admin123` ya no está en el repo público). Con el esquema estable, lo que destraba más cosas por orden:
 
-Antes de T2 conviene resolver **D1** (token de sesión en `localStorage` → cookie `httpOnly`): toca `AuthContext` y el back, no el árbol de componentes, así que ya no obliga a repartir `App.tsx` dos veces.
+1. **T7 · Pedido por WhatsApp** (F23, F31). El back arma el mensaje con los importes de la DB y aparece la ruta pública de pedido: ahí recién queda cerrado el invitado sin cuenta (ADR-012), que hoy está a mitad de camino (la columna es opcional, falta el camino).
+2. **T4/T6 · Terminar el panel** (F19, F20): cargar variantes e ingredientes desde la pantalla de Andrea. Hoy el modelo y la API los soportan, pero ella solo puede cargarlos por API.
+3. **F41 · Deploy** (ADR-014). Ya no está bloqueado por el esquema. Antes conviene decidir host del back y Postgres, con su ADR y los números en `costs.md`.
+
+**Sin cambios:** F24 sigue esperando **la historia escrita y la foto de Andrea**, y F23/F22 esperan el número de WhatsApp y la zona/costo reales. Nada de eso se inventa.

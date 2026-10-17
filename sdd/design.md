@@ -106,6 +106,9 @@ ProductVariant (nuevo)  product_id, name, price, sort_order
 
 Order              + channel  String  "whatsapp" | "mercado_pago"
                    + customer_phone  (lo pide el flujo de WhatsApp)
+                   ^^^ NO se agrego (T3): OrderDelivery.customer_phone ya existe
+                       con el resto del contacto. Duplicar la columna invita a
+                       que las dos digan cosas distintas.
 
 Recipe             se jubila (ADR-001). Su contenido migra a Product:
                    summary → description · ingredients(texto) → m2m Ingredient
@@ -115,6 +118,8 @@ Recipe             se jubila (ADR-001). Su contenido migra a Product:
 La migración de `Recipe.ingredients` es la única que no es mecánica: hoy es **texto libre** y pasa a ser filas de `Ingredient`. Se parte por líneas, se normaliza por nombre y lo que no se pueda mapear queda en `description` para que Andrea lo acomode a mano desde el panel. No se descarta nada en silencio.
 
 **El total lo sigue calculando el servidor.** `order_service` ya recorre los items, relee `unit_price` de la DB y suma el envío desde `DELIVERY_FEE` (`order_service.py:37-62`). Eso no se toca: es el control de N3 que ya está bien y los tests lo cubren. Se le suma validar `min_qty` y `qty_step` del lado del servidor, no solo en el control del front (V4).
+
+**Construido el 2026-10-16 (T3).** Lo de arriba es lo que hay en el codigo, con una desviacion declarada (`customer_phone`) y una decision que este boceto no preveia: **el slug no se regenera cuando cambia el nombre**, porque es la URL publica de la ficha y un link ya compartido no se puede romper. Las etiquetas **no se siembran**: "sin TACC" es declaracion de Andrea y el seed no la pone por ella.
 
 ### B4 · Pedido por WhatsApp (T7 · ADR-002)
 

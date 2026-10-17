@@ -4,6 +4,54 @@ Semver `MAJOR.MINOR.PATCH` (R13). No se borra nada: lo viejo queda.
 
 ---
 
+## [0.5.0] · 2026-10-16 · T3: el modelo nuevo, y el `admin123` fuera del repo publico
+
+### Seguridad primero (D12, D13) · ADR-015
+
+`backend/.env` era decorativo: nadie lo leia. `backend/env_file.py` lo carga a `os.environ` **antes** de que `Config` resuelva sus `os.getenv`, en 40 lineas y sin dependencia nueva (la API quedo igual a la de `python-dotenv` a proposito: cambiar de opinion es borrar un archivo).
+
+Con el archivo leyendose de verdad se pudo sacar lo que importaba: `ADMIN_EMAIL` y `ADMIN_PASSWORD` **ya no tienen default**, y `ensure_admin()` **dejo de reescribir la contrasena del admin en cada arranque**. Si Andrea la cambia, la suya gana; para rotarla a mano hay `ADMIN_PASSWORD_RESET=true`, de una sola vez y avisando por log. Sin `JWT_SECRET_KEY` en el entorno se usa una al azar por proceso: reiniciar cierra sesiones, pero nadie firma un token de admin con una clave publicada.
+
+**Medido, no deducido:** el test que fallaba antes del arreglo decia `AssertionError: False is not true` sobre la clave vieja, y el de "sin ADMIN_EMAIL no se crea admin" decia `1 != 0`. Despues del cambio se intento pisar la clave a mano (`ADMIN_PASSWORD=admin123` + arranque) y la salida fue `admin123 entro: False`.
+
+Los tests dejaron de leer `backend/.env` (`backend/tests/__init__.py` apunta `ENV_FILE` a un archivo que no existe): si lo leyeran, pasarian o fallarian segun lo que cada maquina tenga cargado.
+
+### El modelo (F16, F17, F19, F21, F28) · ADR-010
+
+`Product` absorbio la receta y aprendio a venderse por unidad: `slug`, `steps`, `prep_note`, `unit_label`, `min_qty`, `qty_step`, `allows_pickup`, `allows_delivery`. Entraron `Tag` (m2m, las crea ella) y `ProductVariant`. `Order` sumo `channel` y **`user_id` paso a opcional** (ADR-012). `Recipe` se borro.
+
+**Flask-Migrate entro de verdad**: `0001` es el esquema previo a T3, escrita a mano porque cuando se adopto Alembic el modelo ya tenia los cambios; `0002` es la migracion de T3, autogenerada y despues editada por tres motivos reales — las columnas NOT NULL necesitan `server_default` sobre una tabla con filas, `slug` entra nullable y recien despues pasa a NOT NULL UNIQUE, y **las recetas no se tiran**: cada una se convierte en un `Product` no disponible y con precio 0, y su texto de ingredientes se parte en filas de `Ingredient`.
+
+Se probo **sobre una copia antes que sobre la base real**, en los dos sentidos (`upgrade` y `downgrade`) y tambien desde una base vacia. En la base de desarrollo habia contenido escrito a mano, no solo semilla: una receta "Brownies", un ingrediente "Azucar" y el texto de Historia editado. Todo sobrevivio; la receta quedo como producto sin precio y oculto, esperando que Andrea decida.
+
+`create_all()` quedo **solo para los tests**. Si la base esta atrasada, la app ya no explota al arrancar: avisa por log y levanta igual, que es justo el estado de cualquiera que hace `git pull` antes de migrar.
+
+### La API (F20, F22, F25) y el front
+
+Endpoints nuevos: `GET /api/products?tag=&available=1`, `GET /api/products/<slug>`, el CRUD de `/api/tags` y `GET /api/site/delivery`. `POST /api/orders` valida `min_qty` y `qty_step` **del lado del servidor** (V4) y acepta `channel`. `/api/payments/checkout` responde **503** con los pagos apagados, en vez de un error de configuracion raro.
+
+`/api/site/delivery` mato dos duplicaciones: el `DELIVERY_FEE = 2500` que estaba hardcodeado en el front (C4) y el numero de WhatsApp, que vivia **a la vez** en el `.env` del front y en el del back y podian discrepar. Ahora `VITE_WHATSAPP_PHONE` no existe.
+
+Vistas: `/producto/<slug>` con etiquetas, ingredientes, variantes, aviso de preparacion y la receta en pasos numerados. El filtro por etiqueta en la carta lo resuelve el back. En el panel, la pestana Recetas **se jubilo** (ADR-001) y la receta es un campo del producto; entro una pestana Etiquetas con un aviso explicito de que "sin TACC" es **su declaracion**, no un certificado del software.
+
+**El slug no se mueve cuando ella corrige un nombre**: es la URL de la ficha y un link compartido no se puede romper. Verificado: renombrar "Cookies New York x6" a "Cookies New York" dejo el slug viejo.
+
+### Lo que se encontro probando, no leyendo
+
+- **El carrito guardado en `localStorage` antes de T3** mostraba el precio viejo y una unidad vacia ("$ 9.600 por"). La clave paso a `andres-bakery-cart-v2` y la vieja se borra: mostrar un precio desactualizado es mentirle al cliente.
+- **La home anunciaba "Chat guiado abajo a la derecha"**, que dejo de existir en 0.4.0. Decia una mentira desde ese commit.
+- **Editar una etiqueta le reseteaba el orden a 0**, porque `sort_order` no viajaba en la respuesta. Entro al serializer.
+
+### Desviaciones declaradas
+
+- `design.md` §B3 pedia `Order.customer_phone`. **No se agrego**: `OrderDelivery.customer_phone` ya existe con el resto del contacto, y duplicar la columna invita a que las dos digan cosas distintas.
+- `contracts.md` §2 no listaba `sort_order` en `Tag` ni `slug` en la respuesta de crear producto. Los dos entraron porque el panel los necesita.
+- Las etiquetas **no se siembran**. "Sin TACC" es declaracion de Andrea: el seed no la pone por ella.
+
+**Medido** — 70 tests OK (eran 19), eslint + tsc limpios, build 326,85 KB JS / 29,22 KB CSS. Responsive a 390px en carta, ficha, carrito, **checkout y panel**: cero desbordes. Flujo completo probado en el navegador: agregar de a 6, carrito con envio del back, pedido #4 registrado con `channel=whatsapp`. El servidor rechaza 7 cookies con `400 product 3 is sold in steps of 6 unidad`.
+
+---
+
 ## [0.4.0] · 2026-10-16 · Cuatro secciones de UI, una por commit
 
 Segunda tanda del dictado del humano. Cuatro decisiones antes de escribir codigo (**ADR-011 a ADR-014**) y despues cuatro commits, uno por seccion.
