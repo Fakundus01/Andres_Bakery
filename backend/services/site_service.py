@@ -19,6 +19,9 @@ class SiteService:
             "pickup_address": str(current_app.config["PICKUP_ADDRESS"]),
             "whatsapp_phone": str(current_app.config.get("WHATSAPP_PHONE") or ""),
             "payments_enabled": bool(current_app.config.get("PAYMENTS_ENABLED")),
+            # El panel pregunta por aca si mostrar el boton del asistente: sin
+            # llave no tiene sentido ofrecer algo que va a responder 503 (F46).
+            "ai_enabled": bool(current_app.config.get("AI_ENABLED")) and bool(current_app.config.get("ANTHROPIC_API_KEY")),
         }
 
     def get_about(self) -> dict:

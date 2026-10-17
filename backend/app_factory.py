@@ -4,7 +4,7 @@ from sqlalchemy.exc import OperationalError
 
 from .config import Config
 from .extensions import db, jwt, mail, migrate
-from .routes import auth, ingredients, mailer, orders, payments, products, site, tags, users
+from .routes import ai, auth, ingredients, mailer, metrics, orders, payments, products, site, tags, uploads, users
 from .services.bootstrap_service import BootstrapService
 
 
@@ -71,6 +71,9 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(mailer.bp)
     app.register_blueprint(payments.bp)
     app.register_blueprint(tags.bp)
+    app.register_blueprint(uploads.bp)
+    app.register_blueprint(metrics.bp)
+    app.register_blueprint(ai.bp)
 
 
 def _register_http_handlers(app: Flask) -> None:
@@ -81,6 +84,37 @@ def _register_http_handlers(app: Flask) -> None:
     @app.errorhandler(404)
     def not_found(error):
         return jsonify({"error": "not found"}), 404
+
+    @app.errorhandler(413)
+    def payload_too_large(error):
+        """El tope de Flask corta antes de que el archivo llegue al servicio.
+
+        Sin esto el cliente recibe el HTML de error de Werkzeug, que el front
+        no sabe leer. Con esto recibe el mismo {"error": ...} que todo el resto.
+        """
+        megas = app.config.get("MAX_CONTENT_LENGTH", 0) / (1024 * 1024)
+        return jsonify({"error": f"El archivo pesa mas de {megas:.0f} MB."}), 413
+
+    @app.after_request
+    def add_security_headers(response):
+        """Entraron con la subida de archivos (ADR-018, cierra D3).
+
+        Desde que el back sirve archivos que subio una persona, estos headers
+        dejan de ser hardening: son parte del control. CORP va en cross-origin
+        a proposito — el front corre en otro origen y tiene que poder mostrar
+        las fotos; lo que no queremos es que alguien las lea como otra cosa.
+        """
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "no-referrer")
+        response.headers.setdefault("Cross-Origin-Resource-Policy", "cross-origin")
+        # El back sirve JSON e imagenes, nunca HTML con scripts: la CSP mas
+        # restrictiva que existe le alcanza.
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'none'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'",
+        )
+        return response
 
     @app.after_request
     def add_cors_headers(response):

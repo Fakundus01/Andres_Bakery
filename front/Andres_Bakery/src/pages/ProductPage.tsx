@@ -10,6 +10,7 @@ import { useSiteConfig } from "../contexts/SiteConfigContext";
 import { productsApi } from "../lib/api";
 import { bajarCantidad, cantidadInicial, subirCantidad } from "../lib/cantidades";
 import { heroFallback } from "../lib/constants";
+import { urlDeImagen } from "../lib/imagenes";
 import { formatCurrency, getErrorMessage } from "../lib/format";
 import type { Product } from "../lib/types";
 
@@ -104,7 +105,7 @@ export function ProductPage() {
       <div className="grid gap-6 lg:grid-cols-[1fr_0.85fr]">
         <div className="pixel-panel overflow-hidden p-0">
           <img
-            src={product.image_url || heroFallback[0].image}
+            src={urlDeImagen(product.image_url) || heroFallback[0].image}
             alt={product.name}
             className="h-[22rem] w-full border-b-[3px] border-borde object-cover"
           />

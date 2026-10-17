@@ -7,16 +7,20 @@ import { AdminPage } from "../pages/admin/AdminPage";
 import { CarritoPage } from "../pages/CarritoPage";
 import { CheckoutPage } from "../pages/CheckoutPage";
 import { ConfiguracionPage } from "../pages/ConfiguracionPage";
+import { CvPage } from "../pages/CvPage";
 import { HomePage } from "../pages/HomePage";
 import { ProductPage } from "../pages/ProductPage";
 import { LoginPage } from "../pages/LoginPage";
 import { OrdersPage } from "../pages/OrdersPage";
 import { RegisterPage } from "../pages/RegisterPage";
 import { ShopPage } from "../pages/ShopPage";
+import { useContarVisitas } from "../lib/useContarVisitas";
 import { SiteFooter } from "./SiteFooter";
 import { SiteHeader } from "./SiteHeader";
 
 export function AppShell() {
+  useContarVisitas();
+
   return (
     <div className="relative flex min-h-screen flex-col text-tinta">
       <SiteHeader />
@@ -26,6 +30,7 @@ export function AppShell() {
           <Route path="/tienda" element={<ShopPage />} />
           <Route path="/producto/:slug" element={<ProductPage />} />
           <Route path="/historia" element={<AboutPage />} />
+          <Route path="/cv" element={<CvPage />} />
           <Route path="/configuracion" element={<ConfiguracionPage />} />
           <Route path="/carrito" element={<CarritoPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />

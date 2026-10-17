@@ -5,23 +5,40 @@ import { ChefHat, Info, RotateCcw, ShoppingBag } from "lucide-react";
 import { textoRegla } from "../lib/cantidades";
 import { heroFallback } from "../lib/constants";
 import { formatCurrency } from "../lib/format";
+import { urlDeImagen } from "../lib/imagenes";
 import type { Product } from "../lib/types";
+import { usePunteroFino } from "../lib/usePunteroFino";
 import { TagBadge } from "./TagBadge";
 
-/** Se da vuelta con un botón, no con el hover: en celular no hay hover, y
- *  una tarjeta que gira sola cuando pasás el dedo es una trampa. */
+/** Se da vuelta con el hover donde hay mouse, y con el botón en todas partes
+ *  (ADR-016). El botón no es el plan B: en celular es el único camino, y es
+ *  también el del teclado. Por eso el dorso tiene su propio "Agregar": con el
+ *  puntero encima, el de la cara de adelante no se puede clickear. */
 export function ProductCard({ product, onAddToCart }: { product: Product; onAddToCart: () => void }) {
   const [volteada, setVolteada] = useState(false);
+  const giraConElMouse = usePunteroFino();
   const regla = textoRegla(product);
   const etiquetas = product.tags ?? [];
 
+  const alEntrarElMouse = giraConElMouse ? () => setVolteada(true) : undefined;
+  const alSalirElMouse = giraConElMouse ? () => setVolteada(false) : undefined;
+
   return (
-    <div className="flip-carta" data-volteada={volteada}>
+    <div
+      className="flip-carta"
+      data-volteada={volteada}
+      onMouseEnter={alEntrarElMouse}
+      onMouseLeave={alSalirElMouse}
+    >
       <div className="flip-carta-interior">
-        <article className="flip-cara product-card flex flex-col overflow-hidden" aria-hidden={volteada}>
+        <article
+          className="flip-cara product-card flex flex-col overflow-hidden"
+          aria-hidden={volteada}
+          inert={volteada}
+        >
           <div className="relative">
             <img
-              src={product.image_url || heroFallback[0].image}
+              src={urlDeImagen(product.image_url) || heroFallback[0].image}
               alt={product.name}
               className="h-56 w-full border-b-[3px] border-borde object-cover"
             />
@@ -91,7 +108,11 @@ export function ProductCard({ product, onAddToCart }: { product: Product; onAddT
           </div>
         </article>
 
-        <article className="flip-cara flip-cara-dorso product-card flex flex-col p-5" aria-hidden={!volteada}>
+        <article
+          className="flip-cara flip-cara-dorso product-card flex flex-col p-5"
+          aria-hidden={!volteada}
+          inert={!volteada}
+        >
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-tinta-tenue">Qué lleva</p>
           <h3 className="mt-1 font-display text-2xl font-bold text-tinta">{product.name}</h3>
 
@@ -115,13 +136,33 @@ export function ProductCard({ product, onAddToCart }: { product: Product; onAddT
             </p>
           ) : null}
 
-          <div className="mt-5 flex items-center justify-between gap-3 border-t-[3px] border-borde pt-4">
-            <Link to={`/producto/${product.slug}`} className="btn-primary px-3 py-2 text-sm">
-              Ver la ficha
-            </Link>
-            <button className="btn-secondary px-3" type="button" onClick={() => setVolteada(false)} aria-label="Volver a la foto" title="Volver">
-              <RotateCcw className="h-4 w-4" />
+          <div className="mt-5 space-y-3 border-t-[3px] border-borde pt-4">
+            <button
+              className="btn-primary w-full justify-center"
+              type="button"
+              onClick={onAddToCart}
+              disabled={!product.available}
+            >
+              <ShoppingBag className="h-4 w-4" />
+              Agregar
             </button>
+            <div className="flex items-center justify-between gap-3">
+              <Link to={`/producto/${product.slug}`} className="btn-secondary px-3 py-2 text-sm">
+                Ver la ficha
+              </Link>
+              {/* Con mouse, salir de la tarjeta ya la devuelve: el botón sería ruido. */}
+              {giraConElMouse ? null : (
+                <button
+                  className="btn-secondary px-3"
+                  type="button"
+                  onClick={() => setVolteada(false)}
+                  aria-label="Volver a la foto"
+                  title="Volver"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </button>
+              )}
+            </div>
           </div>
         </article>
       </div>

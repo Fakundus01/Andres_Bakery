@@ -9,6 +9,7 @@ import { useCart } from "../contexts/CartContext";
 import { useSiteConfig } from "../contexts/SiteConfigContext";
 import { productsApi, siteApi } from "../lib/api";
 import { heroFallback } from "../lib/constants";
+import { urlDeImagen } from "../lib/imagenes";
 import { formatCurrency, getErrorMessage } from "../lib/format";
 import type { Product } from "../lib/types";
 import type { Slide } from "../lib/ui-types";
@@ -55,7 +56,7 @@ export function HomePage() {
       eyebrow: product.category || "Catalogo",
       title: product.name,
       description: product.description || "Dulce artesanal listo para sumar al carrito.",
-      image: product.image_url || heroFallback[0].image,
+      image: urlDeImagen(product.image_url) || heroFallback[0].image,
       accent: `Disponible por ${formatCurrency(product.price)}`,
       ctaLabel: "Ver la ficha",
       ctaTo: `/producto/${product.slug}`,
@@ -157,7 +158,7 @@ export function HomePage() {
               {conReceta.map((product) => (
                 <article key={product.id} className="pixel-panel overflow-hidden p-0">
                   <img
-                    src={product.image_url || heroFallback[2].image}
+                    src={urlDeImagen(product.image_url) || heroFallback[2].image}
                     alt={product.name}
                     className="h-48 w-full border-b-[3px] border-borde object-cover"
                   />

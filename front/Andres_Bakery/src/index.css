@@ -268,6 +268,33 @@
     }
   }
 
+  /* El CV se imprime desde el navegador (F44, ADR-017): lo que sale en papel
+     es la hoja y nada mas. Las sombras duras y los bordes de 3px se comen la
+     tinta y no aportan en un PDF que va a un reclutador. */
+  @media print {
+    .no-imprimir,
+    header,
+    footer {
+      display: none !important;
+    }
+
+    body {
+      background: #fff !important;
+    }
+
+    .hoja-cv {
+      border: none !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+      background: #fff !important;
+      color: #111 !important;
+    }
+
+    .hoja-cv a {
+      text-decoration: underline;
+    }
+  }
+
   /* Marco para fotos reales: el pixel va en el marco, no en la comida. */
   .marco-foto {
     box-shadow:

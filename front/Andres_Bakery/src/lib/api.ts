@@ -1,9 +1,13 @@
 import type {
   AuthPayload,
+  BorradorReceta,
   CheckoutResponse,
   DeliveryConfig,
   Order,
   OrderCreationPayload,
+  PerfilAndrea,
+  ResumenMetricas,
+  SubidaDeImagen,
   OrderCreationResponse,
   Product,
   ProductWritePayload,
@@ -13,7 +17,7 @@ import type {
   PaymentMethod,
 } from "./types";
 
-const API_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:5000";
+export const API_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:5000";
 
 export class ApiError extends Error {
   status: number;
@@ -186,6 +190,63 @@ export const siteApi = {
     return apiRequest<{ status: string }>("/api/site/about", {
       method: "PUT",
       body: { content },
+      token,
+    });
+  },
+  getProfile() {
+    return apiRequest<PerfilAndrea>("/api/site/profile");
+  },
+  updateProfile(perfil: PerfilAndrea, token: string) {
+    return apiRequest<{ status: string }>("/api/site/profile", {
+      method: "PUT",
+      body: perfil,
+      token,
+    });
+  },
+};
+
+/** Sube una foto. No pasa por `apiRequest` porque va como multipart: poner
+ *  `Content-Type: application/json` ahí rompe el borde del formulario. */
+export const uploadsApi = {
+  async subirImagen(archivo: File, token: string): Promise<SubidaDeImagen> {
+    const cuerpo = new FormData();
+    cuerpo.append("file", archivo);
+    const response = await fetch(`${API_URL}/api/uploads`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: cuerpo,
+    });
+    if (!response.ok) {
+      let message = `Error ${response.status}`;
+      try {
+        const data = (await response.json()) as { error?: string };
+        if (data.error) {
+          message = data.error;
+        }
+      } catch {
+        message = `No se pudo subir la imagen (error ${response.status}).`;
+      }
+      throw new ApiError(message, response.status);
+    }
+    return (await response.json()) as SubidaDeImagen;
+  },
+};
+
+export const metricsApi = {
+  /** Cuenta una visita. Si falla, se ignora: un contador no corta la navegación. */
+  contarVisita(path: string, device: "mouse" | "tactil") {
+    return apiRequest<null>("/api/metrics/view", { method: "POST", body: { path, device } });
+  },
+  resumen(dias: number, token: string) {
+    return apiRequest<ResumenMetricas>(`/api/metrics/summary?days=${dias}`, { token });
+  },
+};
+
+export const aiApi = {
+  borradorDeReceta(imageUrl: string, hint: string, token: string) {
+    return apiRequest<BorradorReceta>("/api/ai/recipe-draft", {
+      method: "POST",
+      body: { image_url: imageUrl, hint },
       token,
     });
   },

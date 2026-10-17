@@ -4,3 +4,7 @@ flask-Migrate==4.0.7
 flask-SQLAlchemy==3.1.1
 flask==3.0.2
 werkzeug==3.0.1
+# Solo para el asistente de recetas (F46, ADR-020). El back arranca igual sin
+# esta libreria: ai_service.py la importa adentro de la funcion y, si falta,
+# el endpoint responde el mismo 503 que cuando no hay clave.
+anthropic>=1.15.0

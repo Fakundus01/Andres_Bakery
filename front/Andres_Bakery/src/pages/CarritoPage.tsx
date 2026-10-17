@@ -7,6 +7,7 @@ import { EmptyState, SectionHeading } from "../components/ui";
 import { useCart } from "../contexts/CartContext";
 import { useSiteConfig } from "../contexts/SiteConfigContext";
 import { heroFallback } from "../lib/constants";
+import { urlDeImagen } from "../lib/imagenes";
 import { formatCurrency } from "../lib/format";
 
 export function CarritoPage() {
@@ -42,7 +43,7 @@ export function CarritoPage() {
           {items.map((item) => (
             <article key={item.id} className="pixel-panel flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
               <img
-                src={item.image_url || heroFallback[0].image}
+                src={urlDeImagen(item.image_url) || heroFallback[0].image}
                 alt={item.name}
                 className="marco-foto h-28 w-full object-cover sm:w-28"
               />

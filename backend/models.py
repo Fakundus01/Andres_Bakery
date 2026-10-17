@@ -193,6 +193,28 @@ class OrderDelivery(db.Model):
     order = db.relationship("Order", back_populates="delivery")
 
 
+class PageView(db.Model):
+    """Visitas, contadas agregadas (F48, ADR-019).
+
+    Una fila por (dia, ruta, clase de dispositivo) y un contador que sube. No
+    hay IP, ni cookie, ni user agent, ni id de sesion: es a proposito. Se puede
+    saber que la carta tuvo 160 visitas; no se puede saber quien entro, ni
+    reconstruir el recorrido de nadie, ni cruzar quien mira con quien compra.
+    """
+
+    __table_args__ = (
+        db.UniqueConstraint("day", "path", "device", name="uq_pageview_dia_ruta_dispositivo"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    day = db.Column(db.Date, nullable=False, index=True)
+    # Ruta ya normalizada contra las que el front conoce: "/producto/<slug>"
+    # entra como "/producto" y lo que no se reconoce, como "otra".
+    path = db.Column(db.String(120), nullable=False)
+    device = db.Column(db.String(20), nullable=False, default="otra")
+    views = db.Column(db.Integer, nullable=False, default=0)
+
+
 class SiteContent(db.Model):
     key = db.Column(db.String(120), primary_key=True)
     content = db.Column(db.Text, nullable=False)

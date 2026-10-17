@@ -67,3 +67,18 @@ class Config:
     # Solo digitos con pais. Si queda vacio, la UI dice que falta en vez de
     # armar un wa.me roto.
     WHATSAPP_PHONE = re.sub(r"\D", "", os.getenv("WHATSAPP_PHONE", ""))
+
+    # Subida de fotos (F45, ADR-018). UPLOAD_DIR vacio => <raiz>/instance/uploads.
+    UPLOAD_DIR = os.getenv("UPLOAD_DIR", "")
+    UPLOAD_MAX_BYTES = int(os.getenv("UPLOAD_MAX_BYTES", str(4 * 1024 * 1024)))
+    # El tope de Flask corta la request antes de leerla entera; el margen deja
+    # pasar el resto del multipart (bordes, headers de la parte) sin recortar
+    # una imagen que si entra en el tope real del servicio.
+    MAX_CONTENT_LENGTH = UPLOAD_MAX_BYTES + 512 * 1024
+
+    # Asistente de recetas (F46, ADR-020). Sin llave no se prende ni con
+    # AI_ENABLED=true: cuesta plata por llamada y el default es apagado.
+    AI_ENABLED = _flag("AI_ENABLED")
+    ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+    AI_MODEL = os.getenv("AI_MODEL", "claude-opus-5-5")
+    AI_DAILY_LIMIT = int(os.getenv("AI_DAILY_LIMIT", "25"))

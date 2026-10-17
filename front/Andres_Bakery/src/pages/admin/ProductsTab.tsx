@@ -1,11 +1,13 @@
 import type { Dispatch, FormEvent, SetStateAction } from "react";
 
 import { TagBadge } from "../../components/TagBadge";
+import { FotoDelProducto } from "./FotoDelProducto";
 import { Field } from "../../components/ui";
 import { textoRegla } from "../../lib/cantidades";
 import { heroFallback } from "../../lib/constants";
+import { urlDeImagen } from "../../lib/imagenes";
 import { formatCurrency } from "../../lib/format";
-import type { Product, Tag } from "../../lib/types";
+import type { BorradorReceta, Product, Tag } from "../../lib/types";
 import type { ProductForm } from "../../lib/ui-types";
 
 export function ProductsTab({
@@ -18,9 +20,13 @@ export function ProductsTab({
   onSubmit,
   onReset,
   onDelete,
+  token,
+  iaPrendida,
 }: {
   products: Product[];
   tags: Tag[];
+  token: string;
+  iaPrendida: boolean;
   productForm: ProductForm;
   setProductForm: Dispatch<SetStateAction<ProductForm>>;
   editingProductId: number | null;
@@ -31,6 +37,20 @@ export function ProductsTab({
 }) {
   const cambiar = <Clave extends keyof ProductForm>(clave: Clave, valor: ProductForm[Clave]) =>
     setProductForm((current) => ({ ...current, [clave]: valor }));
+
+  /** El borrador **completa**, no sobrescribe: si ella ya escribió algo, eso
+   *  gana. Perder dos párrafos suyos por apretar un botón sería peor que no
+   *  tener el botón (ADR-020). */
+  const aplicarBorrador = (borrador: BorradorReceta) =>
+    setProductForm((current) => ({
+      ...current,
+      name: current.name || borrador.name,
+      category: current.category && current.category !== "general" ? current.category : borrador.category || "general",
+      description: current.description || borrador.description,
+      unit_label: current.unit_label || borrador.unit_label,
+      steps: current.steps || borrador.steps.join("\n"),
+      prep_note: current.prep_note,
+    }));
 
   const alternarEtiqueta = (tagId: number) =>
     setProductForm((current) => ({
@@ -76,14 +96,18 @@ export function ProductsTab({
           se vende de uno en uno.
         </p>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Categoría">
-            <input className="field" value={productForm.category} onChange={(event) => cambiar("category", event.target.value)} />
-          </Field>
-          <Field label="Imagen">
-            <input className="field" value={productForm.image_url} onChange={(event) => cambiar("image_url", event.target.value)} placeholder="https://..." />
-          </Field>
-        </div>
+        <Field label="Categoría">
+          <input className="field" value={productForm.category} onChange={(event) => cambiar("category", event.target.value)} />
+        </Field>
+
+        <FotoDelProducto
+          imagenUrl={productForm.image_url}
+          nombre={productForm.name}
+          token={token}
+          iaPrendida={iaPrendida}
+          onImagen={(url) => cambiar("image_url", url)}
+          onBorrador={aplicarBorrador}
+        />
 
         <Field label="Aviso de preparación">
           <input className="field" value={productForm.prep_note} onChange={(event) => cambiar("prep_note", event.target.value)} placeholder="Se encarga con 48 h de anticipación" />
@@ -150,7 +174,7 @@ export function ProductsTab({
       <div className="grid gap-4 md:grid-cols-2">
         {products.map((product) => (
           <article key={product.id} className="pixel-panel overflow-hidden p-0">
-            <img src={product.image_url || heroFallback[0].image} alt={product.name} className="h-44 w-full object-cover" />
+            <img src={urlDeImagen(product.image_url) || heroFallback[0].image} alt={product.name} className="h-44 w-full object-cover" />
             <div className="p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>

@@ -1,5 +1,6 @@
 from flask import Blueprint, request
 
+from ..services.profile_service import profile_service
 from ..services.site_service import site_service
 from .utils import admin_required, json_endpoint
 
@@ -24,3 +25,16 @@ def update_about():
 @json_endpoint
 def get_delivery():
     return site_service.get_delivery()
+
+
+@bp.get("/profile")
+@json_endpoint
+def get_profile():
+    return profile_service.get_profile()
+
+
+@bp.put("/profile")
+@admin_required
+@json_endpoint
+def update_profile():
+    return profile_service.update_profile(request.get_json(silent=True) or {})

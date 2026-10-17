@@ -1,25 +1,34 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Cake, Heart, MapPin } from "lucide-react";
+import { ArrowRight, Cake, FileText, Heart, MapPin } from "lucide-react";
 
+import { RedesSociales } from "../components/RedesSociales";
 import { ErrorBanner, LoadingPanel, SectionHeading } from "../components/ui";
 import { siteApi } from "../lib/api";
 import { getErrorMessage } from "../lib/format";
+import { urlDeImagen } from "../lib/imagenes";
+import type { PerfilAndrea } from "../lib/types";
 
 const FOTO_POR_DEFECTO = import.meta.env.VITE_PROFILE_DEFAULT || "/profile_pictures/default_profile.svg";
 
 export function AboutPage() {
   const [historia, setHistoria] = useState("");
+  const [perfil, setPerfil] = useState<PerfilAndrea | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    siteApi
-      .getAbout()
-      .then((data) => setHistoria(data.content?.trim() ?? ""))
+    Promise.all([siteApi.getAbout(), siteApi.getProfile()])
+      .then(([about, perfilCargado]) => {
+        setHistoria(about.content?.trim() ?? "");
+        setPerfil(perfilCargado);
+      })
       .catch((reason: unknown) => setError(getErrorMessage(reason)))
       .finally(() => setLoading(false));
   }, []);
+
+  const redes = perfil?.socials ?? [];
+  const cvALaVista = Boolean(perfil?.cv.published);
 
   return (
     <div className="space-y-10 pb-10">
@@ -37,20 +46,22 @@ export function AboutPage() {
         <aside className="pixel-panel h-fit p-5">
           <div className="marco-foto overflow-hidden bg-superficie-alt">
             <img
-              src={FOTO_POR_DEFECTO}
+              src={urlDeImagen(perfil?.photo_url) || FOTO_POR_DEFECTO}
               alt="Foto de Andrea"
               className="h-72 w-full object-cover"
-              style={{ imageRendering: "pixelated" }}
+              style={perfil?.photo_url ? undefined : { imageRendering: "pixelated" }}
             />
           </div>
           <h2 className="mt-5 font-display text-3xl font-bold text-tinta">Andrea</h2>
-          <p className="mt-1 text-sm text-tinta-suave">Repostera · hace todo ella</p>
+          <p className="mt-1 text-sm text-tinta-suave">
+            {[perfil?.role || "Repostera", perfil?.tagline || "hace todo ella"].filter(Boolean).join(" · ")}
+          </p>
           <dl className="mt-5 space-y-3 text-sm">
             <div className="flex items-center gap-3">
               <MapPin className="h-4 w-4 shrink-0 text-acento" />
               <div>
                 <dt className="sr-only">Zona</dt>
-                <dd className="text-tinta-suave">Villa Maipú, General San Martín</dd>
+                <dd className="text-tinta-suave">{perfil?.location || "Villa Maipú, General San Martín"}</dd>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -68,6 +79,22 @@ export function AboutPage() {
               </div>
             </div>
           </dl>
+
+          {redes.length > 0 ? (
+            <div className="mt-5 border-t-[3px] border-borde pt-5">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-tinta-tenue">Dónde encontrarla</p>
+              <div className="mt-3">
+                <RedesSociales redes={redes} />
+              </div>
+            </div>
+          ) : null}
+
+          {cvALaVista ? (
+            <Link to="/cv" className="btn-secondary mt-5 w-full justify-center px-3 py-2 text-sm">
+              <FileText className="h-4 w-4" />
+              Ver su CV
+            </Link>
+          ) : null}
         </aside>
 
         <div className="space-y-6">
@@ -84,6 +111,8 @@ export function AboutPage() {
             )}
           </article>
 
+          {cvALaVista ? <TarjetaCv /> : null}
+
           <div className="pixel-panel-plano bg-acento-suave p-6">
             <h3 className="font-display text-2xl font-bold text-tinta">¿Querés encargar algo?</h3>
             <p className="mt-2 text-sm leading-6 text-tinta-suave">
@@ -96,6 +125,25 @@ export function AboutPage() {
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+/** El pedido textual fue: que un reclutador que entre a ver el emprendimiento
+ *  encuentre acá su CV (F44). Por eso el link vive en su perfil, no escondido. */
+function TarjetaCv() {
+  return (
+    <div className="pixel-panel p-6">
+      <p className="text-xs uppercase tracking-[0.3em] text-tinta-tenue">Su trayectoria</p>
+      <h3 className="mt-2 font-display text-2xl font-bold text-tinta">Andrea también trabaja de esto</h3>
+      <p className="mt-2 text-sm leading-6 text-tinta-suave">
+        Esta tienda la hace ella sola: la carta, los precios, la producción y la entrega. Si querés ver su
+        experiencia y su formación, está todo acá.
+      </p>
+      <Link to="/cv" className="btn-primary mt-5">
+        <FileText className="h-4 w-4" />
+        Ver su CV
+      </Link>
     </div>
   );
 }
