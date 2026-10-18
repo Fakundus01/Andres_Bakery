@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
 from backend.extensions import db
 from backend.models import Order, OrderItem, PageView
@@ -81,7 +81,13 @@ class MetricsServiceTestCase(BackendServiceTestCase):
     def test_el_resumen_cuenta_plata_pedidos_y_visitas(self) -> None:
         usuario = self.create_user()
         producto = self.create_product(price="1800.00")
-        self.create_order(user=usuario, product=producto, quantity=6, status="paid")
+        self.create_order(
+            user=usuario,
+            product=producto,
+            quantity=6,
+            status="paid",
+            created_at=datetime.combine(self.hoy, time(12, 0)),
+        )
         self.service.registrar_visita({"path": "/tienda", "device": "mouse"}, hoy=self.hoy)
         self.service.registrar_visita({"path": "/", "device": "tactil"}, hoy=self.hoy)
 
@@ -97,8 +103,9 @@ class MetricsServiceTestCase(BackendServiceTestCase):
         usuario = self.create_user()
         poco = self.create_product(name="Torta", price="14000.00")
         mucho = self.create_product(name="Brownie", price="1800.00")
-        self.create_order(user=usuario, product=poco, quantity=1)
-        self.create_order(user=usuario, product=mucho, quantity=12)
+        dentro_de_la_ventana = datetime.combine(self.hoy, time(12, 0))
+        self.create_order(user=usuario, product=poco, quantity=1, created_at=dentro_de_la_ventana)
+        self.create_order(user=usuario, product=mucho, quantity=12, created_at=dentro_de_la_ventana)
 
         ranking = self.service.resumen(30, hoy=self.hoy)["top_products"]
 

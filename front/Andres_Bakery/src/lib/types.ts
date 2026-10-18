@@ -96,7 +96,8 @@ export interface OrderItem {
 
 export interface OrderDelivery {
   customer_name: string;
-  customer_email: string;
+  /** Opcional desde el pedido de invitado (ADR-025). */
+  customer_email?: string | null;
   customer_phone?: string | null;
   delivery_method: DeliveryMethod;
   address?: string | null;

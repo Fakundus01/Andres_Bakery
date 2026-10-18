@@ -91,6 +91,7 @@ Todo sobre diseño, mirando lo que había quedado de las tandas anteriores.
 | F53 | **La tarjeta gira con un clic en la foto**, no con el hover | **Complete** | T15 | ADR-022 |
 | F54 | **Su logo de verdad** en el header y de favicon, y sus datos de contacto reales | **Complete** | T17 | ADR-024 |
 | F55 | **Tope de requests por IP** en el pedido público, el login, el registro y el contacto | **Complete** | T7 | ADR-026, cierra D2 |
+| F56 | **El panel muestra el pedido de invitado**: nombre, teléfono y notas | **Complete** | T7 | salió de mirar el panel: decía «undefined» |
 
 **F53 revierte parte de F42.** El hover se construyó, se probó con el humano y se cayó en la prueba: con la tarjeta girando al acercar el puntero, el botón "Agregar" se escapa justo cuando alguien va a apretarlo. Quedó el "Agregar" del dorso, que había entrado para tapar ese problema y resultó útil igual.
 

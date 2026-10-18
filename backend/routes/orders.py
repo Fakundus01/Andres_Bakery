@@ -8,7 +8,11 @@ from flask_jwt_extended import (  # type: ignore
 from ..extensions import db
 from ..models import User
 from ..services.order_service import order_service
-from ..services.rate_limit import TOPES_PEDIDO_PUBLICO
+from ..services.rate_limit import (
+    TOPES_INTENTOS_PEDIDO,
+    TOPES_PEDIDO_CON_CUENTA,
+    TOPES_PEDIDO_PUBLICO,
+)
 from .utils import admin_required, json_endpoint, limitar
 
 
@@ -16,6 +20,7 @@ bp = Blueprint("orders", __name__, url_prefix="/api/orders")
 
 
 @bp.post("")
+@limitar("pedido_con_cuenta", TOPES_PEDIDO_CON_CUENTA, topes_intentos=TOPES_INTENTOS_PEDIDO)
 @jwt_required()
 @json_endpoint
 def create_order():
@@ -23,7 +28,7 @@ def create_order():
 
 
 @bp.post("/whatsapp")
-@limitar("pedido_whatsapp", TOPES_PEDIDO_PUBLICO)
+@limitar("pedido_whatsapp", TOPES_PEDIDO_PUBLICO, topes_intentos=TOPES_INTENTOS_PEDIDO)
 @json_endpoint
 def create_whatsapp_order():
     """Pedido sin cuenta (F23, F31, ADR-025).

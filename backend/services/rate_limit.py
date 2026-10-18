@@ -7,6 +7,11 @@ Lo que NO es, dicho antes de que alguien se confie:
   workers el tope real es N veces el configurado.
 - Cuenta por IP, y detras de un proxy `remote_addr` es el proxy. Sin `ProxyFix`
   y un header de confianza, todo el trafico entra como una sola clave.
+- **Una IP distinta es un presupuesto nuevo.** Cualquiera con un VPS, o con
+  una conexion IPv6 residencial, tiene un /64 entero: la review de T7 paso 12
+  pedidos con 12 direcciones del mismo bloque. Esto frena al que abusa desde
+  una IP, no al que sabe lo que hace. Agrupar por /64 ayudaria y tampoco
+  alcanza; el control de verdad contra eso no es un contador.
 
 Para lo que hay hoy —un proceso, sin proxy— alcanza y es barato. Cuando haya
 deploy de verdad esto se muda a Redis o al proxy mismo (anotado en security.md).
@@ -20,6 +25,7 @@ from __future__ import annotations
 
 from collections import OrderedDict, deque
 from typing import Callable
+import threading
 import time
 
 from .exceptions import RateLimitError
@@ -30,6 +36,13 @@ from .exceptions import RateLimitError
 Tope = tuple[int, int]
 
 TOPES_PEDIDO_PUBLICO: tuple[Tope, ...] = ((3, 60), (10, 3600))
+# Pedidos que se concretan desde una cuenta. La ruta con token no tenia
+# ningun tope: registrarse cuesta 1 de 5 por hora y despues eran filas y
+# mails sin techo por el camino de al lado (lo marco la review de T7).
+TOPES_PEDIDO_CON_CUENTA: tuple[Tope, ...] = ((5, 60), (30, 3600))
+# Lo que se cuenta aunque falle: deja equivocarse con el formulario sin
+# quemar el tope de pedidos, pero acota el trabajo que puede pedir una IP.
+TOPES_INTENTOS_PEDIDO: tuple[Tope, ...] = ((15, 60), (40, 3600))
 TOPES_LOGIN: tuple[Tope, ...] = ((10, 300),)
 TOPES_REGISTRO: tuple[Tope, ...] = ((5, 3600),)
 TOPES_CONTACTO: tuple[Tope, ...] = ((5, 3600),)
@@ -49,20 +62,43 @@ class Limitador:
     ) -> None:
         self._reloj = reloj
         self._max_claves = max_claves
+        # El servidor de Flask atiende con hilos: sin esto, un hilo puede
+        # estar recorriendo el deque mientras otro lo modifica
+        # (`RuntimeError: deque mutated during iteration`). Con los topes
+        # reales el deque tiene 10 elementos y la ventana de carrera es
+        # minima, pero el lock no cuesta nada.
+        self._candado = threading.RLock()
         # OrderedDict como LRU: lo que se usa va al final, y cuando sobran
         # claves se tira la mas vieja.
         self._marcas: OrderedDict[str, deque[float]] = OrderedDict()
 
-    def exigir(self, clave: str, topes: tuple[Tope, ...]) -> None:
-        """Registra el intento, o lo rechaza con 429 si se paso de algun tope."""
-        espera = self.espera_necesaria(clave, topes)
-        if espera > 0:
-            raise RateLimitError(
-                "Estas mandando muchos pedidos seguidos. "
-                f"Proba de nuevo en {self._texto_de_espera(espera)}.",
-                espera_segundos=espera,
-            )
-        self._anotar(clave, topes)
+    def exigir(self, clave: str, topes: tuple[Tope, ...], *, anotar: bool = True) -> None:
+        """Rechaza con 429 si la clave se paso de algun tope.
+
+        `anotar=False` solo chequea: sirve para los topes que se cuentan
+        **despues**, cuando se sabe como salio el pedido (ver `limitar` en
+        routes/utils.py).
+        """
+        with self._candado:
+            espera = self.espera_necesaria(clave, topes)
+            if espera > 0:
+                # Tocar la clave aunque se rechace: si no, la del que insiste
+                # envejece en el OrderedDict y es la primera en caer por LRU,
+                # o sea que inundar claves le borra el castigo justo al
+                # castigado. Lo marco la review de T7.
+                self._marcas.move_to_end(clave)
+                raise RateLimitError(
+                    "Estas mandando muchos pedidos seguidos. "
+                    f"Proba de nuevo en {self._texto_de_espera(espera)}.",
+                    espera_segundos=espera,
+                )
+            if anotar:
+                self._anotar(clave, topes)
+
+    def anotar(self, clave: str, topes: tuple[Tope, ...]) -> None:
+        """Suma un intento sin chequear nada."""
+        with self._candado:
+            self._anotar(clave, topes)
 
     def espera_necesaria(self, clave: str, topes: tuple[Tope, ...]) -> int:
         """Segundos que faltan para que la clave pueda pasar. 0 = puede ahora."""
@@ -83,9 +119,13 @@ class Limitador:
             # que entran en la ventana.
             dentro = sum(1 for marca in marcas if marca > desde)
             if dentro >= cuantas:
-                # La mas vieja que todavia cuenta es la que libera el lugar.
-                mas_vieja = marcas[len(marcas) - dentro]
-                espera = max(espera, mas_vieja + ventana - ahora)
+                # La que libera lugar es la (dentro - cuantas + 1)-esima mas
+                # vieja de la ventana, que en el deque es `len - cuantas`. Con
+                # `len - dentro` se tomaba siempre la mas vieja de todas y el
+                # Retry-After salia corto cuando hay mas marcas que el tope
+                # (pasa si alguien baja un tope con el proceso caliente).
+                libera = marcas[len(marcas) - cuantas]
+                espera = max(espera, libera + ventana - ahora)
 
         # Siempre al menos 1: devolver 0 con el tope lleno diria "pasa ahora".
         return max(1, int(espera + 0.999)) if espera > 0 else 0

@@ -1,6 +1,6 @@
 # status.md · Andres Bakery
 
-**Versión:** 0.10.0 · **Última actualización:** 2026-10-17
+**Versión:** 0.10.1 · **Última actualización:** 2026-10-18
 
 ## 1 · Dónde estamos
 
@@ -10,8 +10,8 @@ El repo tiene 4 meses de código y **estuvo 7 meses quieto** hasta el 2026-10-16
 
 | Check | Resultado |
 |---|---|
-| Tests del back | **192 OK** (eran 151 al cerrar T17, y 70 al cerrar T3) |
-| Tests del front | **55 OK** — Vitest, lógica pura (ADR-023). Eran 0 esta mañana |
+| Tests del back | **213 OK** (eran 192 antes de la revisión, 70 al cerrar T3) |
+| Tests del front | **72 OK** — Vitest, lógica pura (ADR-023). Eran 0 ayer a la mañana |
 | Lint del front (eslint + tsc) | limpio |
 | Build del front | verde — 366,59 KB JS · 33,92 KB CSS |
 | Migraciones | **`0004` aplicada** (el mail del cliente pasó a opcional), probada para abajo y para arriba sobre la base real. Antes, **`0003`**. Probada sobre una copia antes que sobre la real, en los dos sentidos y desde base vacía |
@@ -19,7 +19,8 @@ El repo tiene 4 meses de código y **estuvo 7 meses quieto** hasta el 2026-10-16
 | Responsive 390px | `/cv`, `/historia`, `/tienda` y `/admin`: cero desbordes, medido con `scrollWidth` vs `clientWidth` |
 | Archivos > 300 líneas | ninguno. `CheckoutPage.tsx` era el más largo (278) y se partió en tres al crecer: queda en 227 |
 | Encontrado usando la página | el hover le borraba la rotación al dorso de la tarjeta (0.7.1). Lo vio el humano, no los tests ni el reviewer: **nadie había pasado el mouse por encima de una tarjeta ya dada vuelta** |
-| Revisión independiente | dos revisores que **re-ejecutaron** (R30/R31). Entre los dos encontraron **seis cosas reales**: el techo de gasto de la IA en memoria, una carrera que devolvía 500 en un endpoint público, un filtro de URL con un agujero de un carácter, rutas basura contadas como la portada, un gráfico que ignoraba el filtro de fechas, y dos tests que pasaban de casualidad. **Las seis quedaron corregidas con su test**, cada uno visto en rojo primero |
+| Revisión independiente (T7) | dos revisores que **re-ejecutaron**: uno funcional y uno de seguridad. **Doce hallazgos reales**, todos corregidos con su test: 500 con HTML en la ruta pública, el tope de mensaje que no acotaba nada, `method` sin lista blanca (envío $0 cobrando de menos), el tope por IP que quemaba cupo con errores de formulario, mail a destinatario arbitrario, `debug=True` en el entry point, textos sin tope, notas que fingían campos del sistema, la ruta con token sin tope, y tres del limitador. **Y uno que salió mirando el panel: el pedido de invitado le aparecía a Andrea como «undefined», sin nombre ni teléfono** |
+| Revisión independiente (T10–T14) | dos revisores que **re-ejecutaron** (R30/R31). Entre los dos encontraron **seis cosas reales**: el techo de gasto de la IA en memoria, una carrera que devolvía 500 en un endpoint público, un filtro de URL con un agujero de un carácter, rutas basura contadas como la portada, un gráfico que ignoraba el filtro de fechas, y dos tests que pasaban de casualidad. **Las seis quedaron corregidas con su test**, cada uno visto en rojo primero |
 | Dependencias | **0 avisos** en los dos lados (`npm audit` y `pip-audit`). Eran 16 y 57 |
 | Pedido de invitado | **probado en el navegador sin sesión**: carta → carrito → checkout → pedido #6, link de `wa.me` con el texto que arma el back, y el pedido visible en el panel de Andrea con nombre y teléfono |
 | Rama | `dev`, adelantada respecto de `main` |

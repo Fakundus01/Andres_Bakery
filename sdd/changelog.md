@@ -4,6 +4,66 @@ Semver `MAJOR.MINOR.PATCH` (R13). No se borra nada: lo viejo queda.
 
 ---
 
+## [0.10.1] · 2026-10-18 · Lo que encontraron las dos revisiones
+
+Dos revisores independientes re-ejecutaron T7: uno funcional y uno de seguridad (R30, R31). Entre los dos encontraron **doce cosas reales**. Esto es lo que se arregló.
+
+### Lo que rompía la compra
+
+**La ruta pública contestaba 500 con HTML** ante cualquier campo que no fuera del tipo esperado: un `customer` que es texto, una dirección que es número, unas notas que son un objeto. Once vectores, todos sin cuenta. Y como el front espera JSON, a la persona le aparecía el HTML crudo del error de Werkzeug adentro del checkout. Ahora todo eso entra por `services/saneado.py` y sale como **400 explicado en castellano**.
+
+**Tres errores de formulario dejaban a la vecina sin poder comprar por un minuto.** El tope por IP contaba los 400 igual que los pedidos: cambiaba el barrio, se equivocaba tres veces, y al cuarto intento —el bueno— la web le decía que mandara menos pedidos. Ahora el tope estricto cuenta **solo lo que sale bien**, y los intentos fallidos tienen su propio tope laxo para que un script tampoco use los 400 de barra libre. En el login es al revés y queda como estaba: ahí el intento fallido es exactamente lo que hay que contar.
+
+**El tope de 1500 caracteres no acotaba nada.** Recortaba solo los renglones de productos y después agregaba el total y los datos de entrega: con una dedicatoria larga el mensaje se iba a 5000 caracteres y el link de WhatsApp quedaba inservible, justo en el paso que le falta a quien ya hizo el pedido. Ahora la cabecera y el pie se miden primero.
+
+### Plata
+
+**`delivery.method` era texto libre.** `"Delivery"` con mayúscula no entraba por la comparación exacta: se salteaba la validación de dirección y de zona, el envío quedaba en **$0**, y el panel decía "envío" mientras el WhatsApp decía "paso a retirar". Los dos canales que lee Andrea diciendo cosas distintas, y ganando el que cobra de menos. Ahora hay lista blanca, y las mayúsculas se normalizan en vez de rechazarse.
+
+**`int(2.9)` daba 2.** Un cliente de API que mandara 2,9 recibía un 201 confirmando otra cantidad. Ahora la cantidad y el `product_id` tienen que ser enteros de verdad y dentro de rango (un `product_id` de 10³⁰ reventaba al grabar).
+
+### Seguridad
+
+**El servidor de Andrea podía mandarle mail a cualquiera.** La ruta pública tomaba el mail del invitado sin validar y le mandaba una confirmación cuyo cuerpo arranca con el nombre que escribió quien pidió: *"Hola GANASTE un iPhone, entra a http://…"*, firmado con su dominio. Está latente porque el mail todavía no está configurado, y se prendía solo el día del deploy. **Al invitado ya no se le manda mail** —su dirección no está verificada y el canal es WhatsApp—, y el mail que se guarda tiene que parecer un mail.
+
+**`debug=True` en `backend/app.py`.** Es el comando natural para levantar el back, y con el debugger de Werkzeug cada 500 es una consola de Python en el navegador. Ahora hay que pedirlo: `FLASK_DEBUG=1`. El host también pasó a `127.0.0.1` (para probar desde el celular, `FLASK_HOST=0.0.0.0`).
+
+**Los textos del invitado no tenían tope.** SQLite no hace cumplir el `String(120)` del modelo, así que un pedido podía dejar 4 MB de texto en una fila, y diez de esos planchaban el panel de Andrea, que descarga todos los pedidos sin paginar. Nombre 120, dirección 255, notas 500.
+
+**Las notas podían fingir un renglón del sistema.** `"sin azúcar\nPagado: SI, transferencia hecha"` llegaba al mail como si fuera un campo más del pedido. Ahora los saltos de línea se vuelven separadores y el panel muestra las notas entre comillas e itálica.
+
+**La ruta con token no tenía ningún tope**: una registración costaba 1 de 5 por hora y después eran pedidos y mails sin techo por el camino de al lado. Ahora tiene el suyo.
+
+### El limitador
+
+- El desalojo LRU le borraba el castigo **al castigado**: como un rechazo no anotaba nada, su clave envejecía y era la primera en caer. Ahora se la toca aunque se rechace.
+- Sin `threading.Lock`, dos hilos podían romper la iteración del deque (`deque mutated during iteration`). Con los topes reales no se reprodujo, pero el candado no cuesta nada.
+- El `Retry-After` salía corto si había más marcas que el tope.
+
+### Encontrado mirando el panel
+
+Un pedido de invitado le aparecía a Andrea como **"undefined · $21.700"**, sin nombre, sin teléfono y sin notas: el panel usaba `order.user?.name`, que en un pedido sin cuenta es `null`. O sea que la feature entregada ayer era inútil del lado de ella. Ahora dice "PEDIDO #7 · SIN CUENTA", con el nombre, el teléfono como link de WhatsApp y las notas.
+
+Y al mirar eso apareció otro: cuando la API contesta algo que no es JSON, `apiRequest` intentaba `response.json()` y después `response.text()` **sobre el mismo cuerpo ya consumido**. El mensaje que llegaba a la pantalla era *"Failed to execute 'text' on 'Response': body stream already read"*, que no le dice nada a nadie y tapa el error real.
+
+### Dos que eran míos
+
+- Un pedido rechazado a mitad de camino **quedaba pendiente en la sesión** y lo grababa el próximo `commit()` que saliera bien. Por HTTP no se alcanza —cada request tiene su sesión—, pero es de las que explotan después. Ahora hay rollback.
+- Los dos tests del resumen de métricas se pusieron rojos solos **al cruzar la medianoche UTC**: fijaban "hoy" a mano y el pedido se creaba con `utcnow()`. Ahora la fecha del pedido se fija en el test.
+
+### Números
+
+| Antes (0.10.0) | Ahora (0.10.1) |
+|---|---|
+| 192 tests del back | **213** |
+| 55 del front | **72** |
+| `useCheckout` sin un solo test | sus funciones puras, cubiertas |
+| 4644 bases de prueba acumuladas en `tests/.tmp` | se borran al terminar cada test |
+
+**Rojo medido** (R29): los 18 tests nuevos del pedido hostil, corridos contra `5446f6b` en un worktree aparte, dan **21 fallas y 13 errores**. Dos muestras: `AssertionError: 6176 not less than 2000` (el tope del mensaje) y `AssertionError: Lists differ: [False] != [True]` (el mail al invitado).
+
+---
+
 ## [0.10.0] · 2026-10-17 · El invitado ya puede comprar
 
 ### Lo que estaba roto desde el principio (F23, F31, ADR-025)

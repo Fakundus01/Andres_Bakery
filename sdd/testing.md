@@ -112,12 +112,16 @@ Estado medido el 2026-10-17 tras T16: **151 tests del back + 48 del front OK**, 
 | V17 · el invitado puede comprar sin cuenta | `test_api_pedido_whatsapp`: `POST /api/orders/whatsapp` **sin token** devuelve 201 y la fila queda con `user_id = None`. La misma llamada contra `/api/orders` da 401: esa era la pared | automatizado |
 | V18 · el envío no lo decide el cliente | `test_pedido_whatsapp` manda `shipping_amount` en `0`, `-5000` y basura: el total siempre sale con la tarifa configurada | automatizado |
 | V19 · el tope por IP corta de verdad | `test_api_pedido_whatsapp`: el cuarto pedido del minuto da **429** con `Retry-After` y **no** se guarda. Visto en rojo sacándole el decorador a la ruta: `AssertionError: 429 != 201` (R29) | automatizado |
+| V20 · la ruta pública no contesta 500 ante basura | `test_pedido_hostil`: nueve formas de mandar un campo del tipo equivocado, todas 400 y **sin fila a medias**. Rojo medido contra `5446f6b`: 21 fallas y 13 errores | automatizado |
+| V21 · el mensaje entero entra en el tope | `test_pedido_hostil`: con nombre, dirección y notas al máximo, el mensaje queda bajo 2000 y conserva total y entrega. Antes: 6176 | automatizado |
+| V22 · equivocarse con el formulario no deja a nadie sin comprar | `test_api_pedido_whatsapp`: cinco 400 seguidos y el sexto pedido, bueno, sale 201 | automatizado |
+| V23 · el panel muestra al invitado | `pedidos.test.ts`: nombre, teléfono y «sin cuenta». Antes la tarjeta decía «undefined» | automatizado |
 | V14 · el techo de gasto de la IA sobrevive a un reinicio | `test_ai_service`: una **instancia nueva** del servicio (= otro worker) sigue topada. Visto rojo contra el código viejo | automatizado |
 
 ## 5 · Cobertura mínima para dar algo por `done`
 
 1. Servicio nuevo o tocado del back ⇒ su test, verde.
-2. Los **192** del back y los **55** del front, verdes (V9). Un test que había pasado y ahora no, bloquea.
+2. Los **213** del back y los **72** del front, verdes (V9). Un test que había pasado y ahora no, bloquea.
 3. `npm run lint` y `npm run build`, limpios (V1).
 4. Si se tocó algo visible ⇒ revisado en navegador, en celular y en escritorio, y dicho en el handback.
 5. Si el cambio toca precios, mínimos o totales ⇒ el rojo se vio primero (R29).
@@ -129,3 +133,5 @@ Dos del 2026-10-17 (T7). Ninguno era un bug del código: eran tests que medían 
 **El tiempo falso tiene que ser distinto en cada paso.** El test de la ventana deslizante del limitador registraba dos intentos seguidos con el reloj congelado y después esperaba que, pasado el minuto, se liberara **un** lugar. Se liberaban los dos: las dos marcas tenían el mismo instante. El test fallaba con el código correcto. La versión buena separa los intentos diez segundos, que es lo que hace que la ventana *se deslice* en vez de vaciarse de golpe.
 
 **Un tope de prueba demasiado chico prueba otra cosa.** El test del recorte del mensaje usaba un tope de 60 caracteres esperando "entra el primer producto y el resto se resume". Con 60 no entraba ni el primero —el aviso del resto ocupa 57— así que el mensaje salía resumiendo los cuatro y la cuenta no daba. Con 100 el test mide lo que dice. Lección: cuando el caso de borde depende de dos largos, hay que calcular el número, no elegirlo a ojo.
+
+**Un test con una fecha fija adentro es una bomba de tiempo.** Los dos tests del resumen de métricas fijaban `hoy = date(2026, 10, 17)` y creaban el pedido con el default `utcnow()`. Pasaron todo el día y se pusieron rojos solos **a las 00:01 UTC**, sin que nadie tocara ese código. El arreglo no es mover la fecha: es que el dato del test traiga su propia fecha (`create_order(..., created_at=...)`), así el test no depende de cuándo se corre.

@@ -13,10 +13,14 @@ from backend.tests.support import BackendServiceTestCase
 class NotificacionesFalsas:
     def __init__(self) -> None:
         self.avisados: list[int] = []
+        self.al_cliente: list[bool] = []
 
-    def send_order_created_notifications(self, order: Order) -> dict[str, str]:
+    def send_order_created_notifications(
+        self, order: Order, *, avisar_al_cliente: bool = True
+    ) -> dict[str, str]:
         self.avisados.append(order.id)
-        return {"customer": "sent", "admin": "sent"}
+        self.al_cliente.append(avisar_al_cliente)
+        return {"customer": "sent" if avisar_al_cliente else "skipped", "admin": "sent"}
 
 
 class PedidoDeInvitadoTestCase(BackendServiceTestCase):
@@ -136,7 +140,7 @@ class PedidoDeInvitadoTestCase(BackendServiceTestCase):
             self.service.create_whatsapp_order(
                 self.payload(items=[{"product_id": self.producto.id, "quantity": 1001}])
             )
-        self.assertIn("muchas unidades", capturado.exception.message)
+        self.assertIn("entre 1 y 1000", capturado.exception.message)
 
     def test_el_minimo_del_producto_sigue_valiendo(self) -> None:
         de_a_seis = self.create_product(name="Alfajores", price="2000.00", min_qty=6, qty_step=6)

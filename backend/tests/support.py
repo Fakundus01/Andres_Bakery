@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 import unittest
@@ -46,8 +47,17 @@ class BackendServiceTestCase(unittest.TestCase):
             db.drop_all()
             for engine in db.engines.values():
                 engine.dispose()
+            self._borrar_la_base()
         finally:
             self.app_context.pop()
+
+    def _borrar_la_base(self) -> None:
+        # Cada test deja su SQLite en `tests/.tmp`. Sin esto se acumulan ~190
+        # archivos por corrida: habia 4644 cuando lo noto la review.
+        try:
+            self.database_path.unlink(missing_ok=True)
+        except OSError:
+            pass
 
     def create_user(
         self,
@@ -119,10 +129,16 @@ class BackendServiceTestCase(unittest.TestCase):
         neighborhood: str = "Villa Maipu",
         payment_method: str = "visa",
         shipping_amount: str = "2500.00",
+        created_at: datetime | None = None,
     ) -> Order:
         shipping = Decimal(shipping_amount) if delivery_method == "delivery" else Decimal("0.00")
         unit_price = Decimal(str(product.price))
         order = Order(user_id=user.id, status=status, total_amount=(unit_price * quantity) + shipping)
+        # Sin fecha explicita vale `utcnow`, y un test que fija "hoy" a mano
+        # queda atado al reloj: los dos del resumen de metricas se pusieron
+        # rojos solos al cruzar la medianoche UTC.
+        if created_at is not None:
+            order.created_at = created_at
         db.session.add(order)
         db.session.flush()
         db.session.add(OrderItem(order=order, product=product, quantity=quantity, unit_price=unit_price))
@@ -201,6 +217,13 @@ class ApiTestCase(unittest.TestCase):
             db.drop_all()
             for engine in db.engines.values():
                 engine.dispose()
+            self._borrar_la_base()
+
+    def _borrar_la_base(self) -> None:
+        try:
+            self.database_path.unlink(missing_ok=True)
+        except OSError:
+            pass
 
     def auth_headers(self, token: str) -> dict[str, str]:
         return {"Authorization": f"Bearer {token}"}

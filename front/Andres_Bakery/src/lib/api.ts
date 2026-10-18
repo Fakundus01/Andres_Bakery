@@ -51,6 +51,43 @@ export class ApiError extends Error {
   }
 }
 
+/** Qué decirle a la persona cuando la API contesta mal.
+ *
+ *  El cuerpo se lee UNA sola vez. Antes se intentaba `response.json()` y, si
+ *  fallaba, `response.text()` sobre el mismo cuerpo ya consumido: el error
+ *  que terminaba en pantalla era "Failed to execute 'text' on 'Response':
+ *  body stream already read", que no le dice nada a nadie y tapa el error de
+ *  verdad. Apareció con un 500 real del panel. */
+async function leerElError(response: Response): Promise<string> {
+  let crudo = "";
+  try {
+    crudo = await response.text();
+  } catch {
+    return `Error ${response.status}`;
+  }
+
+  try {
+    // `error` es lo que devuelven nuestros servicios; `msg`, lo que devuelve
+    // flask-jwt-extended ("Token has expired"). Sin leer los dos, todo
+    // problema de token quedaba en un "Error 401" sin explicación.
+    const data = JSON.parse(crudo) as { error?: string; msg?: string };
+    const mensaje = data.error ?? data.msg;
+    if (mensaje) {
+      return mensaje;
+    }
+  } catch {
+    // No era JSON: una página de error del servidor. Mostrar HTML crudo es
+    // peor que no mostrar nada.
+    if (crudo.trimStart().startsWith("<")) {
+      return `El servidor tuvo un problema (error ${response.status}). Probá de nuevo en un rato.`;
+    }
+    if (crudo.trim()) {
+      return crudo.trim().slice(0, 300);
+    }
+  }
+  return `Error ${response.status}`;
+}
+
 async function apiRequest<T>(
   path: string,
   options: {
@@ -78,22 +115,7 @@ async function apiRequest<T>(
     if ((response.status === 401 || response.status === 422) && options.token) {
       avisarSesionVencida(options.token);
     }
-    let message = `Error ${response.status}`;
-    try {
-      // `error` es lo que devuelven nuestros servicios; `msg`, lo que devuelve
-      // flask-jwt-extended ("Token has expired"). Sin leer los dos, todo
-      // problema de token quedaba en un "Error 401" sin explicación.
-      const data = (await response.json()) as { error?: string; msg?: string };
-      if (data.error || data.msg) {
-        message = data.error ?? data.msg ?? message;
-      }
-    } catch {
-      const text = await response.text();
-      if (text) {
-        message = text;
-      }
-    }
-    throw new ApiError(message, response.status);
+    throw new ApiError(await leerElError(response), response.status);
   }
 
   if (response.status === 204) {

@@ -467,3 +467,33 @@ Contesta **429** con `Retry-After`: sin ese header, un cliente bien portado no t
 **Tiene techo de claves** (10.000, con desalojo LRU). Un limitador que guarda una entrada por IP sin límite es la fuga de memoria que venía a prevenir.
 
 **Apagable por configuración** (`RATE_LIMIT_ENABLED`), y apagado en los tests por default: si no, una suite que hace diez logins se cae por el limitador en vez de por lo que mide, y el test que falla no es el culpable.
+
+---
+
+## ADR-027 · Lo que llega de afuera se sanea en un solo lugar
+
+**Fecha:** 2026-10-18 · **Estado:** Vigente · **Nace de:** las dos revisiones de T7
+
+**Contexto:** la ruta pública de pedido asumía que `customer` y `delivery` eran diccionarios y que sus campos eran strings. Los dos revisores llegaron, por caminos distintos, a la misma lista: once formas de sacarle un **500 con HTML** sin tener cuenta, más textos sin tope (4 MB por fila, porque SQLite no hace cumplir el `String(120)` del modelo), más `int(2.9) == 2`, más saltos de línea que fingían campos del sistema en el mail de Andrea.
+
+**Decisión:** un módulo `services/saneado.py` con cuatro funciones —`diccionario`, `texto`, `mail`, `entero`— y tres reglas: lo que no es del tipo esperado es un **400 explicado y en castellano**, todo texto tiene tope, y los campos de una sola línea pierden los saltos.
+
+**Por qué un módulo y no validación por esquema** (pydantic, marshmallow): sería una dependencia nueva (R28) para cuatro funciones de cincuenta líneas, en un proyecto que tiene **un** formulario público. El día que haya varios endpoints con formas distintas, la dependencia se justifica y esto se tira.
+
+**Lo que NO rechaza:** un número donde va texto (una dirección "123" es alguien tipeando raro, no un ataque) y un mail mal escrito, que se descarta sin voltear el pedido —quien pide por WhatsApp deja el mail de yapa, y que lo escriba mal no puede costarle la compra—.
+
+**De paso, un `rollback`.** Un pedido rechazado a mitad de armado quedaba pendiente en la sesión y lo grababa el próximo `commit()` que saliera bien. Por HTTP no se alcanza, porque cada request tiene su sesión; igual se cerró, que es la clase de mina que explota meses después y lejos de acá.
+
+---
+
+## ADR-028 · El tope cuenta lo que sale bien, no lo que se intenta
+
+**Fecha:** 2026-10-18 · **Estado:** Vigente · **Corrige:** ADR-026
+
+**Contexto:** el tope del pedido público contaba cada request, incluidos los 400. El barrio viene precargado pero es editable y el front no validaba la zona, así que el camino real era: la vecina cambia el barrio, se come tres 400, y **al cuarto intento —el bueno— la web le dice que mande menos pedidos**. Medido por el revisor, no deducido.
+
+**Decisión:** dos cuentas. La estricta (3/min, 10/hora) se anota **después**, solo si la respuesta salió bien. La laxa (15/min, 40/hora) cuenta todo intento, para que los 400 tampoco sean barra libre de trabajo del servidor. Y el front avisa de la zona antes de mandar, así ese 400 ni ocurre.
+
+**En el login es al revés y queda como estaba:** ahí el intento fallido es exactamente lo que hay que contar.
+
+**Lo que esto no arregla, y conviene no olvidar:** el tope sigue siendo por IP, y una IP distinta es un presupuesto nuevo. Con un /64 de IPv6 —lo que da cualquier VPS o conexión residencial— se pasan tantos pedidos como se quiera. Está escrito en el módulo y en `security.md`: esto frena al que abusa desde una IP, no al que sabe lo que hace.

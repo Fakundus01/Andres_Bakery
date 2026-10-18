@@ -13,7 +13,9 @@ class Serializer:
             "is_admin": user.is_admin,
         }
         if include_created_at:
-            payload["created_at"] = user.created_at.isoformat()
+            # Una fila escrita fuera del ORM (un arreglo a mano, un import)
+            # puede no tener fecha: eso no puede tumbar la lista entera.
+            payload["created_at"] = user.created_at.isoformat() if user.created_at else None
         return payload
 
     @staticmethod

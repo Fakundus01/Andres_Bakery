@@ -105,6 +105,48 @@ class PedidoWhatsAppApiTestCase(ApiTestCase):
             respuesta = self.client.post("/api/orders/whatsapp", json=self.payload())
             self.assertEqual(201, respuesta.status_code)
 
+    def test_equivocarse_con_el_formulario_no_quema_el_tope(self) -> None:
+        # Con todo en la misma cuenta, tres errores —cambió el barrio, puso
+        # mal el teléfono— dejaban a la vecina un minuto sin poder comprar,
+        # justo al cuarto intento, que era el bueno. Lo marcó la review.
+        self.app.config["RATE_LIMIT_ENABLED"] = True
+
+        for intento in range(5):
+            fallido = self.client.post(
+                "/api/orders/whatsapp",
+                json=self.payload(
+                    delivery={"method": "delivery", "address": "Av. 1", "neighborhood": "Palermo"}
+                ),
+            )
+            self.assertEqual(400, fallido.status_code, f"intento {intento + 1}")
+
+        bueno = self.client.post("/api/orders/whatsapp", json=self.payload())
+        self.assertEqual(201, bueno.status_code)
+
+    def test_pero_insistir_con_errores_tampoco_es_gratis(self) -> None:
+        # El tope laxo existe para que un script no use los 400 como barra
+        # libre de trabajo del servidor.
+        self.app.config["RATE_LIMIT_ENABLED"] = True
+        estados = []
+        for _ in range(16):
+            respuesta = self.client.post("/api/orders/whatsapp", json={"items": []})
+            estados.append(respuesta.status_code)
+        self.assertIn(429, estados)
+
+    def test_la_ruta_con_cuenta_tambien_tiene_tope(self) -> None:
+        # Antes no tenía ninguno: una registración y después filas y mails sin
+        # techo por el camino de al lado.
+        self.app.config["RATE_LIMIT_ENABLED"] = True
+        token = self.register_user(email="muchos@test.local")
+        payload = {**self.payload(), "customer": {"name": "Cliente", "email": "muchos@test.local"}}
+
+        estados = [
+            self.client.post("/api/orders", json=payload, headers=self.auth_headers(token)).status_code
+            for _ in range(7)
+        ]
+        self.assertEqual(5, estados.count(201), estados)
+        self.assertIn(429, estados)
+
     def test_el_login_tambien_tiene_tope(self) -> None:
         self.app.config["RATE_LIMIT_ENABLED"] = True
         for _ in range(10):

@@ -13,7 +13,9 @@ class FakeNotificationService:
     def __init__(self) -> None:
         self.sent_order_ids: list[int] = []
 
-    def send_order_created_notifications(self, order: Order) -> dict[str, str]:
+    def send_order_created_notifications(
+        self, order: Order, *, avisar_al_cliente: bool = True
+    ) -> dict[str, str]:
         self.sent_order_ids.append(order.id)
         return {"customer": "sent", "admin": "sent"}
 

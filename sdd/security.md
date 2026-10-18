@@ -112,14 +112,17 @@ El asistente de recetas manda una foto a la API de Anthropic y recibe un borrado
 
 | Control de la ruta pública de pedido | Estado |
 |---|---|
-| Tope por IP | ✅ 3/min y 10/hora, `429` con `Retry-After` (ADR-026) |
+| Tope por IP | ✅ 3/min y 10/hora de pedidos **concretados**, más 15/min y 40/hora de intentos, `429` con `Retry-After` (ADR-026). **Se evade rotando IP**: un /64 de IPv6 da miles, y la revisión pasó 12 pedidos con 12 direcciones del mismo bloque. Frena al que abusa desde una IP, no al que sabe lo que hace |
 | Tope de renglones y de unidades | ✅ 30 productos distintos, 1000 unidades por renglón (`ORDER_MAX_LINES`, `ORDER_MAX_UNITS`) |
 | Precio desde la base, nunca del request | ✅ ya era así para el producto; **desde hoy también el envío** (antes se aceptaba `shipping_amount` del cliente: con `-5000` el total quedaba por debajo del subtotal) |
 | Mínimo y salto por producto | ✅ `validate_quantity` del lado del servidor (V4) |
 | Zona de entrega | ✅ la misma validación que la ruta con token |
 | Token vencido o roto | ✅ se ignora y el pedido es de invitado, en vez de 401 |
 | No devolver nada de otro pedido | ✅ la respuesta se arma con el pedido recién creado; **no hay** ruta que lea un pedido por id sin dueño (por eso se descartó `/api/orders/<id>/whatsapp`, ADR-025) |
-| Mail de aviso | ⚠️ sale uno a Andrea por pedido. El tope por IP es lo único que lo acota: con el `MAIL_SERVER` configurado, eso es tráfico saliente a pedido de un anónimo |
+| Mail de aviso | ⚠️ sale uno a Andrea por pedido. Al **invitado no se le manda ninguno** desde el 2026-10-18: su dirección no está verificada y el cuerpo lleva texto que escribió quien pidió, así que mandarlo convertía al servidor de ella en un medio para escribirle a cualquiera con su firma |
+| Tipos y largos de lo que llega | ✅ `services/saneado.py`: lo que no es del tipo esperado es un 400 explicado, y todo texto tiene tope (nombre 120, dirección 255, notas 500). Antes: once vectores de **500 con HTML** sin auth, y 4 MB de texto por fila |
+| Texto que finge ser del sistema | ✅ los saltos de línea pasan a separadores: una nota no puede agregar un renglón que diga "Pagado: SI" en el mail que lee Andrea |
+| Debugger de Werkzeug | ✅ `backend/app.py` ya no levanta con `debug=True` por default (era una consola de Python en el navegador ante cualquier 500) |
 
 | Control general | Estado |
 |---|---|

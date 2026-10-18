@@ -11,7 +11,7 @@ El modulo no sabe de Flask ni de HTTP: entra un `Order`, sale un `str`.
 
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from ..models import Order
 
@@ -25,23 +25,30 @@ SALUDO = "¡Hola Andrea! Te hago un pedido desde la web."
 
 
 def armar_mensaje(order: Order, *, tope: int = TOPE_CARACTERES) -> str:
+    """El mensaje entero, no solo los renglones, entra en el tope.
+
+    La primera versión le pasaba el tope a `_recortar` y agregaba el total y
+    los datos de entrega **después**: con una dedicatoria larga el mensaje se
+    iba a 5000 caracteres y el link de WhatsApp quedaba inservible, que es
+    justo el paso que le falta a quien ya hizo el pedido. Ahora la cabecera y
+    el pie se miden primero y los productos se reparten lo que sobra.
+    """
     delivery = order.delivery
-    partes: list[str] = [SALUDO, "", f"Pedido #{order.id}"]
+    cabecera = [SALUDO, "", f"Pedido #{order.id}"]
+
+    pie: list[str] = []
+    if delivery and Decimal(str(delivery.shipping_amount or 0)) > 0:
+        pie.append(f"Envío: {plata(Decimal(str(delivery.shipping_amount)))}")
+    pie.append(f"Total: {plata(Decimal(str(order.total_amount or 0)))}")
+    if delivery:
+        pie.extend(_datos_de_contacto(delivery))
 
     renglones = [
         f"- {item.quantity} x {item.product.name}: {plata(Decimal(str(item.unit_price)) * item.quantity)}"
         for item in order.items
     ]
-    partes.extend(_recortar(renglones, tope))
-
-    if delivery and Decimal(str(delivery.shipping_amount or 0)) > 0:
-        partes.append(f"Envío: {plata(Decimal(str(delivery.shipping_amount)))}")
-    partes.append(f"Total: {plata(Decimal(str(order.total_amount or 0)))}")
-
-    if delivery:
-        partes.extend(_datos_de_contacto(delivery))
-
-    return "\n".join(partes)
+    gastado = len("\n".join(cabecera + pie)) + 1
+    return "\n".join(cabecera + _recortar(renglones, max(tope - gastado, 0)) + pie)
 
 
 def plata(monto: Decimal) -> str:
@@ -50,9 +57,15 @@ def plata(monto: Decimal) -> str:
     Sin centavos cuando son cero, que es el caso de toda la carta: "$9.000" se
     lee de un vistazo y "$9.000,00" no agrega nada.
     """
-    entero, centavos = divmod(int(monto * 100), 100)
+    # El signo se saca antes de dividir: `divmod` con negativos redondea para
+    # abajo y -1500,50 salía "$-1.501,50", mal el peso y mal el lugar del
+    # signo. Hoy ningún total puede ser negativo —el envío lo pone el
+    # servidor—, pero esta función es pública y el primer descuento llega.
+    signo = "-" if monto < 0 else ""
+    centesimos = int(abs(monto).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) * 100)
+    entero, centavos = divmod(centesimos, 100)
     miles = f"{entero:,}".replace(",", ".")
-    return f"${miles}" if centavos == 0 else f"${miles},{centavos:02d}"
+    return f"{signo}${miles}" if centavos == 0 else f"{signo}${miles},{centavos:02d}"
 
 
 def _datos_de_contacto(delivery) -> list[str]:
@@ -85,9 +98,17 @@ def _recortar(renglones: list[str], tope: int) -> list[str]:
     for indice, renglon in enumerate(renglones):
         faltan = len(renglones) - indice
         # El aviso del resto tambien ocupa lugar: se reserva antes de cortar.
-        aviso = len(_aviso_del_resto(faltan))
-        if usado + len(renglon) + 1 + aviso > tope:
-            entran.append(_aviso_del_resto(faltan))
+        aviso = _aviso_del_resto(faltan)
+        if usado + len(renglon) + 1 + len(aviso) > tope:
+            if not entran:
+                # Ni el primero entraba: mejor nombrarlo cortado que mandarle
+                # a Andrea un pedido sin un solo producto. Y entonces el aviso
+                # cubre uno menos, porque este ya quedó listado.
+                recorte = max(tope - len(aviso) - 2, 20)
+                entran.append(renglon[:recorte].rstrip() + "…")
+                aviso = _aviso_del_resto(faltan - 1) if faltan > 1 else ""
+            if aviso:
+                entran.append(aviso)
             return entran
         entran.append(renglon)
         usado += len(renglon) + 1

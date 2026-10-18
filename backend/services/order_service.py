@@ -13,7 +13,13 @@ from .exceptions import AuthorizationError, ValidationError
 from .mensaje_whatsapp import armar_mensaje
 from .notifications import NotificationService, notification_service
 from .quantity import validate_quantity
+from . import saneado
 from .serializers import Serializer
+
+
+# Más que esto no es un pedido de una repostería: es alguien probando.
+MAX_PRODUCT_ID = 2**31 - 1
+METODOS_DE_ENTREGA = {"delivery", "pickup"}
 
 
 class OrderService(ServiceBase):
@@ -42,9 +48,13 @@ class OrderService(ServiceBase):
         la feature, ver `mensaje_whatsapp.py`. No devuelve el resultado de los
         mails —eso es asunto interno— ni nada del pedido de otra persona.
         """
-        customer = data.get("customer") or {}
-        nombre = str(customer.get("name") or (user.name if user else "")).strip()
-        telefono = str(customer.get("phone") or "").strip()
+        customer = saneado.diccionario(data.get("customer"), "customer")
+        nombre = saneado.texto(
+            customer.get("name") or (user.name if user else ""),
+            "nombre",
+            tope=saneado.TOPE_NOMBRE,
+        )
+        telefono = saneado.texto(customer.get("phone"), "teléfono", tope=saneado.TOPE_TELEFONO)
 
         if not nombre:
             raise ValidationError("Necesitamos tu nombre para el pedido.")
@@ -55,7 +65,14 @@ class OrderService(ServiceBase):
 
         order = self.armar_pedido(data, user=user, channel="whatsapp")
         db.session.commit()
-        self.notifications.send_order_created_notifications(order)
+        # Al invitado NO se le manda mail: la dirección no está verificada y
+        # el cuerpo lleva texto que escribió quien pidió, así que el servidor
+        # de Andrea sería un medio para mandarle cualquier cosa a cualquiera
+        # (lo marcó la revisión de seguridad). El aviso a ella sale igual, que
+        # es el que mueve el pedido, y la conversación sigue por WhatsApp.
+        self.notifications.send_order_created_notifications(
+            order, avisar_al_cliente=order.user is not None
+        )
 
         return {
             "order_id": order.id,
@@ -65,15 +82,30 @@ class OrderService(ServiceBase):
         }
 
     def armar_pedido(self, data: dict, *, user: User | None, channel: str) -> Order:
+        """Arma el pedido o deja la sesión como estaba.
+
+        Sin el rollback, un pedido rechazado a mitad de camino queda pendiente
+        en la sesión y lo graba el próximo `commit()` que salga bien. Por HTTP
+        hoy no se alcanza —cada request tiene su sesión—, pero es la clase de
+        mina que explota el día que alguien capture el 400 y siga trabajando.
+        """
+        try:
+            return self._armar_pedido(data, user=user, channel=channel)
+        except Exception:
+            db.session.rollback()
+            raise
+
+    def _armar_pedido(self, data: dict, *, user: User | None, channel: str) -> Order:
         """Lo que comparten la ruta con token y la publica.
 
         Todo lo que decide plata o reglas vive aca y solo aca: el precio sale
         de `Product`, nunca del request, y el minimo y el salto los valida el
         servidor (V4). Lo unico que cambia entre las dos rutas es quien pide.
         """
+        data = saneado.diccionario(data, "pedido")
         items = data.get("items") or []
         if not isinstance(items, list) or not items:
-            raise ValidationError("items are required")
+            raise ValidationError("El pedido no tiene productos.")
 
         tope_renglones = int(current_app.config.get("ORDER_MAX_LINES", 30))
         if len(items) > tope_renglones:
@@ -82,9 +114,9 @@ class OrderService(ServiceBase):
                 "Si necesitás más, escribinos por WhatsApp."
             )
 
-        customer = data.get("customer") or {}
-        delivery = data.get("delivery") or {}
-        delivery_method = str(delivery.get("method") or "delivery")
+        customer = saneado.diccionario(data.get("customer"), "customer")
+        delivery = saneado.diccionario(data.get("delivery"), "delivery")
+        delivery_method = self._resolve_delivery_method(delivery.get("method"))
         shipping_amount = self._resolve_shipping_amount(delivery_method)
         self._validate_delivery(delivery_method, delivery)
 
@@ -97,40 +129,60 @@ class OrderService(ServiceBase):
 
         order.total_amount = total + shipping_amount
         order.delivery = OrderDelivery(
-            customer_name=(customer.get("name") or (user.name if user else "")),
+            customer_name=saneado.texto(
+                customer.get("name") or (user.name if user else ""),
+                "nombre",
+                tope=saneado.TOPE_NOMBRE,
+            ),
             # Sin cuenta puede no haber mail, y no hace falta: la conversación
-            # sigue en WhatsApp (ADR-025).
-            customer_email=(customer.get("email") or (user.email if user else None)) or None,
-            customer_phone=customer.get("phone"),
+            # sigue en WhatsApp (ADR-025). Lo que no se guarda es cualquier
+            # cosa: si no parece un mail, queda vacío.
+            customer_email=saneado.mail(customer.get("email") or (user.email if user else ""))
+            or None,
+            customer_phone=saneado.texto(
+                customer.get("phone"), "teléfono", tope=saneado.TOPE_TELEFONO
+            )
+            or None,
             delivery_method=delivery_method,
-            address=delivery.get("address"),
-            neighborhood=(delivery.get("neighborhood") or current_app.config["DELIVERY_ZONE_NAME"]),
-            city=(delivery.get("city") or "General San Martín"),
+            address=saneado.texto(delivery.get("address"), "dirección", tope=saneado.TOPE_DIRECCION)
+            or None,
+            neighborhood=saneado.texto(
+                delivery.get("neighborhood") or current_app.config["DELIVERY_ZONE_NAME"],
+                "barrio",
+                tope=saneado.TOPE_NOMBRE,
+            ),
+            city=saneado.texto(
+                delivery.get("city") or "General San Martín", "ciudad", tope=saneado.TOPE_NOMBRE
+            ),
             shipping_amount=shipping_amount,
-            notes=delivery.get("notes"),
-            payment_method=str(data.get("payment_method") or "mercado_pago"),
+            # Las notas también van en una sola línea. Con saltos, alguien
+            # escribe "Pagado: SI, transferencia hecha" y en el mail que lee
+            # Andrea parece un campo del sistema, no algo que tipeó quien
+            # compró. Una aclaración de entrega no necesita renglones.
+            notes=saneado.texto(delivery.get("notes"), "notas", tope=saneado.TOPE_NOTAS) or None,
+            payment_method=saneado.texto(
+                data.get("payment_method") or "mercado_pago", "medio de pago", tope=50
+            ),
         )
         return order
 
     def _agregar_renglon(self, order: Order, raw_item: object) -> Decimal:
         if not isinstance(raw_item, dict):
-            raise ValidationError("invalid item data")
+            raise ValidationError("Hay un producto mal formado en el pedido.")
 
-        product_id = self.parse_int(raw_item.get("product_id"), "product_id")
-        quantity = self.parse_int(raw_item.get("quantity"), "quantity")
-        if quantity <= 0:
-            raise ValidationError("quantity must be greater than zero")
-
+        product_id = saneado.entero(
+            raw_item.get("product_id"), "product_id", minimo=1, maximo=MAX_PRODUCT_ID
+        )
+        # El tope de unidades entra en el rango: así una cantidad absurda sale
+        # por la misma puerta que un cero o un texto, con un 400 explicado.
         tope_unidades = int(current_app.config.get("ORDER_MAX_UNITS", 1000))
-        if quantity > tope_unidades:
-            raise ValidationError(
-                f"Son muchas unidades de un mismo producto (tope {tope_unidades}). "
-                "Para un pedido grande, hablemos por WhatsApp."
-            )
+        quantity = saneado.entero(
+            raw_item.get("quantity"), "cantidad", minimo=1, maximo=tope_unidades
+        )
 
         product = self.require_entity(Product, product_id, "product")
         if not product.available:
-            raise ValidationError(f"product {product_id} not available")
+            raise ValidationError(f"«{product.name}» no está disponible por ahora.")
         # El minimo y el salto los decide el servidor: el control del
         # carrito es comodidad, no seguridad (V4).
         validate_quantity(product, quantity)
@@ -179,6 +231,21 @@ class OrderService(ServiceBase):
         return channel
 
     @staticmethod
+    def _resolve_delivery_method(valor: object) -> str:
+        """Lista blanca, igual que `channel`.
+
+        Sin esto, un `method` de "Delivery" o "envio a domicilio" no entraba
+        por la comparación exacta: se salteaba la validación de dirección y de
+        zona, el envío quedaba en $0, y el panel y el mail decían "envío"
+        mientras el WhatsApp decía "paso a retirar". Los dos canales que lee
+        Andrea diciendo cosas distintas, y ganando el que cobra de menos.
+        """
+        metodo = saneado.texto(valor or "delivery", "método de entrega", tope=20).lower()
+        if metodo not in METODOS_DE_ENTREGA:
+            raise ValidationError("La entrega tiene que ser envío o retiro.")
+        return metodo
+
+    @staticmethod
     def _resolve_shipping_amount(delivery_method: str) -> Decimal:
         """El envio lo decide el servidor, nunca el request.
 
@@ -195,15 +262,18 @@ class OrderService(ServiceBase):
         if delivery_method != "delivery":
             return
 
-        address = (delivery.get("address") or "").strip()
-        neighborhood = (delivery.get("neighborhood") or "").strip()
+        address = saneado.texto(delivery.get("address"), "dirección", tope=saneado.TOPE_DIRECCION)
+        neighborhood = saneado.texto(
+            delivery.get("neighborhood"), "barrio", tope=saneado.TOPE_NOMBRE
+        )
         if not address:
-            raise ValidationError("address is required for delivery")
+            raise ValidationError("Para el envío necesitamos la dirección.")
         if not neighborhood:
-            raise ValidationError("neighborhood is required for delivery")
+            raise ValidationError("Para el envío necesitamos el barrio.")
         if not self._matches_delivery_zone(neighborhood):
             raise ValidationError(
-                f"deliveries are only available in {current_app.config['DELIVERY_ZONE_NAME']}"
+                "Por ahora los envíos son solo en "
+                f"{current_app.config['DELIVERY_ZONE_NAME']}. Si estás cerca, escribinos."
             )
 
     def _matches_delivery_zone(self, neighborhood: str) -> bool:

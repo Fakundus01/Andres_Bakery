@@ -215,17 +215,20 @@ Responde **201**:
 }
 ```
 
-- **`message` lo arma el servidor** con los importes de la base. El front no lo escribe ni lo corrige: lo pega en `wa.me` con `linkWhatsApp()`. Se corta a 1500 caracteres sin tocar el total ni la entrega.
+- **`message` lo arma el servidor** con los importes de la base. El front no lo escribe ni lo corrige: lo pega en `wa.me` con `linkWhatsApp()`. **El mensaje entero** entra en 1500 caracteres: la cabecera y el pie se miden primero y los productos se reparten lo que sobra, así que el total y la entrega nunca se pierden (corregido el 2026-10-18: antes el tope recortaba solo los productos y una dedicatoria larga dejaba el link inservible).
 - **`phone`** sale de `WHATSAPP_PHONE`. Si está vacío, el front muestra el número de pedido y dice que falta configurarlo, en vez de un link roto.
 - **Obligatorios:** `items`, `customer.name` y `customer.phone` (8 dígitos mínimo). El mail es opcional (migración `0004`).
-- **400** con el motivo en castellano: sin nombre, sin teléfono, fuera de la zona de entrega, más de 30 productos distintos, más de 1000 unidades de uno, o una cantidad que no respeta `min_qty`/`qty_step`.
+- **400** con el motivo **en castellano**: sin nombre, sin teléfono, fuera de la zona de entrega, más de 30 productos distintos, más de 1000 unidades de uno, una cantidad que no respeta `min_qty`/`qty_step`, un campo que no es del tipo esperado (`customer` que no es objeto, notas que son un diccionario) o un método de entrega que no es `delivery` ni `pickup`.
+- **Topes de texto** (se recorta, no se rechaza): nombre y barrio 120, dirección 255, notas 500, teléfono 40.
+- **`delivery.method`** tiene lista blanca y se normaliza a minúscula: `"Delivery"` es un envío, `"envio a domicilio"` es un 400. Antes se guardaba tal cual y cobraba $0 de envío.
 - **429** con `Retry-After` pasando 3 por minuto o 10 por hora desde la misma IP (ADR-026).
 
 ### Topes por IP (ADR-026)
 
 | Ruta | Tope | Respuesta al pasarse |
 |---|---|---|
-| `POST /api/orders/whatsapp` | 3/min, 10/hora | `429` + `Retry-After` |
+| `POST /api/orders/whatsapp` | 3/min y 10/hora **de pedidos concretados**, 15/min y 40/hora de intentos | `429` + `Retry-After` |
+| `POST /api/orders` | 5/min y 30/hora concretados, mismos intentos | `429` + `Retry-After` |
 | `POST /api/auth/login` | 10 cada 5 min | `429` + `Retry-After` |
 | `POST /api/auth/register` | 5/hora | `429` + `Retry-After` |
 | `POST /api/contact` | 5/hora | `429` + `Retry-After` |

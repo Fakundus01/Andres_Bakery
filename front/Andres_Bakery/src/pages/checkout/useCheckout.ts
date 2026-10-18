@@ -7,7 +7,8 @@ import { ordersApi, paymentsApi } from "../../lib/api";
 import { DEFAULT_CITY } from "../../lib/constants";
 import { linkWhatsApp } from "../../lib/contacto";
 import { getErrorMessage } from "../../lib/format";
-import type { DeliveryMethod, OrderCreationPayload, PaymentMethod } from "../../lib/types";
+import type { DeliveryMethod, PaymentMethod } from "../../lib/types";
+import { armarPayload, queFalta } from "./pedidoDelFormulario";
 
 export interface PedidoHecho {
   numero: number;
@@ -16,10 +17,6 @@ export interface PedidoHecho {
   whatsapp: string | null;
   conCuenta: boolean;
 }
-
-/** Cuántos dígitos tiene que tener un teléfono para que valga la pena mandarlo.
- *  Es el mismo mínimo que valida el back; acá es solo para avisar antes. */
-const MINIMO_DIGITOS = 8;
 
 export function useCheckout() {
   const { items, subtotal, clearCart } = useCart();
@@ -65,41 +62,20 @@ export function useCheckout() {
   const cambiar = (campo: keyof typeof form, valor: string) =>
     setForm((actual) => ({ ...actual, [campo]: valor }));
 
-  const armarPayload = (): OrderCreationPayload => ({
-    items: items.map((item) => ({ product_id: item.id, quantity: item.quantity })),
-    customer: {
-      name: form.name.trim(),
-      email: form.email.trim() || undefined,
-      phone: form.phone.trim(),
-    },
-    delivery: {
-      method: deliveryMethod,
-      address: deliveryMethod === "delivery" ? form.address : undefined,
-      neighborhood:
-        deliveryMethod === "delivery" ? form.neighborhood : config?.zone_name ?? form.neighborhood,
-      city: form.city,
-      notes: form.notes,
-    },
-    payment_method: paymentMethod,
-  });
-
-  const queFalta = (): string => {
-    if (!items.length) return "Tu carrito está vacío.";
-    if (!form.name.trim()) return "Necesitamos tu nombre para el pedido.";
-    if (!pagoOnline && form.phone.replace(/\D/g, "").length < MINIMO_DIGITOS) {
-      return "Necesitamos un teléfono de contacto: el pedido se cierra por WhatsApp.";
-    }
-    if (pagoOnline && !isLoggedIn) {
-      return "Para pagar online necesitás una cuenta.";
-    }
-    return "";
-  };
+  const payload = () =>
+    armarPayload({ items, form, deliveryMethod, paymentMethod, zona: config?.zone_name });
 
   const enviar = async (evento: FormEvent<HTMLFormElement>) => {
     evento.preventDefault();
     setError("");
 
-    const falta = queFalta();
+    const falta = queFalta({
+      items,
+      form,
+      pagoOnline,
+      isLoggedIn,
+      zona: deliveryMethod === "delivery" ? config?.zone_name : undefined,
+    });
     if (falta) {
       setError(falta);
       return;
@@ -108,7 +84,7 @@ export function useCheckout() {
     setSubmitting(true);
     try {
       if (!pagoOnline) {
-        const pedido = await ordersApi.crearPorWhatsApp(armarPayload(), token);
+        const pedido = await ordersApi.crearPorWhatsApp(payload(), token);
         clearCart();
         setHecho({
           numero: pedido.order_id,
@@ -122,7 +98,7 @@ export function useCheckout() {
       }
 
       const pedido = await ordersApi.create(
-        { ...armarPayload(), channel: "mercado_pago" },
+        { ...payload(), channel: "mercado_pago" },
         token as string,
       );
       const checkout = await paymentsApi.checkout(pedido.order_id, paymentMethod, token as string);

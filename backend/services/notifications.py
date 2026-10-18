@@ -8,7 +8,16 @@ from ..models import Order
 
 
 class NotificationService:
-    def send_order_created_notifications(self, order: Order) -> dict[str, str]:
+    def send_order_created_notifications(
+        self, order: Order, *, avisar_al_cliente: bool = True
+    ) -> dict[str, str]:
+        """Avisa del pedido nuevo.
+
+        `avisar_al_cliente=False` para el pedido de invitado: su mail no esta
+        verificado y el cuerpo lleva texto que escribio quien pidio, asi que
+        mandarlo convierte al servidor de Andrea en un medio para escribirle
+        a cualquiera con su firma (ADR-025, revision de seguridad de T7).
+        """
         if not current_app.config.get("MAIL_SERVER"):
             return {
                 "customer": "skipped: mail service not configured",
@@ -61,7 +70,9 @@ class NotificationService:
         )
 
         result = {"customer": "skipped", "admin": "skipped"}
-        if customer_email:
+        if not avisar_al_cliente:
+            result["customer"] = "skipped: pedido sin cuenta"
+        elif customer_email:
             result["customer"] = self._send_email(
                 subject=f"Andres Bakery | Confirmaci\u00f3n de pedido #{order.id}",
                 recipients=[customer_email],
@@ -91,11 +102,16 @@ class NotificationService:
             mail.send(msg)
             return "sent"
         except Exception as exc:  # pragma: no cover - depends on SMTP configuration
-            return f"failed: {exc}"
+            # El detalle del error del SMTP se registra, no se devuelve: esta
+            # respuesta viaja al cliente y contaba del servidor de mail.
+            current_app.logger.warning("No se pudo mandar el mail del pedido: %s", exc)
+            return "failed"
 
 
 notification_service = NotificationService()
 
 
-def send_order_created_notifications(order: Order) -> dict[str, str]:
-    return notification_service.send_order_created_notifications(order)
+def send_order_created_notifications(order: Order, *, avisar_al_cliente: bool = True) -> dict[str, str]:
+    return notification_service.send_order_created_notifications(
+        order, avisar_al_cliente=avisar_al_cliente
+    )

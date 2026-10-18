@@ -30,6 +30,16 @@ Las tres decisiones se resolvieron como estaban recomendadas: ruta pública en v
 - Migración `0004` probada para abajo y para arriba sobre la base real; `customer_email notnull = 0`.
 - Navegador, sin sesión (`localStorage` sin token): carta → carrito → checkout → **pedido #6**, link `wa.me` con `rel="noopener noreferrer"`, carrito vaciado, y el pedido visible en el panel de Andrea con nombre y teléfono. Revisado también a 390px.
 
+## Revisión independiente (R30) — hecha
+
+Dos revisores re-ejecutaron sobre `5446f6b`: uno funcional y uno de seguridad. **Doce hallazgos reales**, todos corregidos con su test en 0.10.1 (detalle en el changelog). Los tres que más importaban:
+
+1. 500 con HTML en la ruta pública ante cualquier tipo inesperado — el front mostraba el HTML crudo dentro del checkout.
+2. El tope por IP quemaba cupo con los 400: tres errores de formulario y la vecina no podía comprar por un minuto.
+3. `"Delivery"` con mayúscula salteaba la validación de zona y cobraba **$0 de envío** diciendo "envío" en el panel.
+
+Y uno que salió mirando el panel con una sesión de admin descartable: **el pedido de invitado le aparecía a Andrea como "undefined", sin nombre ni teléfono**. La feature estaba entregada e inservible del lado de ella.
+
 ## PRÓXIMO PASO
 
-Reviewer independiente que **re-ejecute** (R30), sobre el árbol ya commiteado. Después, lo que diga `status.md` §5.
+Lo que diga `status.md` §5. T7 está cerrado: código, tests, revisión, correcciones y MDs.

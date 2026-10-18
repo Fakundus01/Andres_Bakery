@@ -6,6 +6,7 @@ import { paymentOptions } from "../lib/constants";
 import { formatCurrency } from "../lib/format";
 import { PedidoListo } from "./checkout/PedidoListo";
 import { ResumenDelPedido } from "./checkout/ResumenDelPedido";
+import { TOPE_NOTAS } from "./checkout/pedidoDelFormulario";
 import { useCheckout } from "./checkout/useCheckout";
 
 export function CheckoutPage() {
@@ -167,6 +168,7 @@ export function CheckoutPage() {
           <Field label="Notas para el pedido">
             <textarea
               className="field min-h-28"
+              maxLength={TOPE_NOTAS}
               value={form.notes}
               onChange={(evento) => cambiar("notes", evento.target.value)}
               placeholder="Aclaraciones, dedicatorias o coordinación de entrega"
