@@ -81,7 +81,7 @@ Esto dejo de ser propuesta: esta construido y con tests. Tres diferencias respec
 | GET | `/api/products/<slug>` | — | ficha del producto (F25) |
 | GET | `/api/tags` | — | etiquetas para el filtro |
 | POST·PUT·DELETE | `/api/tags[/<id>]` | admin | las crea ella (ADR-006) |
-| GET | `/api/site/delivery` | — | `{zone_name, fee, pickup_address, whatsapp_phone, payments_enabled, ai_enabled}` — mata el 2500 hardcodeado (C4) |
+| GET | `/api/site/delivery` | — | `{zone_name, fee, pickup_address, whatsapp_phone, payments_enabled, ai_enabled, personalization_tag}` — mata el 2500 hardcodeado (C4), y desde el 2026-10-19 dice **cuál es la etiqueta que habilita la personalización** (ADR-033, cierra D27) |
 | ~~POST~~ | ~~`/api/orders/<id>/whatsapp`~~ | ~~token~~ | **reemplazada el 2026-10-17 por `POST /api/orders/whatsapp`** (ADR-025): pedía el token que el invitado no tiene, y con el id en la URL se leía el mensaje de otro pedido |
 
 ### Cambios sobre endpoints existentes

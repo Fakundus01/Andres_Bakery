@@ -6,6 +6,7 @@ import { SelectorDeIngredientes } from "./SelectorDeIngredientes";
 import { VariantesDelProducto } from "./VariantesDelProducto";
 import { Field } from "../../components/ui";
 import { estadoDeLaEtiqueta } from "../../lib/carrito";
+import { useSiteConfig } from "../../contexts/SiteConfigContext";
 import { formatCurrency } from "../../lib/format";
 import type { BorradorReceta, Ingredient, OptionGroup, Product, Tag } from "../../lib/types";
 import type { ProductForm } from "../../lib/ui-types";
@@ -51,6 +52,10 @@ export function FormularioDeProducto({
   editingProductId: number | null;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
+  // El slug de la etiqueta que habilita lo decide el back (D27).
+  const { config } = useSiteConfig();
+  const etiqueta = estadoDeLaEtiqueta(tags, productForm.tag_ids, config?.personalization_tag);
+
   const cambiar = <Clave extends keyof ProductForm>(clave: Clave, valor: ProductForm[Clave]) =>
     setProductForm((current) => ({ ...current, [clave]: valor }));
 
@@ -178,8 +183,8 @@ export function FormularioDeProducto({
           grupos={gruposDeOpciones}
           elegidos={productForm.option_group_ids}
           onAlternar={alternarGrupo}
-          productoEtiquetado={estadoDeLaEtiqueta(tags, productForm.tag_ids).etiquetada}
-          etiquetaParecida={estadoDeLaEtiqueta(tags, productForm.tag_ids).parecida}
+          productoEtiquetado={etiqueta.etiquetada}
+          etiquetaParecida={etiqueta.parecida}
         />
 
         {tags.length > 0 ? (

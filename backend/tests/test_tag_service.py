@@ -12,6 +12,43 @@ class TagServiceTestCase(BackendServiceTestCase):
         super().setUp()
         self.service = TagService()
 
+    def test_dos_etiquetas_que_se_ven_iguales_no_entran(self) -> None:
+        """D28: lo marco el reviewer de T4-F19b.
+
+        "Tortas Personalizadas" sobre "tortas personalizadas" entraba como una
+        segunda etiqueta que se ve igual en la lista, y **solo una habilita** la
+        personalizacion, porque lo que manda es el slug y `unique_slug`
+        desempata con sufijo. El sintoma: "le puse la etiqueta y no pasa nada",
+        sin un error en ningun log.
+        """
+        self.service.create({"name": "tortas personalizadas"})
+
+        for parecida in ("Tortas Personalizadas", "TORTAS PERSONALIZADAS", "  tortas   personalizadas  "):
+            with self.subTest(parecida=parecida):
+                with self.assertRaises(ValidationError):
+                    self.service.create({"name": parecida})
+
+        self.assertEqual(1, Tag.query.count())
+
+    def test_los_acentos_no_fusionan_dos_etiquetas_distintas(self) -> None:
+        self.service.create({"name": "Baño maria"})
+        self.service.create({"name": "Bano maria"})
+
+        self.assertEqual(2, Tag.query.count())
+
+    def test_renombrar_corrige_el_tipeo_sin_chocar_consigo_misma(self) -> None:
+        creada = self.service.create({"name": "sin tacc"})
+
+        self.service.update(creada["id"], {"name": "sin TACC"})
+
+        self.assertEqual("sin TACC", Tag.query.one().name)
+
+    def test_el_nombre_de_la_etiqueta_tiene_tope(self) -> None:
+        with self.assertRaises(ValidationError):
+            self.service.create({"name": "A" * 500})
+
+        self.assertEqual(0, Tag.query.count())
+
     def test_create_derives_the_slug_and_defaults_the_color(self) -> None:
         response = self.service.create({"name": "sin TACC"})
 

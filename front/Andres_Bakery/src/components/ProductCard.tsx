@@ -4,6 +4,7 @@ import { ChefHat, RotateCcw, ShoppingBag } from "lucide-react";
 
 import { textoRegla } from "../lib/cantidades";
 import { precioDesde, sePersonaliza } from "../lib/carrito";
+import { useSiteConfig } from "../contexts/SiteConfigContext";
 import { heroFallback } from "../lib/constants";
 import { formatCurrency } from "../lib/format";
 import { urlDeImagen } from "../lib/imagenes";
@@ -26,7 +27,10 @@ export function ProductCard({ product, onAddToCart }: { product: Product; onAddT
   /** Una torta con tamaños o sabores no se puede agregar desde la tarjeta:
    *  si el grupo es obligatorio el servidor rechaza el pedido, y con razón
    *  (ADR-031). La tarjeta manda a la ficha, que es donde se elige. */
-  const seArma = sePersonaliza(product);
+  /** Cuál es la etiqueta que habilita la personalización lo dice el back
+   *  (D27): acá solo se pregunta. */
+  const { config } = useSiteConfig();
+  const seArma = sePersonaliza(product, config?.personalization_tag);
 
   const caraDeAdelante = useRef<HTMLElement>(null);
   const dorso = useRef<HTMLElement>(null);

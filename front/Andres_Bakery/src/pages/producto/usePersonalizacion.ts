@@ -7,6 +7,7 @@ import {
   queFaltaElegir,
   type Personalizacion,
 } from "../../lib/carrito";
+import { useSiteConfig } from "../../contexts/SiteConfigContext";
 import type { Product } from "../../lib/types";
 
 /** Lo que el cliente va eligiendo en la ficha, antes de agregar al carrito.
@@ -16,6 +17,10 @@ import type { Product } from "../../lib/types";
  *  se eligen juntos y se resetean juntos.
  */
 export function usePersonalizacion(product: Product | null) {
+  /** Cuál es la etiqueta que habilita: lo dice el back (D27). Mientras la
+   *  config no cargó, vale el default de `esPersonalizable`, que es el mismo
+   *  valor; si algún día cambia, cambia en un solo lado. */
+  const { config } = useSiteConfig();
   const [variante, setVariante] = useState<number | null>(null);
   const [elegidas, setElegidas] = useState<Record<number, number | undefined>>({});
   const [nota, setNota] = useState("");
@@ -34,7 +39,9 @@ export function usePersonalizacion(product: Product | null) {
   /** La personalización vive detrás de la etiqueta: sin ella la ficha no
    *  ofrece sabores, ni nota, ni foto, aunque el producto tenga grupos
    *  asignados por error. El back decide lo mismo. */
-  const personalizable = product ? esPersonalizable(product) : false;
+  const personalizable = product
+    ? esPersonalizable(product, config?.personalization_tag)
+    : false;
 
   /** En el orden que les puso ella, que es el que tiene sentido para armar
    *  la torta (bizcocho antes que cobertura, si así lo cargó). */

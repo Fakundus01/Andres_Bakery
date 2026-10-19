@@ -7,6 +7,9 @@ export interface DeliveryConfig {
   payments_enabled: boolean;
   /** Con la IA apagada el panel no ofrece el botón del asistente (F46). */
   ai_enabled: boolean;
+  /** El slug de la etiqueta que habilita la personalización (ADR-033). Lo
+   *  decide el back: tenerlo escrito en los dos lados era la deuda D27. */
+  personalization_tag: string;
 }
 
 

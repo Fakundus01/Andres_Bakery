@@ -18,9 +18,11 @@ import type { OptionChoice, OptionGroup, Product, ProductVariant, Tag } from "./
  *  tortas a pedido**, no para toda la carta. La puerta es una etiqueta porque
  *  es algo que Andrea ya maneja: se la pone al producto y listo.
  *
- *  **Espeja a `backend/services/renglon_del_pedido.py::TAG_PERSONALIZABLE`**,
- *  que es quien decide de verdad: un pedido con sabores para un producto sin
- *  la etiqueta es un 400. */
+ *  **El back es quien lo decide** y lo dice en `GET /api/site/delivery`
+ *  (`personalization_tag`): tener el string escrito en los dos lados era la
+ *  deuda D27, porque cambiarlo de un lado dejaba de ofrecer la personalización
+ *  sin un solo error en los logs. Esta constante queda como **red** para
+ *  cuando la config no cargó todavía, no como fuente de verdad. */
 export const TAG_PERSONALIZABLE = "tortas-personalizadas";
 export const NOMBRE_TAG_PERSONALIZABLE = "tortas personalizadas";
 
@@ -137,9 +139,10 @@ export function precioDesde(product: Product): number {
 export function estadoDeLaEtiqueta(
   etiquetas: Tag[],
   elegidas: number[],
+  slug: string = TAG_PERSONALIZABLE,
 ): { etiquetada: boolean; parecida?: string } {
   const marcadas = etiquetas.filter((etiqueta) => elegidas.includes(etiqueta.id));
-  if (marcadas.some((etiqueta) => etiqueta.slug === TAG_PERSONALIZABLE)) {
+  if (marcadas.some((etiqueta) => etiqueta.slug === slug)) {
     return { etiquetada: true };
   }
   const parecida = marcadas.find(
@@ -152,8 +155,8 @@ export function estadoDeLaEtiqueta(
  *
  *  Si fuera por los grupos, asignarle "Relleno" por error a una docena de
  *  cookies las convertiría en algo que no se puede pedir sin elegir relleno. */
-export function esPersonalizable(product: Product): boolean {
-  return (product.tags ?? []).some((tag) => tag.slug === TAG_PERSONALIZABLE);
+export function esPersonalizable(product: Product, slug: string = TAG_PERSONALIZABLE): boolean {
+  return (product.tags ?? []).some((tag) => tag.slug === slug);
 }
 
 /** ¿Este producto se arma antes de pedirlo?
@@ -162,8 +165,8 @@ export function esPersonalizable(product: Product): boolean {
  *  alcanza: si falta elegir un relleno obligatorio el servidor va a rechazar
  *  el pedido, y con razón. La tarjeta manda a la ficha, que es donde se
  *  elige. */
-export function sePersonaliza(product: Product): boolean {
-  return Boolean(product.variants?.length) || esPersonalizable(product);
+export function sePersonaliza(product: Product, slug: string = TAG_PERSONALIZABLE): boolean {
+  return Boolean(product.variants?.length) || esPersonalizable(product, slug);
 }
 
 /** Lo que falta elegir antes de poder agregar al carrito, o "" si está todo.

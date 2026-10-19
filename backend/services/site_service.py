@@ -4,6 +4,7 @@ from flask import current_app
 
 from ..extensions import db
 from ..models import SiteContent
+from .tag_service import TAG_PERSONALIZABLE
 
 
 class SiteService:
@@ -22,6 +23,12 @@ class SiteService:
             # El panel pregunta por aca si mostrar el boton del asistente: sin
             # llave no tiene sentido ofrecer algo que va a responder 503 (F46).
             "ai_enabled": bool(current_app.config.get("AI_ENABLED")) and bool(current_app.config.get("ANTHROPIC_API_KEY")),
+            # Cual es la etiqueta que habilita la personalizacion (ADR-033).
+            # Antes el slug estaba escrito en los dos lados y era deuda D27: si
+            # alguien lo cambiaba de un lado, la personalizacion dejaba de
+            # ofrecerse **sin un solo error en los logs**. Ahora el front lo
+            # pregunta, y el back es el unico que lo decide.
+            "personalization_tag": TAG_PERSONALIZABLE,
         }
 
     def get_about(self) -> dict:

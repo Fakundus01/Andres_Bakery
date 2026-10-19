@@ -1,6 +1,6 @@
 # status.md · Andres Bakery
 
-**Versión:** 0.14.0 · **Última actualización:** 2026-10-19
+**Versión:** 0.14.1 · **Última actualización:** 2026-10-19
 
 ## 1 · Dónde estamos
 
@@ -10,7 +10,7 @@ El repo tiene 4 meses de código y **estuvo 7 meses quieto** hasta el 2026-10-16
 
 | Check | Resultado |
 |---|---|
-| Tests del back | **339 OK** (eran 307 al cerrar T18; 32 salieron de las tres revisiones) · eran 228 al abrir el día |
+| Tests del back | **343 OK** (eran 307 al cerrar T18; 32 salieron de las tres revisiones) · eran 228 al abrir el día |
 | Tests del front | **166 OK** — Vitest, lógica pura (ADR-023). Eran 90 al abrir el día |
 | Lint del front (eslint + tsc) | limpio |
 | Build del front | verde — 411,39 KB JS · 34,97 KB CSS (eran 381,91 · 33,99: +20 KB por la pestaña de gustos, la personalización de la ficha y el detalle del renglón) |
@@ -94,8 +94,8 @@ Lo de 0.5.0 sigue igual salvo lo tachado. **D3 se cerró** y entraron tres deuda
 | **D21** | **A 320px** (por debajo del mínimo que nos pusimos, 390) `/tienda` desborda 15px | 2026-10-17 | lo midió el reviewer. A 390 está impecable en las 11 rutas. Queda anotado por si alguna vez baja el piso |
 | ~~D7~~ | ~~Cero tests de front~~ | **resuelta en parte** 2026-10-17 | entró Vitest (ADR-023) y la **lógica pura** quedó cubierta con 48 tests. Lo que sigue sin red son los **componentes**: para eso hace falta `jsdom` + Testing Library, con su propia decisión. La línea vieja decía: **sigue creciendo**: ya hay seis funciones puras sin cubrir y el bug de los emojis en `iniciales` salió de una lectura, no de un test. Entra Vitest cuando se apruebe la dependencia. **crece**: hay lógica propia que lo amerita (`ejeY`, `normalizar_ruta` del lado del front, `urlDeImagen`). Lo de arriba se probó en navegador, no con tests |
 | D8 | Retención y borrado de datos personales sin definir | 2026-10-16 | sigue. Las visitas **no** agrandan esto: son contadores sin persona (ADR-019) |
-| **D27** | **El espejo de la etiqueta es un string en los dos lados** (`TAG_PERSONALIZABLE`) | 2026-10-19 | el back decide por **slug**, y el slug no cambia al renombrar (lo verificó el reviewer; la primera versión de esta línea decía lo contrario). Lo que sí puede pasar: dos etiquetas que se llamen igual y solo una habilite. El panel ahora **nombra la parecida**. La salida de verdad es que el back exponga el slug en `/api/site/delivery` |
-| **D28** | **`tag_service` compara el nombre exacto, no el normalizado** | 2026-10-19 | «Tortas Personalizadas» y «tortas personalizadas» entran como dos etiquetas y solo una habilita la personalización. Es el mismo bug que ADR-030 cerró para ingredientes y que F57 heredó para los grupos: el único que quedó sin normalizar es el de las etiquetas |
+| ~~D27~~ | ~~El espejo de la etiqueta es un string en los dos lados~~ | **resuelta 2026-10-19** | el back lo dice en `GET /api/site/delivery` (`personalization_tag`) y el front lo pregunta; la constante queda como red. La nota vieja decía: | el back decide por **slug**, y el slug no cambia al renombrar (lo verificó el reviewer; la primera versión de esta línea decía lo contrario). Lo que sí puede pasar: dos etiquetas que se llamen igual y solo una habilite. El panel ahora **nombra la parecida**. La salida de verdad es que el back exponga el slug en `/api/site/delivery` |
+| ~~D28~~ | ~~`tag_service` compara el nombre exacto~~ | **resuelta 2026-10-19** | compara normalizado, como los ingredientes (ADR-030) y los grupos. **Con una salvedad**: lo decide un barrido en Python, no una columna con índice único, así que **no aguanta concurrencia** — dos altas simultáneas con la misma grafía pasan las dos. Con diez etiquetas no se nota; el día que sean cientos es la migración de ADR-030. La nota vieja decía: | «Tortas Personalizadas» y «tortas personalizadas» entran como dos etiquetas y solo una habilita la personalización. Es el mismo bug que ADR-030 cerró para ingredientes y que F57 heredó para los grupos: el único que quedó sin normalizar es el de las etiquetas |
 | **D19** | **Se tira el perfil de color de la foto.** El limpiador descarta el chunk `iCCP`/los APPn, así que una foto de iPhone en Display P3 conserva sus píxeles pero pierde el perfil y el navegador la dibuja como sRGB | 2026-10-17 | lo marcó el reviewer y es **de producto, no de seguridad**: en una repostería la foto *es* el producto y el corrimiento de color se ve. Hoy es el precio de no tener `Pillow`; se resuelve igual que D16 |
 | **D20** | **La llamada real al SDK de Anthropic no tiene test.** El parseo de la respuesta sí (`leer_respuesta`, que salió afuera justo para eso); lo que no se ejercita nunca es `messages.create` | 2026-10-17 | es la frontera con una librería de terceros. Si algún día cambia la forma del pedido, lo vamos a ver en producción y no en los tests |
 | **D16** | **WEBP y HEIC se rechazan.** HEIC es el default de iPhone | 2026-10-17 | el mensaje lo nombra y dice qué hacer, pero si ella saca fotos con iPhone lo va a ver seguido. Se arregla con `Pillow` o convirtiendo en el navegador antes de subir |

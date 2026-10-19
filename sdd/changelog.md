@@ -4,6 +4,39 @@ Semver `MAJOR.MINOR.PATCH` (R13). No se borra nada: lo viejo queda.
 
 ---
 
+## [0.14.1] · 2026-10-19 · La etiqueta que habilita deja de ser un string copiado
+
+Dos deudas que dejaron las revisiones, las dos de la misma cosa: la etiqueta
+«tortas personalizadas», que es lo que habilita elegir sabores y mandar una foto (ADR-033). Juntas
+cerraban el peor síntoma posible — *"le puse la etiqueta y no pasa nada"*, sin un error en ningún
+log.
+
+**D27 · El slug lo dice el back.** Estaba escrito en los dos lados (`renglon_del_pedido.py` y
+`lib/carrito.ts`): cambiarlo de uno dejaba de ofrecer la personalización en silencio. Ahora
+`GET /api/site/delivery` devuelve `personalization_tag` y el front lo pregunta; la constante del
+front queda como **red** para mientras la config no cargó, no como fuente de verdad.
+
+**D28 · Las etiquetas comparan normalizado.** `tag_service` comparaba el nombre **exacto**, así que
+"Tortas Personalizadas" sobre "tortas personalizadas" entraba como una segunda etiqueta que se ve
+igual en la lista — y solo una habilita, porque lo que manda es el slug y `unique_slug` desempata
+con sufijo (`tortas-personalizadas-2`). Era el único de los tres catálogos sin normalizar: los
+ingredientes lo cerraron en ADR-030 y los grupos de opciones lo heredaron en F57. Ahora la etiqueta
+también, con su tope de largo.
+
+**Lo que esto NO cierra, y queda dicho:** la unicidad de la etiqueta se decide con un barrido en
+Python, no con una columna normalizada e índice único como los ingredientes. Son diez etiquetas y no
+se nota, pero **no aguanta concurrencia**: dos altas simultáneas con la misma grafía pasan las dos.
+El día que sean cientos, es la migración de ADR-030 otra vez.
+
+- Tests: back **343 OK** (eran 339; 4 nuevos de la etiqueta), front 166 OK. Lint y build limpios.
+- Medido contra la app: `personalization_tag = "tortas-personalizadas"` en la config, y el alta de
+  «Tortas Personalizadas» sobre la que existe devuelve **400** con el nombre de la que ya está.
+- **Sin verificar en el navegador**: el servidor del front lo paró el sistema por falta de memoria
+  mientras esperaba, y no lo levanté de nuevo por mi cuenta. Lo que falta mirar es la ficha y el
+  panel tomando el slug de la config, que es un cambio de dos líneas y está cubierto por tipos.
+
+---
+
 ## [0.14.0] · 2026-10-19 · El panel edita en pop-up y usa toda la pantalla
 
 **Pedido del humano, por dictado:** que editar desde el panel *"sea muy fácil y que no se quede
