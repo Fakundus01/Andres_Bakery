@@ -7,7 +7,7 @@
 Los mismos que `harness.config.json`. **Siempre desde la raíz del repo**: los imports del back son `backend.*`.
 
 ```bash
-# Back: 328 tests, unittest (NO pytest: el venv no lo tiene)
+# Back: 339 tests, unittest (NO pytest: el venv no lo tiene)
 backend/.venv/Scripts/python.exe -m unittest discover -s backend/tests -t . -q
 
 # Front: 90 tests de logica pura, Vitest (ADR-023)
@@ -42,6 +42,9 @@ Estado medido el 2026-10-17 tras T16: **151 tests del back + 48 del front OK**, 
 | `test_pedido_personalizado.py` | el renglón: que **el tamaño elegido se cobre** y que el `variant_id` ajeno sea 400, los sabores validados contra los grupos de ESE producto, los `required`, la nota acotada a una línea, y dos rellenos distintos como dos renglones (F19a, F58) |
 | `test_solo_las_tortas_se_personalizan.py` | la puerta de ADR-033: sin la etiqueta, `option_ids`, `note` y `reference_image` son 400, y un grupo obligatorio mal asignado **no** saca el producto de la venta |
 | `test_foto_de_referencia.py` | la subida pública: nace provisoria, el tope más chico que el del panel, la cuota (507) y **las diez URLs que no se aceptan** como foto de referencia (F59) |
+| `test_precio_del_producto.py` | lo que el back tiene que rechazar en un precio: `NaN`, `1e400`, cero, negativos, el tope de la columna, y que un producto **sin** precio siga pudiendo existir (review de T4-F19b) |
+| `test_cuota_de_subidas.py` | la cuota bajo concurrencia (seis hilos con barrera contra una cuota de una) y el techo propio de cada puerta |
+| `test_renglon_personalizado.py` | los sabores, la nota y la foto del renglón (F58); `test_pedido_personalizado.py` quedó con el tamaño (F19a) |
 | `test_subida_publica.py` | el barrido de huérfanas (la provisoria vencida se va, la usada **nunca**), la firma de Cloudinary, la ruta pública por HTTP (429 con `Retry-After`, 413 con **su** tope, la del panel sigue admin-only) y **la cuota bajo concurrencia**: seis hilos con una barrera contra una cuota de una |
 | `test_upload_service.py` | la subida: nombre generado, tope de tamaño, lo que no toca el disco, path traversal |
 | `test_metrics_service.py` | normalización de rutas y dispositivos, contadores agregados y el resumen (ADR-019) |
@@ -86,6 +89,8 @@ Estado medido el 2026-10-17 tras T16: **151 tests del back + 48 del front OK**, 
 | `pages/admin/altaDeIngrediente.test.ts` | el alta con una API falsa: el nombre que manda, el rescate cuando el alta falla, y que se quede con el nombre que devuelve el servidor |
 | `lib/ingredientes.test.ts` | comparar nombres de ingredientes sin acentos ni mayúsculas, **conservando la ñ**, para no duplicar lo que ya existe (F20) |
 | `lib/carrito.test.ts` | la identidad del renglón: dos tamaños son dos renglones, el orden de los sabores no, una coma en la nota sí, y **el precio del renglón sale de la variante** (F19a, F58) |
+| `lib/variantes.test.ts` | los tamaños del panel: qué falta para poder guardar, el payload con los **ids** de los que ya estaban, el orden que sale de la pantalla y el aviso de lo que se borra (F19b) |
+| `pages/admin/payloadDelProducto.test.ts` | la vuelta completa producto → formulario → payload, que es donde el texto de un `<input>` se vuelve plata |
 | `lib/personalizacion.test.ts` | la puerta de la etiqueta (ADR-033), qué falta elegir, el espejo de la nota con el back, el precio "desde" de la tarjeta y la etiqueta que se llama igual pero no habilita |
 
 **Entorno `node`, no `jsdom`:** nada de esto monta componentes. Lo visual se sigue verificando en el navegador (R07).
@@ -139,6 +144,15 @@ Estado medido el 2026-10-17 tras T16: **151 tests del back + 48 del front OK**, 
 5. Si el cambio toca precios, mínimos o totales ⇒ el rojo se vio primero (R29).
 
 ## 6 · Tests que estaban mal, y qué enseñaron
+
+**Lo que 166 tests verdes no vieron, lo vio la consola del navegador (2026-10-19).** Con los
+tamaños cargables desde el panel, el carrito pudo tener por primera vez **dos renglones del mismo
+producto**, y ahí aparecieron dos cosas que ningún test cubría: el resumen del checkout cobraba el
+**precio base** en cada renglón (una torta de $28.000 mostrada en $14.200, con el total correcto al
+lado) y los dos renglones **compartían la key de React**. El segundo lo gritó la consola; el primero
+se vio al leer la pantalla. La lección no es "falta un test": es que el caso **recién se volvió
+posible** con esta tanda, y la pantalla de confirmar un pedido se mira con los ojos antes de
+confiarle plata a nadie.
 
 **El test del arreglo encontró un bug más grande que el arreglo (2026-10-19).** Cerrando el 500 que
 daba un nombre cuyo normalizado quedaba vacío, un caso del test —dos marcas combinantes separadas

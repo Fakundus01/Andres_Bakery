@@ -12,6 +12,8 @@ import {
   usersApi,
 } from "../../lib/api";
 import { getErrorMessage } from "../../lib/format";
+import { queFaltaEnLosTamanos } from "../../lib/variantes";
+import { payloadDeLaEtiqueta, payloadDelProducto } from "./payloadDelProducto";
 import type { Order, PerfilAndrea, Product, ResumenMetricas, Tag, User } from "../../lib/types";
 import type { ProductForm, TagForm } from "../../lib/ui-types";
 import { accionesDeIngredientes } from "./accionesDeIngredientes";
@@ -205,13 +207,15 @@ export function usePanelDeAdmin() {
 
   const guardarProducto = (evento: FormEvent<HTMLFormElement>) => {
     evento.preventDefault();
+    // Lo de los tamaños se frena acá y no en el 400: es lo que define
+    // precios, y el formulario ya lo tiene medido (F19b).
+    const faltaUnTamano = queFaltaEnLosTamanos(formProducto.variants);
+    if (faltaUnTamano) {
+      setError(faltaUnTamano);
+      return;
+    }
     void conAviso(async () => {
-      const payload = {
-        ...formProducto,
-        price: Number(formProducto.price),
-        min_qty: Number(formProducto.min_qty || 1),
-        qty_step: Number(formProducto.qty_step || 1),
-      };
+      const payload = payloadDelProducto(formProducto);
       if (productoEditado) {
         await productsApi.update(productoEditado, payload, token);
       } else {
@@ -224,11 +228,7 @@ export function usePanelDeAdmin() {
   const guardarEtiqueta = (evento: FormEvent<HTMLFormElement>) => {
     evento.preventDefault();
     void conAviso(async () => {
-      const payload = {
-        name: formEtiqueta.name,
-        color_token: formEtiqueta.color_token,
-        sort_order: Number(formEtiqueta.sort_order || 0),
-      };
+      const payload = payloadDeLaEtiqueta(formEtiqueta);
       if (etiquetaEditada) {
         await tagsApi.update(etiquetaEditada, payload, token);
       } else {

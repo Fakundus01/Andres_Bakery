@@ -10,7 +10,7 @@ export function SiteFooter() {
 
   return (
     <footer className="border-t-[4px] border-borde bg-superficie">
-      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-3 lg:px-8">
+      <div className="mx-auto grid max-w-7xl xl:max-w-[88rem] 2xl:max-w-[104rem] gap-8 px-4 py-10 sm:px-6 lg:grid-cols-3 lg:px-8">
         <div>
           <p className="font-display text-2xl font-bold text-tinta">Andres Bakery</p>
           <p className="mt-2 text-sm leading-6 text-tinta-suave">

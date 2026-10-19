@@ -139,9 +139,17 @@ class ArmadorDeRenglon(ServiceBase):
 
         variant_id = saneado.entero(crudo, "variant_id", minimo=1, maximo=MAX_ID)
         variante = db.session.get(ProductVariant, variant_id)
-        # Un id que no existe y un id de otro producto dan el mismo error a
-        # proposito: el mensaje no tiene por que decirle a nadie que ids hay.
-        if variante is None or variante.product_id != product.id:
+        # Dos casos distintos, dos mensajes distintos (C5 de T4-F19b). El
+        # primero es el que de verdad pasa: alguien tiene la torta en el
+        # carrito desde ayer y ella borro ese tamano. Decirle "ese tamano no
+        # es de esta torta" no le explica nada ni le dice que hacer. Los ids
+        # de variante son publicos —`GET /api/products` los devuelve—, asi que
+        # distinguirlos no cuenta nada que no se sepa.
+        if variante is None:
+            raise ValidationError(
+                "Ese tamaño ya no está disponible. Abrí el producto y elegí uno de los que hay."
+            )
+        if variante.product_id != product.id:
             raise ValidationError(f"Ese tamaño no es de «{product.name}».")
         self._exigir_que_sea_el_que_vio(variante, nombre_visto)
         return variante

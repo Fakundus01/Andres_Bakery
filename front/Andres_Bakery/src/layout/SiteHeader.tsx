@@ -26,7 +26,7 @@ export function SiteHeader() {
   return (
     <>
       <header className="sticky top-0 z-40 flex min-h-[var(--alto-header)] items-center border-b-[3px] border-borde bg-superficie">
-        <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
+        <div className="mx-auto flex w-full max-w-7xl xl:max-w-[88rem] 2xl:max-w-[104rem] items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
           {/* La hamburguesa es del celular. En pantalla grande el menú está en
               la barra o en el panel lateral, y un botón más sería ruido. */}
           <button

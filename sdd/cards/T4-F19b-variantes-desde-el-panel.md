@@ -5,6 +5,9 @@
 **Superficie (R27):** N1 (panel admin) + roza N3: lo que se carga acá define precios. El control de
 plata ya está en F19a; acá se verifica que no se lo pueda esquivar desde el panel.
 
+
+> **Implementada el 2026-10-19.** La corrección del back que esta tarjeta pedía (`_build_variants` conserva ids) había entrado antes, con las correcciones de la revisión de T18, que la encontró rota por su lado. C5 se implementó como pedía la tarjeta: un tamaño borrado tiene su propio mensaje, distinto del tamaño ajeno. Y mirando el navegador salieron dos cosas que no estaban en ningún criterio: el **resumen del checkout cobraba el precio base** y dos renglones del mismo producto **compartían la key de React**.
+
 ## Por qué
 
 Es lo que `features.md` F19 pide desde T3: *"modelo, API y selector en la ficha listos; falta

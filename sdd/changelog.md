@@ -4,6 +4,117 @@ Semver `MAJOR.MINOR.PATCH` (R13). No se borra nada: lo viejo queda.
 
 ---
 
+## [0.14.0] · 2026-10-19 · El panel edita en pop-up y usa toda la pantalla
+
+**Pedido del humano, por dictado:** que editar desde el panel *"sea muy fácil y que no se quede
+ahí"*, con pop-ups en vistas de computadora —*"obviamente en celular podemos dejarlo así"*— y que
+la app *"use la pantalla completa, porque vi que no la utiliza y queda un poco raro"*. Queda en
+**ADR-034**.
+
+**El formulario del producto se edita en un pop-up, solo en pantallas grandes.** En celular se
+queda en la página: un formulario largo adentro de un pop-up, con el teclado virtual tapando media
+pantalla, es peor que sin pop-up. Lo decide un hook que **escucha** los cambios de tamaño, así que
+acomodar la ventana cambia la estructura en el momento y no recién al recargar.
+
+**Es un `<dialog>` nativo, no un `<div>` flotante.** El navegador ya sabe atrapar el foco adentro,
+cerrar con Escape, hacer inerte el resto de la página y devolver el foco al botón que lo abrió:
+escribir eso a mano es lo que funciona con el mouse y deja afuera a quien usa teclado o lector de
+pantalla. Los botones de guardar viven en un **pie fijo**, fuera del área que scrollea, y mandan el
+formulario con `button[form=...]` — HTML de siempre, sin duplicar estado.
+
+**El ancho.** El panel pasa a usar **todo** el ancho, porque es un espacio de trabajo: una grilla de
+productos, gráficos, un formulario largo. El sitio público sigue acotado pero más holgado
+(1280 → 1408 → 1664 según la pantalla), y **no se le saca el tope a propósito**: una línea de texto
+de 2000 px no se lee, y la carta es para leer. Medido en 1920: el sitio pasó de 1280 a 1664, el
+panel a 1905.
+
+**Lo que esto obligó a mover:** `ProductsTab` pasaba las 300 líneas con el pop-up adentro (R05), así
+que el formulario salió a `FormularioDeProducto.tsx` y la pestaña quedó como orquestador. **El mismo
+componente se renderiza en los dos lugares**, que es lo que evita que la versión de celular y la de
+computadora se vayan separando con el tiempo.
+
+### Lo que el review de `T4-F19b` rompió, y entró en este mismo ciclo
+
+El reviewer volvió `CHANGES_REQUESTED` con 3 ALTA, y las tres eran lo mismo: **lo que el panel
+avisa, el back no lo validaba** — en la tarjeta cuyo encabezado dice *"acá se verifica que no se lo
+pueda esquivar desde el panel"*.
+
+- **`"1e400"` dejaba la web en blanco para todos.** Entraba como precio, el serializer lo pasaba a
+  `float` —`inf`— y `GET /api/products` devolvía `"price":Infinity`, que **no es JSON válido**: la
+  carta, la portada y la ficha quedaban vacías para cualquier visitante, con un solo guardado del
+  panel y sin un error en los logs. `"NaN"` era la otra cara: 500 con HTML.
+- **"El precio tiene que ser mayor que cero" vivía solo en la pantalla.** Por API entraba `-9999` y
+  el pedido salía con **total negativo**; `0.004` pasaba el filtro del front, que mostraba "$ 0".
+- **El nombre del tamaño no tenía tope**: 4 MB en un campo que el `GET` público devuelve, el mismo
+  agujero que ADR-030 cerró para los ingredientes.
+
+Ahora `parse_decimal` exige un número **finito** y dentro de lo que aguanta la columna, el precio de
+un tamaño tiene que ser mayor que cero, el nombre tiene tope, y los nombres repetidos, el tope de 12
+y el mismo id dos veces también los frena el back. **Y los dos bugs del checkout seguían abiertos en
+"mis pedidos"** —la key de React duplicada y el renglón que no decía el tamaño—: arreglados ahí
+también.
+
+### Verificación
+
+- Tests: back **339 OK**, front **166 OK**. Lint limpio. Build 411,39 KB JS · 34,97 KB CSS.
+- **Navegador, 1920px:** el panel usa 1905 y el sitio 1664 (antes 1280) · "Nuevo producto" abre el
+  pop-up · Escape lo cierra · "Editar" lo abre **con los datos cargados**, tamaños incluidos ·
+  guardar desde el pie funciona, cierra el pop-up, avisa, y **los ids de los tamaños no se mueven** ·
+  el scroll del fondo se bloquea y se devuelve al cerrar.
+- **390px:** sin pop-up, formulario en la página, cero desborde. Es lo que se pidió.
+- La base de desarrollo quedó como estaba (el aviso de preparación que toqué para probar, restaurado).
+
+---
+
+## [0.13.0] · 2026-10-19 · Los tamaños se cargan desde el panel, y F19 cierra
+
+**Lo último que le faltaba a F19 desde T3.** El modelo, la API y el selector de la ficha estaban
+desde el primer día; los tamaños se cargaban por API o a mano en la base. Ahora Andrea los carga,
+los renombra, les cambia el precio, los reordena y los borra desde el formulario del producto.
+
+**El editor viene cerrado hasta que se pida**, porque la mayoría de la carta se vende por unidad: el
+formulario no crece para los veinte productos por culpa de los dos que tienen tamaños.
+
+**Y dice lo que va a pasar antes de que pase**, que es la mitad del trabajo:
+
+- *"Con tamaños cargados, el precio que se cobra sale del tamaño elegido y no del precio de
+  arriba"* — porque el campo "Precio de una unidad" sigue ahí arriba con su número, y nada lo decía.
+- *"Al guardar se borra «20 porciones», y quien lo tenga en el carrito va a tener que elegir de
+  nuevo"* — con el nombre del tamaño que se va.
+- Y si se borran todos: *"vuelve a venderse al precio de arriba"*.
+
+**Un tamaño borrado ahora se explica distinto** (C5): el carrito de quien lo tenía recibe *"ese
+tamaño ya no está disponible, abrí el producto y elegí uno de los que hay"* en vez del genérico
+"no es de este producto". Los dos casos son 400, pero uno es un carrito viejo y el otro un ataque,
+y el mensaje ya no los confunde. Los ids de variante son públicos —`GET /api/products` los
+devuelve—, así que distinguirlos no cuenta nada que no se sepa.
+
+### Dos bugs que salieron de mirar el navegador, y los dos importan
+
+- **El resumen del checkout cobraba el precio base.** Una torta de 20 porciones de $28.000 aparecía
+  en $14.200 en el renglón, con el total correcto al lado: la pantalla anterior a confirmar el
+  pedido, mostrando dos números que no cierran. Era el mismo agujero de F19a en el único archivo
+  que no se había tocado (`ResumenDelPedido.tsx`), y ninguna de las dos revisiones lo había visto.
+- **Dos renglones del mismo producto compartían la key de React** en ese resumen, con su error en
+  la consola: con keys repetidas React puede duplicar u omitir filas. Apareció recién cuando el
+  carrito tuvo dos tamaños de la misma torta, que es lo que esta tanda hace posible.
+
+Y uno más chico, también del navegador: **el editor quedaba cerrado al apretar "Editar"** sobre una
+torta que ya tenía tamaños, porque su estado inicial se calculaba cuando el formulario estaba vacío.
+
+**La portada también decía un precio que no se podía comprar**: ahora dice "Disponible desde".
+
+### Verificación
+
+- Tests: back **330 OK**, front **166 OK** (eran 328 y 135). Lint y build limpios (411,39 KB JS).
+- **Navegador, de punta a punta:** tamaño nuevo cargado desde el panel ⇒ **los ids de los que ya
+  estaban no se movieron** (1 y 2 antes, 1, 2 y 3 después) ⇒ comprado sin sesión a **$28.000** ⇒ el
+  pedido y el mensaje de WhatsApp lo nombran ⇒ borrado desde el panel, con su aviso, y los ids
+  siguen intactos. 375px y 390px con el editor abierto y tres filas: `scrollWidth - clientWidth = 0`.
+- La base de desarrollo quedó como estaba: 7 pedidos, la torta con sus dos tamaños originales.
+
+---
+
 ## [0.12.0] · 2026-10-19 · Tortas a pedido: la chef pone los gustos, el cliente arma la suya
 
 **El selector de tamaño dejó de ser decorativo.** Cambiaba el número en pantalla y el pedido se

@@ -9,6 +9,10 @@ from .exceptions import NotFoundError, ValidationError
 
 ModelType = TypeVar("ModelType")
 
+# El tope de la columna: `Numeric(10, 2)` son 8 digitos enteros. Un peso mas
+# que esto no es una torta, es un dedo apoyado en el teclado.
+MAX_IMPORTE = Decimal("99999999.99")
+
 
 class ServiceBase:
     @staticmethod
@@ -27,10 +31,28 @@ class ServiceBase:
 
     @staticmethod
     def parse_decimal(value: Any, field_name: str) -> Decimal:
+        """Un Decimal de verdad: finito y dentro de lo que la columna aguanta.
+
+        `Decimal("NaN")` y `Decimal("1e400")` son validos para Python, y los
+        dos llegaban a la base. El primero reventaba el `NOT NULL` y salia
+        **500 con HTML**; el segundo entraba, el serializer lo pasaba a
+        `float` —`inf`— y `GET /api/products` devolvia `"price":Infinity`, que
+        **no es JSON valido**: la carta, la portada y la ficha quedaban en
+        blanco para todos los visitantes, con un solo PUT del panel. Lo midio
+        el reviewer de T4-F19b.
+        """
         try:
-            return Decimal(str(value))
+            numero = Decimal(str(value))
         except (ArithmeticError, InvalidOperation, TypeError, ValueError) as exc:
             raise ValidationError(f"{field_name} must be a valid number") from exc
+
+        if not numero.is_finite():
+            raise ValidationError(f"{field_name} must be a valid number")
+        if abs(numero) > MAX_IMPORTE:
+            raise ValidationError(
+                f"{field_name} no puede pasar de {MAX_IMPORTE:,.0f}".replace(",", ".")
+            )
+        return numero
 
     @staticmethod
     def require_entity(model: type[ModelType], entity_id: Any, label: str) -> ModelType:

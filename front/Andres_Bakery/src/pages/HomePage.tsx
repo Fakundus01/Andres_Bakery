@@ -9,6 +9,7 @@ import { useCart } from "../contexts/CartContext";
 import { useSiteConfig } from "../contexts/SiteConfigContext";
 import { productsApi, siteApi } from "../lib/api";
 import { heroFallback } from "../lib/constants";
+import { precioDesde } from "../lib/carrito";
 import { urlDeImagen } from "../lib/imagenes";
 import { formatCurrency, getErrorMessage } from "../lib/format";
 import type { Product } from "../lib/types";
@@ -57,7 +58,11 @@ export function HomePage() {
       title: product.name,
       description: product.description || "Dulce artesanal listo para sumar al carrito.",
       image: urlDeImagen(product.image_url) || heroFallback[0].image,
-      accent: `Disponible por ${formatCurrency(product.price)}`,
+      // Con tamaños, el precio base puede no ser comprable: la portada
+      // dice "desde" y el más barato, igual que la tarjeta (F19a).
+      accent: product.variants?.length
+        ? `Disponible desde ${formatCurrency(precioDesde(product))}`
+        : `Disponible por ${formatCurrency(product.price)}`,
       ctaLabel: "Ver la ficha",
       ctaTo: `/producto/${product.slug}`,
     }));

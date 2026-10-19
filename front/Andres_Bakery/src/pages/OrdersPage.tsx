@@ -1,3 +1,4 @@
+import { DetalleDelRenglon } from "../components/DetalleDelRenglon";
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
@@ -60,10 +61,33 @@ export function OrdersPage() {
               <StatusPill status={order.status} />
             </div>
             <div className="mt-5 space-y-3 border-t-[3px] border-borde pt-5">
-              {order.items.map((item) => (
-                <div key={`${order.id}-${item.product_id}`} className="flex items-center justify-between text-sm text-tinta-suave">
-                  <span>{item.quantity} x {item.product_name}</span>
-                  <strong className="text-tinta">{formatCurrency(item.unit_price * item.quantity)}</strong>
+              {order.items.map((item, posicion) => (
+                /* La clave lleva el id del renglón y, si no vino, la posición:
+                   dos tamaños de la misma torta son dos renglones del mismo
+                   `product_id` y compartían key. Mismo bug que el resumen del
+                   checkout, abierto en esta pantalla (review de T4-F19b). */
+                <div
+                  key={item.id ?? `${order.id}-${item.product_id}-${posicion}`}
+                  className="flex items-start justify-between gap-3 text-sm text-tinta-suave"
+                >
+                  <div className="min-w-0">
+                    <span>
+                      {item.quantity} x {item.product_name}
+                      {item.variant_name ? ` (${item.variant_name})` : ""}
+                    </span>
+                    {/* Lo que pidió, en su propio pedido: sin esto, quien
+                        encargó una torta con relleno leía "1 x Torta". */}
+                    <DetalleDelRenglon
+                      elegidas={(item.options ?? []).map(
+                        (elegida) => `${elegida.group_name}: ${elegida.option_name}`,
+                      )}
+                      nota={item.note}
+                      foto={item.reference_image}
+                    />
+                  </div>
+                  <strong className="shrink-0 text-tinta">
+                    {formatCurrency(item.unit_price * item.quantity)}
+                  </strong>
                 </div>
               ))}
             </div>

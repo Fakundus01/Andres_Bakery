@@ -237,3 +237,5 @@ class VariantesQueNoSeMuevenTestCase(BackendServiceTestCase):
 
         self.assertEqual(["Unica"], [v.name for v in self.torta.variants])
 
+if __name__ == "__main__":
+    unittest.main()

@@ -759,3 +759,41 @@ el formulario del producto cuando falta, y —desde la corrección del review—
 parecida** cuando hay una marcada que se llama igual pero no es la que habilita. Lo que queda
 abierto es que `tag_service` compare el nombre normalizado como ya hacen los ingredientes y los
 grupos: queda como **D28**.
+
+---
+
+## ADR-034 · El panel edita en pop-up, y usa toda la pantalla
+
+**Fecha:** 2026-10-19 · **Estado:** Vigente · **Features:** F49 (panel más fácil), F19b, F57
+
+**Contexto:** el pedido fue del humano, por dictado: que editar desde el panel *"sea muy fácil y que
+no se quede ahí"*, con **pop-ups** en vistas de computadora —"obviamente en celular podemos dejarlo
+así"—, y que la app *"use la pantalla completa, porque vi que no la utiliza y queda un poco raro"*.
+
+**Decisión, en tres partes:**
+
+1. **El formulario del producto se edita en un pop-up, solo en pantallas grandes** (≥1024px). En
+   celular se queda en la página: un formulario largo adentro de un pop-up, con el teclado virtual
+   tapando media pantalla, es peor que sin pop-up. Lo decide `usePantallaGrande`, que escucha los
+   cambios de tamaño en vez de mirar una sola vez.
+
+2. **El pop-up es un `<dialog>` nativo**, no un `<div>` con `position: fixed`. El navegador ya sabe
+   atrapar el foco adentro, cerrar con Escape, hacer inerte el resto de la página y devolver el foco
+   al botón que lo abrió. Reimplementar eso a mano es lo que funciona con el mouse y deja afuera a
+   quien usa teclado o lector de pantalla. Los botones de guardar viven en un **pie fijo**, fuera
+   del área que scrollea, y mandan el formulario con `button[form=...]`: HTML de siempre.
+
+3. **El ancho:** el panel usa **todo** el ancho (`max-w-none`) porque es un espacio de trabajo —una
+   grilla de productos, gráficos, formularios—; el sitio público sigue acotado pero más holgado
+   (1280 → 1408 en `xl` → 1664 en `2xl`). **No se saca el tope del sitio**: una línea de texto de
+   2000 px no se lee, y la carta es para leer. Medido en 1920 px: el sitio pasó de 1280 a 1664, el
+   panel a 1905.
+
+**Lo que esto obligó a mover:** `ProductsTab` pasaba las 300 líneas con el pop-up adentro (R05), así
+que el formulario salió a `FormularioDeProducto.tsx` y la pestaña quedó como orquestador. El mismo
+componente se renderiza en los dos lugares, que es lo que evita que la versión de celular y la de
+computadora se vayan separando.
+
+**Lo que queda para después, dicho para no prometerlo:** las otras pestañas del panel (etiquetas,
+gustos, perfil) siguen editando en la página. El `Modal` quedó hecho para reusarse —recibe título,
+descripción, contenido y pie— pero ponerlo en cada pestaña es trabajo de otro ciclo.

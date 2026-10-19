@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any
 
 from ..extensions import db
@@ -10,6 +11,13 @@ from .base import ServiceBase
 from .exceptions import NotFoundError, ValidationError
 from .serializers import Serializer
 from .slug import unique_slug
+from . import saneado
+
+
+# Mas tamanos que esto no se eligen en un celular, y el front ya lo frena:
+# aca esta para que no se lo pueda esquivar por API (F19b).
+MAX_VARIANTES = 12
+TOPE_NOMBRE_VARIANTE = 120
 
 
 class ProductService(ServiceBase):
@@ -43,7 +51,7 @@ class ProductService(ServiceBase):
         product = Product(
             name=name,
             slug=unique_slug(Product, data.get("slug") or name),
-            price=self.parse_decimal(price, "price"),
+            price=self._precio_base(price),
             category=self._category(data.get("category")),
             unit_label=self._unit_label(data.get("unit_label")),
             min_qty=self._at_least_one(data.get("min_qty"), "min_qty"),
@@ -89,7 +97,7 @@ class ProductService(ServiceBase):
         if "qty_step" in data:
             product.qty_step = self._at_least_one(data.get("qty_step"), "qty_step")
         if "price" in data:
-            product.price = self.parse_decimal(data.get("price"), "price")
+            product.price = self._precio_base(data.get("price"))
 
         self._apply_relations(product, data)
         db.session.commit()
@@ -148,20 +156,40 @@ class ProductService(ServiceBase):
         """
         if not isinstance(raw_variants, list):
             raise ValidationError("variants must be a list")
+        if len(raw_variants) > MAX_VARIANTES:
+            raise ValidationError(f"Un producto admite hasta {MAX_VARIANTES} tamaños.")
 
         existentes = {variant.id: variant for variant in product.variants}
         variants: list[ProductVariant] = []
+        vistos: set[str] = set()
+        reusados: set[int] = set()
         for position, raw in enumerate(raw_variants):
             if not isinstance(raw, dict):
                 raise ValidationError("invalid variant data")
-            name = (raw.get("name") or "").strip()
-            if not name or raw.get("price") is None:
+            if raw.get("price") is None:
                 raise ValidationError("each variant needs name and price")
 
-            price = self.parse_decimal(raw.get("price"), "variant price")
+            name = self._nombre_de_variante(raw.get("name"))
+            price = self._precio_de_variante(raw.get("price"), name)
             sort_order = self.parse_int(raw.get("sort_order", position), "sort_order")
 
+            # El nombre es lo que el pedido guarda (ADR-029) y lo que el
+            # cliente elige: dos tamanos que se llaman igual son dos filas
+            # indistinguibles en la ficha. La comparacion es normalizada, como
+            # en los ingredientes y los grupos (ADR-030).
+            normalizado = saneado.normalizar_nombre(name, "nombre", tope=TOPE_NOMBRE_VARIANTE)
+            if normalizado in vistos:
+                raise ValidationError(f"Hay dos tamaños que se llaman «{name}».")
+            vistos.add(normalizado)
+
             variante = self._variante_a_reusar(existentes, raw.get("id"))
+            if variante is not None:
+                # El mismo id dos veces en la lista era la unica ruta donde
+                # los ids se movian: la segunda vuelta reusaba la fila que ya
+                # estaba en `variants` y la primera quedaba huerfana.
+                if variante.id in reusados:
+                    raise ValidationError("Un tamaño no puede venir dos veces en la lista.")
+                reusados.add(variante.id)
             if variante is None:
                 variante = ProductVariant(name=name, price=price, sort_order=sort_order)
             else:
@@ -173,6 +201,31 @@ class ProductService(ServiceBase):
         # Lo que no vino en la lista se borra, que es lo que la pantalla
         # espera al sacar un tamano: el `delete-orphan` se encarga.
         return variants
+
+    @staticmethod
+    def _nombre_de_variante(valor: Any) -> str:
+        """Con tope, como el ingrediente (ADR-030).
+
+        SQLite no hace cumplir el `String(120)` del modelo: entraron 4 MB en
+        un `name` que el `GET` publico devuelve (review de T4-F19b).
+        """
+        name = saneado.nombre_para_guardar(valor, "tamaño", tope=TOPE_NOMBRE_VARIANTE)
+        if not name:
+            raise ValidationError("each variant needs name and price")
+        return name
+
+    def _precio_de_variante(self, valor: Any, name: str) -> Decimal:
+        """Mayor que cero, y de verdad.
+
+        El panel avisaba "el precio tiene que ser mayor que cero" y el back
+        aceptaba cero y negativos: un pedido con una variante de -9999 salia
+        con **total negativo** (hallazgo del review de T4-F19b). Y `0.004`
+        pasaba el filtro del front —que muestra "$ 0"— y se guardaba en 0.00.
+        """
+        price = self.parse_decimal(valor, "variant price")
+        if price.quantize(Decimal("0.01")) <= 0:
+            raise ValidationError(f"El tamaño «{name}» necesita un precio mayor que cero.")
+        return price
 
     def _variante_a_reusar(
         self, existentes: dict[int, ProductVariant], crudo: Any
@@ -186,6 +239,15 @@ class ProductService(ServiceBase):
             # es un error del que llama, no un tamano nuevo en silencio.
             raise ValidationError("one or more variants do not belong to this product")
         return variante
+
+    def _precio_base(self, valor: Any) -> Decimal:
+        """Cero sigue valiendo: es la carta a medio cargar, y el panel los
+        cuenta como "sin precio". Un negativo no: eso no es un estado, es un
+        error de tipeo que se cobraria."""
+        price = self.parse_decimal(valor, "price")
+        if price < 0:
+            raise ValidationError("El precio no puede ser negativo.")
+        return price
 
     @staticmethod
     def _text(value: Any) -> str | None:

@@ -1,7 +1,7 @@
-# T4-F19a + T18 · Tortas a pedido (F19a, F57, F58, F59)
+# T4-F19a + T18 + T4-F19b · Tortas a pedido, y F19 cerrada
 
 **Rama:** `dev` · **Features:** F19 (la mitad que importaba), F57, F58, F59
-**ADR:** 029, 030, 031, **032** y **033** (los dos últimos, nuevos de hoy) · **Versión:** 0.12.0
+**ADR:** 029, 030, 031, **032** y **033** (los dos últimos, nuevos de hoy) · **Versión:** 0.13.0
 **Estado:** las cuatro tarjetas **implementadas y verdes**, verificadas en el navegador, **sin
 commitear** (R01). Falta la **revisión independiente** (R30/R31), que es lo único que separa esto
 de un `done`.
@@ -142,7 +142,24 @@ hace `trim()` — el espejo que ADR-030 dice sostener.
 4. **`tag_service` compara el nombre exacto** y no el normalizado (**D28**): dos etiquetas que se
    llaman igual y solo una habilita. El panel ahora nombra la parecida, pero el back no lo frena.
 
+## T4-F19b · implementada el 2026-10-19, después del commit de T18
+
+Lo último que le faltaba a F19 desde T3: los tamaños se cargan **desde el panel**. El detalle está
+en [`handback_T4-F19b.md`](handback_T4-F19b.md), y lo que importa de ahí es lo que **salió del
+navegador y ningún test vio**:
+
+- **El resumen del checkout cobraba el precio base**: una torta de 20 porciones de $28.000 mostrada
+  en $14.200 en su renglón, con el total correcto al lado. Era el agujero de F19a en el único
+  archivo que no se había tocado, y **las dos revisiones de T18 no lo vieron**.
+- **Dos renglones del mismo producto compartían la key de React**, con su error en consola. Recién
+  fue posible cuando el carrito pudo tener dos tamaños de la misma torta.
+- El editor quedaba cerrado al apretar "Editar", y la portada decía un precio que no se puede
+  comprar.
+
+Verde: back **330 OK**, front **166 OK**, lint y build limpios. En el navegador: tamaño cargado, los
+ids sin moverse, comprado sin sesión a $28.000, borrado con su aviso, y 375/390px sin desborde.
+
 ## PRÓXIMO PASO
 
-OK humano ⇒ commit ⇒ **`T4-F19b`**, que cierra F19 y es la que necesita ADR-029 parte 3, ahora sí
-implementada.
+Revisión independiente de `T4-F19b` (R30) ⇒ OK humano ⇒ commit. Después, de la cola: **F41
+(deploy)**, que depende de las credenciales de Cloudinary (B8) y de `ProxyFix` (D25).

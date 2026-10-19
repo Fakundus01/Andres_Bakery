@@ -31,7 +31,7 @@ Estados (§5 del master): Specified 20% → Planned 40% → Tasked 60% → In Pr
 | F16 | `Product` absorbe la receta (modelo nuevo) | **Complete** | T3 | `Recipe` borrada; su contenido migro a `Product` sin perder filas |
 | F17 | Precio por unidad: `unit_label`, `min_qty`, `qty_step` | **Complete** | T3 | validado **del lado del servidor**, no solo en el carrito (V4) |
 | F18 | Selector de cantidad con total en vivo ("5 brownies = $X") | **Complete** | T3 | `QuantityPicker`: salta de a `qty_step` en ficha, carrito y panel rapido |
-| F19 | Variantes de tamaño para lo que se vende entero | **In Progress** | T3 · T4-F19a | **el tamaño elegido ya se cobra** desde el 2026-10-19 (ADR-029); **falta cargarlas desde el panel** (`T4-F19b`) |
+| F19 | Variantes de tamaño para lo que se vende entero | **Complete** (2026-10-19) | T3 · T4-F19a · T4-F19b | el tamaño elegido **se cobra** (ADR-029) y se **carga desde el panel**: agregar, renombrar, cambiar precio, reordenar y borrar |
 | F20 | Ingredientes relacionales visibles en la carta | **Complete** | T6 | se ven en el dorso y en la ficha, se **eligen, corrigen y borran** desde el panel, y la unicidad —sin acentos ni mayúsculas, conservando la ñ— la decide el back (ADR-030) |
 | F21 | Etiquetas que crea ella (sin TACC, vegano…) + filtro | **Complete** | T3 | CRUD en el panel + filtro `?tag=` resuelto por el back |
 | F22 | Retiro / envío por producto + zona y costo de una sola fuente | **In Progress** | T9 | `allows_pickup`/`allows_delivery` y `/api/site/delivery` listos (mata el 2500 hardcodeado, C4); falta que el checkout respete el flag por producto |

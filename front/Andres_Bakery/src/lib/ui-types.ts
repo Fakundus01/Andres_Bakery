@@ -1,4 +1,5 @@
 // Tipos de presentacion. Los DTO de la API viven en types.ts.
+import type { FilaDeVariante } from "./variantes";
 
 export type DashboardTab =
   | "overview"
@@ -38,6 +39,9 @@ export type ProductForm = {
   ingredient_ids: number[];
   /** Qué grupos de sabores aplican a este producto (F57). */
   option_group_ids: number[];
+  /** Los tamaños con su precio (F19b). Con `id` los que ya estaban, para que
+   *  el back actualice la fila en vez de reemplazarla (ADR-029). */
+  variants: FilaDeVariante[];
 };
 
 export type TagForm = {

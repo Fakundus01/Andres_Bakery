@@ -13,11 +13,9 @@ despues (D17).
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
 from pathlib import Path
 import re
 import secrets
-import threading
 from urllib import error, request as urllib_request
 
 from flask import current_app
@@ -25,33 +23,48 @@ from flask import current_app
 from ..extensions import db
 from ..models import StoredImage
 from .cloudinary_client import SERVIDOR_DE_FOTOS, cloudinary_client
-from .exceptions import StorageFullError
 from .image_file import ImagenLimpia
+from .registro_de_imagenes import (
+    KIND_PRODUCTO,
+    KIND_REFERENCIA,
+    RegistroDeImagenes,
+)
 
 
 PREFIJO_PUBLICO = "/uploads/"
 
-KIND_PRODUCTO = "product"
-KIND_REFERENCIA = "reference"
-
 # El nombre que genera el servidor: 32 hex y una extension que servimos.
 _NOMBRE_PROPIO = re.compile(r"^[0-9a-f]{32}\.(jpg|png)$")
 
-# Cuantas huerfanas borra un barrido. Acotado a proposito: el barrido se
-# dispara en una request, y con Cloudinary cada borrado es una llamada HTTP.
-MAX_POR_BARRIDO = 25
-
-# Una reserva que no llego a archivo se suelta sola pasada esta ventana. Es el
-# resto que deja un proceso que murio entre reservar y escribir.
-HORAS_DE_RESERVA = 1
-
-# Serializa medir-reservar dentro de este proceso. No cruza procesos: con N
-# workers el que manda es el "reservar antes de escribir" de abajo, que como
-# mucho deja pasar una foto por worker en vez de un numero sin techo.
-_CANDADO_DE_CUOTA = threading.Lock()
-
 
 class AlmacenDeImagenes:
+    """Donde vive una foto: Cloudinary si hay credenciales, disco si no.
+
+    Lo que tenemos guardado —la reserva, la cuota y el barrido— lo sabe
+    `RegistroDeImagenes`, que recibe de aca la unica cosa que no puede saber:
+    como se borra en cada destino.
+    """
+
+    def __init__(self) -> None:
+        self.registro = RegistroDeImagenes(borrar_del_destino=self._borrar_del_destino)
+
+    # Las cuentas y el barrido se delegan: el almacen no es su dueno, pero es
+    # la puerta por la que el resto del back ya los llamaba.
+    def marcar_usada(self, url: str) -> None:
+        self.registro.marcar_usada(url)
+
+    def barrer_provisorias(self, *, ahora=None) -> int:
+        return self.registro.barrer_provisorias(ahora=ahora)
+
+    def espacio_usado(self) -> int:
+        return self.registro.espacio_usado()
+
+    def espacio_usado_por(self, kind: str) -> int:
+        return self.registro.espacio_usado_por(kind)
+
+    def cuota(self, kind: str = KIND_PRODUCTO) -> int:
+        return self.registro.cuota(kind)
+
     def guardar(
         self, imagen: ImagenLimpia, *, kind: str = KIND_PRODUCTO, provisional: bool = False
     ) -> dict:
@@ -66,7 +79,7 @@ class AlmacenDeImagenes:
         despues, y lo que no entra se suelta.
         """
         nombre = secrets.token_hex(16)
-        reserva = self._reservar(
+        reserva = self.registro.reservar(
             self._clave_prevista(nombre, imagen.extension),
             len(imagen.data),
             kind=kind,
@@ -90,7 +103,7 @@ class AlmacenDeImagenes:
         except Exception:
             # Sin esto, una subida fallida descontaria cuota para siempre y el
             # unico arreglo seria editar la base a mano.
-            self._soltar(reserva)
+            self.registro.soltar(reserva)
             raise
 
         return {
@@ -101,61 +114,6 @@ class AlmacenDeImagenes:
             "width": imagen.width,
             "height": imagen.height,
         }
-
-    def _reservar(
-        self, storage_key: str, bytes_nuevos: int, *, kind: str, provisional: bool
-    ) -> StoredImage:
-        """Anota la fila y **despues** mira si entraba. Si no, la suelta.
-
-        La fila nace con `url` vacia: es una reserva, no una foto. Eso la hace
-        reconocible para el barrido —si el proceso muere entre reservar y
-        escribir, nadie la va a reclamar— y la deja afuera de `es_nuestra`,
-        que busca por URL.
-        """
-        with _CANDADO_DE_CUOTA:
-            reserva = StoredImage(
-                storage_key=storage_key,
-                url="",
-                bytes=bytes_nuevos,
-                kind=kind,
-                provisional=provisional,
-            )
-            db.session.add(reserva)
-            db.session.commit()
-
-            # `espacio_usado` ya cuenta esta reserva: por eso se compara con
-            # la cuota pelada y no sumandole los bytes de nuevo.
-            total = int(current_app.config.get("UPLOAD_QUOTA_BYTES") or 0)
-            propia = self.cuota(kind)
-            sin_lugar = (total > 0 and self.espacio_usado() > total) or (
-                propia > 0 and self.espacio_usado_por(kind) > propia
-            )
-            if sin_lugar:
-                self._soltar(reserva)
-                raise StorageFullError(self._mensaje_sin_lugar(kind))
-        return reserva
-
-    @staticmethod
-    def _mensaje_sin_lugar(kind: str) -> str:
-        """Cada puerta tiene su mensaje: lo lee gente distinta."""
-        if kind == KIND_REFERENCIA:
-            return (
-                "No queda lugar para más fotos por ahora. "
-                "Mandá el pedido sin foto y pasanos la imagen por WhatsApp."
-            )
-        return (
-            "Se llenó el espacio de fotos del sitio. Borrá alguna foto vieja "
-            "o subí el tope (UPLOAD_QUOTA_BYTES) antes de seguir."
-        )
-
-    @staticmethod
-    def _soltar(reserva: StoredImage) -> None:
-        """Devuelve el lugar reservado. No puede tapar el error que la trajo."""
-        try:
-            db.session.delete(reserva)
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
 
     @staticmethod
     def _clave_prevista(nombre: str, extension: str) -> str:
@@ -226,105 +184,12 @@ class AlmacenDeImagenes:
             return None
         if not (self._forma_local(url) or self._forma_de_cloudinary(url)):
             return None
-        fila = self._fila(url)
+        fila = self.registro.fila_de(url)
         if fila is None:
             return None
         if self._forma_local(url) and self.ruta_local(url.removeprefix(PREFIJO_PUBLICO)) is None:
             return None
         return fila
-
-    def marcar_usada(self, url: str) -> None:
-        """La foto deja de ser provisoria: ya tiene un pedido que la usa.
-
-        Lo provisorio es lo que el barrido se lleva. El cliente sube la foto
-        **antes** de que el pedido exista, asi que sin esta marca el barrido
-        borraria justo la que si llego a usarse.
-        """
-        fila = self._fila(url)
-        if fila is not None and fila.provisional:
-            fila.provisional = False
-
-    def barrer_provisorias(self, *, ahora: datetime | None = None) -> int:
-        """Borra las fotos de referencia que nunca llegaron a un pedido (D17).
-
-        El cliente que abandona el carrito —lo mas comun que pasa en una
-        tienda— deja una foto en disco subida por un anonimo. Las **usadas no
-        se tocan nunca**: eso es lo que distingue este barrido de un borrado
-        por fecha.
-        """
-        horas = int(current_app.config.get("REFERENCE_UPLOAD_TTL_HOURS") or 24)
-        corte = (ahora or datetime.utcnow()) - timedelta(hours=horas)
-
-        huerfanas = (
-            StoredImage.query.filter(
-                StoredImage.provisional.is_(True),
-                StoredImage.kind == KIND_REFERENCIA,
-                StoredImage.created_at < corte,
-            )
-            .order_by(StoredImage.created_at.asc())
-            .limit(MAX_POR_BARRIDO)
-            .all()
-        )
-
-        borradas = self._soltar_reservas_vencidas(ahora)
-        for fila in huerfanas:
-            if self._borrar_del_destino(fila):
-                db.session.delete(fila)
-                borradas += 1
-        if borradas:
-            db.session.commit()
-        return borradas
-
-    def _soltar_reservas_vencidas(self, ahora: datetime | None) -> int:
-        """Las reservas sin archivo que quedaron de un proceso que murio.
-
-        No hay nada que borrar en el destino —nunca se escribio— pero ocupan
-        cuota, asi que si nadie las completo en una hora, se van.
-        """
-        corte = (ahora or datetime.utcnow()) - timedelta(hours=HORAS_DE_RESERVA)
-        vencidas = StoredImage.query.filter(
-            StoredImage.url == "", StoredImage.created_at < corte
-        ).all()
-        for reserva in vencidas:
-            db.session.delete(reserva)
-        if vencidas:
-            db.session.commit()
-        return len(vencidas)
-
-    def espacio_usado(self) -> int:
-        """Bytes registrados. Las fotos de antes de ADR-032 no tienen fila.
-
-        O sea: la cuota las cuenta de menos hasta que se reemplacen. Es
-        preferible a inventar filas para archivos de los que no se sabe ni a
-        que producto pertenecen.
-        """
-        return int(db.session.query(db.func.coalesce(db.func.sum(StoredImage.bytes), 0)).scalar() or 0)
-
-    def cuota(self, kind: str = KIND_PRODUCTO) -> int:
-        """El techo que le toca a cada puerta.
-
-        Una sola cuota para las dos era un problema de verdad: el anonimo la
-        llenaba y **Andrea recibia un 507 al subir la foto de un producto**,
-        con un mensaje escrito para clientes (lo marco el pentester de T18).
-        Ahora lo que sube cualquiera tiene su propio techo, mas bajo, y el
-        total sigue valiendo para las dos.
-        """
-        total = int(current_app.config.get("UPLOAD_QUOTA_BYTES") or 0)
-        if kind != KIND_REFERENCIA:
-            return total
-        propia = int(current_app.config.get("REFERENCE_UPLOAD_QUOTA_BYTES") or 0)
-        if propia <= 0:
-            return total
-        return min(propia, total) if total > 0 else propia
-
-    def espacio_usado_por(self, kind: str) -> int:
-        return int(
-            db.session.query(
-                db.func.coalesce(db.func.sum(StoredImage.bytes), 0)
-            ).filter(StoredImage.kind == kind).scalar()
-            or 0
-        )
-
     def carpeta(self) -> Path:
         configurada = current_app.config.get("UPLOAD_DIR")
         destino = Path(configurada) if configurada else Path(current_app.instance_path) / "uploads"
@@ -360,10 +225,6 @@ class AlmacenDeImagenes:
         except OSError:
             return False
         return True
-
-    @staticmethod
-    def _fila(url: str) -> StoredImage | None:
-        return StoredImage.query.filter_by(url=url).first()
 
     @staticmethod
     def _forma_local(url: str) -> bool:
