@@ -31,7 +31,7 @@ Estados (§5 del master): Specified 20% → Planned 40% → Tasked 60% → In Pr
 | F16 | `Product` absorbe la receta (modelo nuevo) | **Complete** | T3 | `Recipe` borrada; su contenido migro a `Product` sin perder filas |
 | F17 | Precio por unidad: `unit_label`, `min_qty`, `qty_step` | **Complete** | T3 | validado **del lado del servidor**, no solo en el carrito (V4) |
 | F18 | Selector de cantidad con total en vivo ("5 brownies = $X") | **Complete** | T3 | `QuantityPicker`: salta de a `qty_step` en ficha, carrito y panel rapido |
-| F19 | Variantes de tamaño para lo que se vende entero | **In Progress** | T3 | modelo, API y selector en la ficha listos; **falta cargarlas desde el panel** |
+| F19 | Variantes de tamaño para lo que se vende entero | **In Progress** | T3 · T4-F19a | **el tamaño elegido ya se cobra** desde el 2026-10-19 (ADR-029); **falta cargarlas desde el panel** (`T4-F19b`) |
 | F20 | Ingredientes relacionales visibles en la carta | **Complete** | T6 | se ven en el dorso y en la ficha, se **eligen, corrigen y borran** desde el panel, y la unicidad —sin acentos ni mayúsculas, conservando la ñ— la decide el back (ADR-030) |
 | F21 | Etiquetas que crea ella (sin TACC, vegano…) + filtro | **Complete** | T3 | CRUD en el panel + filtro `?tag=` resuelto por el back |
 | F22 | Retiro / envío por producto + zona y costo de una sola fuente | **In Progress** | T9 | `allows_pickup`/`allows_delivery` y `/api/site/delivery` listos (mata el 2500 hardcodeado, C4); falta que el checkout respete el flag por producto |
@@ -103,9 +103,9 @@ resueltas en ADR-031.
 
 | ID | Feature | Estado | Tarea | ADR |
 |---|---|---|---|---|
-| F57 | **Grupos de opciones y sus sabores**, que define la chef desde el dashboard | **Planned** | T18 | ADR-031 |
-| F58 | **El cliente arma su torta**: elige una opción por grupo, escribe cómo la quiere, y eso viaja con el pedido | **Planned** | T18 | ADR-031 |
-| F59 | **Foto de referencia** subida por el cliente, con topes y con limpieza de huérfanas | **Planned** | T18 | ADR-031 |
+| F57 | **Grupos de opciones y sus sabores**, que define la chef desde el dashboard | **Complete** (2026-10-19) | T18 | ADR-031, ADR-030 |
+| F58 | **El cliente arma su torta**: elige una opción por grupo, escribe cómo la quiere, y eso viaja con el pedido | **Complete** (2026-10-19) | T18 | ADR-031, ADR-033 |
+| F59 | **Foto de referencia** subida por el cliente, con topes y con limpieza de huérfanas | **Complete** (2026-10-19) | T18 | ADR-031, ADR-032 |
 
 **Lo que el cliente NO elige, y es la mitad del pedido:** los sabores. La lista la arma la chef; la
 persona que compra elige de esa lista y describe el diseño. Esa frontera es la feature, no un
@@ -115,10 +115,20 @@ detalle de implementación: sin ella el pedido sería texto libre y ella no podr
 renglones del carrito, y hoy el carrito indexa por `product.id`. F19a ya tiene que tocar esa misma
 identidad para las variantes de tamaño: hacerlo dos veces es hacerlo mal una vez.
 
-**F59 mueve la clasificación de seguridad.** N5 deja de ser "solo admin sube archivos" y pasa a
-**escritura pública de archivos**, la superficie más grande abierta hasta ahora. Se registra en
-`security.md` con fecha (R27). El humano eligió esta opción con el costo sobre la mesa: la
-alternativa era pedir la foto por WhatsApp, donde la conversación ya sucede.
+**F59 movió la clasificación de seguridad, y se pagó entera.** N5 dejó de ser "solo admin sube
+archivos" y es **escritura pública de archivos**, la superficie más grande abierta hasta ahora.
+Registrado y medido en `security.md` §1b y §2-N5 (R27). El humano eligió esta opción con el costo
+sobre la mesa: la alternativa era pedir la foto por WhatsApp, donde la conversación ya sucede.
+
+**Lo que se acotó el mismo día, y no estaba en la spec:** la personalización es **solo** para los
+productos con la etiqueta `tortas personalizadas` (ADR-033). Una docena de cookies no se elige ni
+se describe: se pide. La puerta es la etiqueta y no la presencia de grupos, porque un grupo mal
+asignado no puede sacar un producto de la venta.
+
+**Lo que las tres NO hacen, dicho claro:** los sabores **no mueven el precio** (sale del tamaño,
+ADR-031), no hay media y media —una opción por grupo—, y quien pidió sin cuenta sigue sin una
+pantalla donde consultar su pedido (D26). Cargar variantes desde el panel sigue siendo `T4-F19b`:
+hoy se cargan por API o a mano.
 
 
 **F53 revierte parte de F42.** El hover se construyó, se probó con el humano y se cayó en la prueba: con la tarjeta girando al acercar el puntero, el botón "Agregar" se escapa justo cuando alguien va a apretarlo. Quedó el "Agregar" del dorso, que había entrado para tapar ese problema y resultó útil igual.

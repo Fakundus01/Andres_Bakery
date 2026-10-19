@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from ..extensions import db
 from ..models import SiteContent
 from .exceptions import ConfigurationError, ServiceError, ValidationError
-from .upload_service import PREFIJO_PUBLICO, upload_service
+from .almacen_de_imagenes import almacen_de_imagenes
 
 
 AVISO = "Lo escribio una IA mirando la foto. Leelo y corregilo antes de publicar."
@@ -181,16 +181,10 @@ class RecipeDraftService:
         descarga lo que le pidan desde su propia red (SSRF). La foto tiene que
         haber pasado antes por POST /api/uploads, que ya la valido y la limpio.
         """
-        ruta_publica = str(image_url or "").strip()
-        if not ruta_publica.startswith(PREFIJO_PUBLICO):
+        leida = almacen_de_imagenes.leer(str(image_url or "").strip())
+        if leida is None:
             raise ValidationError("Primero subi la foto desde el panel y despues pedi el borrador.")
-
-        archivo = upload_service.ruta_de(ruta_publica[len(PREFIJO_PUBLICO) :])
-        if archivo is None:
-            raise ValidationError("Esa foto no esta en el servidor. Volve a subirla.")
-
-        media_type = "image/png" if archivo.suffix == ".png" else "image/jpeg"
-        return archivo.read_bytes(), media_type
+        return leida
 
     def _recortar(self, crudo: object) -> dict:
         datos = crudo if isinstance(crudo, dict) else {}

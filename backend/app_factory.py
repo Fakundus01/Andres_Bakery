@@ -4,7 +4,21 @@ from sqlalchemy.exc import OperationalError
 
 from .config import Config
 from .extensions import db, jwt, mail, migrate
-from .routes import ai, auth, ingredients, mailer, metrics, orders, payments, products, site, tags, uploads, users
+from .routes import (
+    ai,
+    auth,
+    ingredients,
+    mailer,
+    metrics,
+    options,
+    orders,
+    payments,
+    products,
+    site,
+    tags,
+    uploads,
+    users,
+)
 from .services.bootstrap_service import BootstrapService
 
 
@@ -71,6 +85,7 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(mailer.bp)
     app.register_blueprint(payments.bp)
     app.register_blueprint(tags.bp)
+    app.register_blueprint(options.bp)
     app.register_blueprint(uploads.bp)
     app.register_blueprint(metrics.bp)
     app.register_blueprint(ai.bp)
@@ -91,8 +106,19 @@ def _register_http_handlers(app: Flask) -> None:
 
         Sin esto el cliente recibe el HTML de error de Werkzeug, que el front
         no sabe leer. Con esto recibe el mismo {"error": ...} que todo el resto.
+
+        El numero que se nombra es el de **la ruta que se llamo**: decirle
+        "mas de 4 MB" a quien sube por la ruta publica, cuyo tope son 2, es
+        mandarlo a adivinar (lo marco el reviewer de T18).
         """
-        megas = app.config.get("MAX_CONTENT_LENGTH", 0) / (1024 * 1024)
+        if request.path == "/api/uploads/referencia":
+            tope = min(
+                int(app.config.get("REFERENCE_UPLOAD_MAX_BYTES") or 0) or float("inf"),
+                int(app.config.get("UPLOAD_MAX_BYTES") or 0) or float("inf"),
+            )
+        else:
+            tope = int(app.config.get("UPLOAD_MAX_BYTES", 0))
+        megas = (tope if tope != float("inf") else 0) / (1024 * 1024)
         return jsonify({"error": f"El archivo pesa mas de {megas:.0f} MB."}), 413
 
     @app.after_request

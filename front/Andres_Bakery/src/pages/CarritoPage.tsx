@@ -2,8 +2,10 @@ import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Trash2 } from "lucide-react";
 
+import { DetalleDelRenglon } from "../components/DetalleDelRenglon";
 import { QuantityPicker } from "../components/QuantityPicker";
 import { EmptyState, SectionHeading } from "../components/ui";
+import { claveDelRenglon, grupoDeLaOpcion, precioDelRenglon } from "../lib/carrito";
 import { useCart } from "../contexts/CartContext";
 import { useSiteConfig } from "../contexts/SiteConfigContext";
 import { heroFallback } from "../lib/constants";
@@ -40,8 +42,11 @@ export function CarritoPage() {
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_0.6fr]">
         <section className="space-y-4">
-          {items.map((item) => (
-            <article key={item.id} className="pixel-panel flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
+          {items.map((item) => {
+            const clave = claveDelRenglon(item);
+            const unitario = precioDelRenglon(item);
+            return (
+            <article key={clave} className="pixel-panel flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
               <img
                 src={urlDeImagen(item.image_url) || heroFallback[0].image}
                 alt={item.name}
@@ -55,26 +60,34 @@ export function CarritoPage() {
                   </Link>
                 </h2>
                 <p className="mt-1 text-sm text-tinta-tenue">
-                  {formatCurrency(item.price)} por {item.unit_label}
+                  {formatCurrency(unitario)} por {item.variante?.name ?? item.unit_label}
                 </p>
+                <DetalleDelRenglon
+                  elegidas={(item.opciones ?? []).map(
+                    (opcion) => `${grupoDeLaOpcion(item.option_groups, opcion.id)}: ${opcion.name}`,
+                  )}
+                  nota={item.nota}
+                  foto={item.fotoDeReferencia}
+                  rearmarEn={item.slug}
+                />
               </div>
 
               <div className="flex items-center gap-3">
                 <QuantityPicker
                   product={item}
                   cantidad={item.quantity}
-                  onSubir={() => subir(item.id)}
-                  onBajar={() => bajar(item.id)}
+                  onSubir={() => subir(clave)}
+                  onBajar={() => bajar(clave)}
                 />
 
                 <p className="min-w-28 text-right font-display text-xl font-bold text-acento">
-                  {formatCurrency(item.price * item.quantity)}
+                  {formatCurrency(unitario * item.quantity)}
                 </p>
 
                 <button
                   type="button"
                   className="btn-secondary px-3"
-                  onClick={() => removeItem(item.id)}
+                  onClick={() => removeItem(clave)}
                   aria-label={`Quitar ${item.name} del carrito`}
                   title="Quitar"
                 >
@@ -82,7 +95,8 @@ export function CarritoPage() {
                 </button>
               </div>
             </article>
-          ))}
+            );
+          })}
         </section>
 
         <aside className="pixel-panel h-fit p-6">

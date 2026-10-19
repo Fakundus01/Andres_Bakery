@@ -41,6 +41,17 @@ class RateLimitError(ServiceError):
         self.espera_segundos = espera_segundos
 
 
+class StorageFullError(ServiceError):
+    """La cuota de fotos esta llena (D18, ADR-032).
+
+    507 y no 400: el pedido estaba bien, el que no puede cumplir es el
+    servidor. Con subida publica de archivos, "se llena y ya" no es una
+    opcion, y un 400 le diria a quien sube que se equivoco.
+    """
+
+    status_code = 507
+
+
 class ConfigurationError(ServiceError):
     status_code = 503
 

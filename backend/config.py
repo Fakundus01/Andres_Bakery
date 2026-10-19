@@ -86,6 +86,25 @@ class Config:
     # una imagen que si entra en el tope real del servicio.
     MAX_CONTENT_LENGTH = UPLOAD_MAX_BYTES + 512 * 1024
 
+    # Fotos en Cloudinary (ADR-032). Sin las tres primeras, las fotos van al
+    # disco local: la capa de almacenamiento lo decide sola.
+    CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "")
+    CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY", "")
+    CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "")
+    CLOUDINARY_FOLDER = os.getenv("CLOUDINARY_FOLDER", "andres-bakery")
+
+    # Foto de referencia del cliente (F59). Mas chica que la del panel a
+    # proposito: la sube un anonimo. 0 en la cuota = sin tope (no recomendado
+    # con la ruta publica prendida).
+    REFERENCE_UPLOAD_MAX_BYTES = int(os.getenv("REFERENCE_UPLOAD_MAX_BYTES", str(2 * 1024 * 1024)))
+    UPLOAD_QUOTA_BYTES = int(os.getenv("UPLOAD_QUOTA_BYTES", str(500 * 1024 * 1024)))
+    # Techo propio de lo que sube cualquiera, para que el anonimo no le
+    # coma el lugar a las fotos de la carta (review de T18).
+    REFERENCE_UPLOAD_QUOTA_BYTES = int(
+        os.getenv("REFERENCE_UPLOAD_QUOTA_BYTES", str(100 * 1024 * 1024))
+    )
+    REFERENCE_UPLOAD_TTL_HOURS = int(os.getenv("REFERENCE_UPLOAD_TTL_HOURS", "24"))
+
     # Asistente de recetas (F46, ADR-020). Sin llave no se prende ni con
     # AI_ENABLED=true: cuesta plata por llamada y el default es apagado.
     AI_ENABLED = _flag("AI_ENABLED")

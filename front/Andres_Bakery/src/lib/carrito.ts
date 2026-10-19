@@ -1,0 +1,208 @@
+import { normalizar } from "./ingredientes";
+import type { OptionChoice, OptionGroup, Product, ProductVariant, Tag } from "./types";
+
+/** La identidad y el precio de un renglón del carrito (F19a, F58).
+ *
+ *  Hasta ahora el renglón **era** el producto: `addItem`, `subir` y `bajar`
+ *  buscaban por `item.id`. Con tamaños y sabores eso deja de alcanzar: dos
+ *  tortas iguales con distinto relleno son dos renglones, y la torta de 8
+ *  porciones no vale lo mismo que la de 12.
+ *
+ *  Vive afuera de React para poder probarlo sin montar nada: es la decisión
+ *  de qué se agrupa con qué y cuánto sale, y eso no se mira a ojo.
+ */
+
+/** La etiqueta que habilita la personalización (decidido el 2026-10-19).
+ *
+ *  Elegir sabores, escribir cómo la querés y mandar una foto es **para las
+ *  tortas a pedido**, no para toda la carta. La puerta es una etiqueta porque
+ *  es algo que Andrea ya maneja: se la pone al producto y listo.
+ *
+ *  **Espeja a `backend/services/renglon_del_pedido.py::TAG_PERSONALIZABLE`**,
+ *  que es quien decide de verdad: un pedido con sabores para un producto sin
+ *  la etiqueta es un 400. */
+export const TAG_PERSONALIZABLE = "tortas-personalizadas";
+export const NOMBRE_TAG_PERSONALIZABLE = "tortas personalizadas";
+
+/** Tope de la nota del renglón, igual que `TOPE_NOTA` del back. Si se pasa,
+ *  el servidor la recorta: mejor que el formulario no deje llegar hasta ahí. */
+export const TOPE_NOTA = 300;
+
+/** La nota tal como la va a medir el servidor.
+ *
+ *  `saneado.texto(una_linea=True)` convierte cada salto de línea en " · "
+ *  **antes** de recortar a 300: con cinco renglones, una nota de 300
+ *  caracteres llegaba recortada y el contador de la pantalla decía que
+ *  entraba (lo marcó el review de T18, hasta 198 caracteres perdidos).
+ *  Contando acá lo mismo que allá, lo que se ve es lo que llega. */
+export function notaParaElPedido(nota: string | null | undefined): string {
+  const enUnaLinea = (nota ?? "")
+    .replace(/[\r\n]+/g, " · ")
+    .replace(/( · )+/g, " · ")
+    .replace(/ +/g, " ")
+    .trim();
+  // Una nota de solo espacios y saltos quedaba convertida en el separador:
+  // "·" guardado como nota, y el panel mostrando «Nota: ·». El back hace lo
+  // mismo desde el mismo día (review de T18).
+  return /^[·\s]*$/.test(enUnaLinea) ? "" : enUnaLinea;
+}
+
+/** Lo que el cliente eligió para ESTE renglón. Todo opcional: un producto sin
+ *  variantes ni grupos se pide igual que siempre. */
+export interface Personalizacion {
+  variante?: ProductVariant | null;
+  opciones?: OptionChoice[];
+  nota?: string;
+  fotoDeReferencia?: string;
+}
+
+/** El mínimo que hace falta para calcular clave y precio: un `CartItem`
+ *  entra acá, pero también un producto con lo que se acaba de elegir en la
+ *  ficha, que todavía no es un renglón. */
+export interface RenglonBase extends Personalizacion {
+  id: number;
+  price: number;
+}
+
+/** La clave del renglón, calculada y nunca guardada.
+ *
+ *  Un carrito viejo en `localStorage` no tiene variante ni opciones: cae en
+ *  la forma "sin nada" y sigue funcionando. Por eso **no hace falta subir
+ *  `CART_STORAGE_KEY` a v3**, y conviene no hacerlo: vaciarle el carrito a
+ *  quien estaba comprando es peor que el problema que resolvería.
+ *
+ *  Va por `JSON.stringify` y no por `${a}:${b}` porque la nota la escribe el
+ *  cliente: con un separador a mano, una nota con dos puntos podría armar la
+ *  clave de otro renglón y fusionar dos tortas distintas.
+ */
+export function claveDelRenglon(renglon: RenglonBase): string {
+  return JSON.stringify([
+    renglon.id,
+    renglon.variante?.id ?? 0,
+    idsDeOpciones(renglon.opciones),
+    (renglon.nota ?? "").trim(),
+    renglon.fotoDeReferencia ?? "",
+  ]);
+}
+
+/** Dos renglones con la misma configuración se agrupan; cambiar una coma en
+ *  la nota hace un renglón nuevo, que es lo correcto: son dos tortas
+ *  distintas para quien las hace. */
+export function mismaConfiguracion(uno: RenglonBase, otro: RenglonBase): boolean {
+  return claveDelRenglon(uno) === claveDelRenglon(otro);
+}
+
+/** El precio de una unidad del renglón: el de la variante si hay una.
+ *
+ *  Los sabores **no** mueven el precio (ADR-031): sale del tamaño. Esto es
+ *  para mostrar; el que se cobra lo decide el servidor. */
+export function precioDelRenglon(renglon: RenglonBase): number {
+  return renglon.variante ? renglon.variante.price : renglon.price;
+}
+
+export function subtotalDelCarrito(renglones: Array<RenglonBase & { quantity: number }>): number {
+  return renglones.reduce(
+    (total, renglon) => total + precioDelRenglon(renglon) * renglon.quantity,
+    0,
+  );
+}
+
+/** Los ids ordenados: el orden en que se eligieron los sabores no hace a dos
+ *  tortas distintas. */
+function idsDeOpciones(opciones: OptionChoice[] | undefined): number[] {
+  return (opciones ?? []).map((opcion) => opcion.id).sort((uno, otro) => uno - otro);
+}
+
+/** El precio más bajo con el que se puede comprar, para la tarjeta.
+ *
+ *  La carta mostraba `product.price` incluso cuando el producto solo se vende
+ *  por tamaños: el precio base puede no ser comprable, y entrar a la ficha
+ *  para ver otro número es una sorpresa fea (review de T18). Con tamaños, la
+ *  tarjeta dice "desde" y el más barato. */
+export function precioDesde(product: Product): number {
+  const tamanos = product.variants ?? [];
+  if (!tamanos.length) {
+    return product.price;
+  }
+  return Math.min(...tamanos.map((tamano) => tamano.price));
+}
+
+/** Cómo está el producto del formulario respecto de la etiqueta que habilita
+ *  la personalización.
+ *
+ *  `parecida` existe por un caso que encontró el review de T18: puede haber
+ *  dos etiquetas que se llamen igual y solo una habilite, porque lo que manda
+ *  es el slug. Decirle "no la tiene" sobre una que sí marcó sería volverla
+ *  loca, así que el panel nombra cuál es la que sirve. */
+export function estadoDeLaEtiqueta(
+  etiquetas: Tag[],
+  elegidas: number[],
+): { etiquetada: boolean; parecida?: string } {
+  const marcadas = etiquetas.filter((etiqueta) => elegidas.includes(etiqueta.id));
+  if (marcadas.some((etiqueta) => etiqueta.slug === TAG_PERSONALIZABLE)) {
+    return { etiquetada: true };
+  }
+  const parecida = marcadas.find(
+    (etiqueta) => normalizar(etiqueta.name) === normalizar(NOMBRE_TAG_PERSONALIZABLE),
+  );
+  return { etiquetada: false, parecida: parecida?.name };
+}
+
+/** ¿Es una torta a pedido? Lo dice la etiqueta, no los grupos.
+ *
+ *  Si fuera por los grupos, asignarle "Relleno" por error a una docena de
+ *  cookies las convertiría en algo que no se puede pedir sin elegir relleno. */
+export function esPersonalizable(product: Product): boolean {
+  return (product.tags ?? []).some((tag) => tag.slug === TAG_PERSONALIZABLE);
+}
+
+/** ¿Este producto se arma antes de pedirlo?
+ *
+ *  Con tamaños o con personalización, el botón "Agregar" de la tarjeta no
+ *  alcanza: si falta elegir un relleno obligatorio el servidor va a rechazar
+ *  el pedido, y con razón. La tarjeta manda a la ficha, que es donde se
+ *  elige. */
+export function sePersonaliza(product: Product): boolean {
+  return Boolean(product.variants?.length) || esPersonalizable(product);
+}
+
+/** Lo que falta elegir antes de poder agregar al carrito, o "" si está todo.
+ *
+ *  Es el espejo de `_exigir_los_obligatorios` del back. Avisarlo acá es
+ *  comodidad: quien decide sigue siendo el servidor. */
+export function queFaltaElegir(
+  grupos: OptionGroup[] | undefined,
+  elegidas: Record<number, number | undefined>,
+): string {
+  const faltan = (grupos ?? [])
+    .filter((grupo) => grupo.required && !elegidas[grupo.id])
+    .map((grupo) => grupo.name);
+  return faltan.length ? `Falta elegir: ${faltan.join(", ")}.` : "";
+}
+
+/** Las opciones elegidas como objetos, en el orden que les puso la chef. */
+export function opcionesElegidas(
+  grupos: OptionGroup[] | undefined,
+  elegidas: Record<number, number | undefined>,
+): OptionChoice[] {
+  const encontradas: OptionChoice[] = [];
+  for (const grupo of [...(grupos ?? [])].sort((uno, otro) => uno.sort_order - otro.sort_order)) {
+    const elegida = grupo.options.find((opcion) => opcion.id === elegidas[grupo.id]);
+    if (elegida) {
+      encontradas.push(elegida);
+    }
+  }
+  return encontradas;
+}
+
+/** El nombre del grupo al que pertenece una opción, para mostrarla en el
+ *  carrito y en el panel ("Relleno: Dulce de leche"). */
+export function grupoDeLaOpcion(
+  grupos: OptionGroup[] | undefined,
+  opcionId: number,
+): string {
+  const grupo = (grupos ?? []).find((candidato) =>
+    candidato.options.some((opcion) => opcion.id === opcionId),
+  );
+  return grupo?.name ?? "";
+}

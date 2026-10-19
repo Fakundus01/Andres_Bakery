@@ -7,12 +7,25 @@ import unittest
 from uuid import uuid4
 
 from backend.app_factory import create_app
+from backend.tests.fabricas import FabricasDeDatos
 from backend.extensions import db
-from backend.models import Ingredient, Order, OrderDelivery, OrderItem, Payment, Product, Tag, User
+from backend.models import (
+    Ingredient,
+    Option,
+    OptionGroup,
+    Order,
+    OrderDelivery,
+    OrderItem,
+    Payment,
+    Product,
+    ProductVariant,
+    Tag,
+    User,
+)
 from backend.services.slug import unique_slug
 
 
-class BackendServiceTestCase(unittest.TestCase):
+class BackendServiceTestCase(FabricasDeDatos, unittest.TestCase):
     def setUp(self) -> None:
         tmp_root = Path(__file__).resolve().parent / ".tmp"
         tmp_root.mkdir(parents=True, exist_ok=True)
@@ -58,124 +71,6 @@ class BackendServiceTestCase(unittest.TestCase):
             self.database_path.unlink(missing_ok=True)
         except OSError:
             pass
-
-    def create_user(
-        self,
-        *,
-        name: str = "Cliente Test",
-        email: str = "cliente@test.local",
-        password: str = "secret123",
-        is_admin: bool = False,
-    ) -> User:
-        user = User(name=name, email=email, is_admin=is_admin)
-        user.set_password(password)
-        db.session.add(user)
-        db.session.commit()
-        return user
-
-    def create_ingredient(self, *, name: str, unit: str = "u") -> Ingredient:
-        ingredient = Ingredient(name=name, unit=unit)
-        db.session.add(ingredient)
-        db.session.commit()
-        return ingredient
-
-    def create_product(
-        self,
-        *,
-        name: str = "Cookie Test",
-        price: str = "1500.00",
-        category: str = "cookies",
-        available: bool = True,
-        unit_label: str = "unidad",
-        min_qty: int = 1,
-        qty_step: int = 1,
-        ingredients: list[Ingredient] | None = None,
-        tags: list[Tag] | None = None,
-    ) -> Product:
-        product = Product(
-            name=name,
-            slug=unique_slug(Product, name),
-            description=f"Descripcion de {name}",
-            price=Decimal(price),
-            category=category,
-            available=available,
-            unit_label=unit_label,
-            min_qty=min_qty,
-            qty_step=qty_step,
-            image_url="https://example.com/product.jpg",
-        )
-        if ingredients is not None:
-            product.ingredients = list(ingredients)
-        if tags is not None:
-            product.tags = list(tags)
-        db.session.add(product)
-        db.session.commit()
-        return product
-
-    def create_tag(self, *, name: str = "sin TACC", color_token: str = "acento") -> Tag:
-        tag = Tag(name=name, slug=unique_slug(Tag, name, fallback="etiqueta"), color_token=color_token)
-        db.session.add(tag)
-        db.session.commit()
-        return tag
-
-    def create_order(
-        self,
-        *,
-        user: User,
-        product: Product,
-        quantity: int = 1,
-        status: str = "pending",
-        delivery_method: str = "delivery",
-        neighborhood: str = "Villa Maipu",
-        payment_method: str = "visa",
-        shipping_amount: str = "2500.00",
-        created_at: datetime | None = None,
-    ) -> Order:
-        shipping = Decimal(shipping_amount) if delivery_method == "delivery" else Decimal("0.00")
-        unit_price = Decimal(str(product.price))
-        order = Order(user_id=user.id, status=status, total_amount=(unit_price * quantity) + shipping)
-        # Sin fecha explicita vale `utcnow`, y un test que fija "hoy" a mano
-        # queda atado al reloj: los dos del resumen de metricas se pusieron
-        # rojos solos al cruzar la medianoche UTC.
-        if created_at is not None:
-            order.created_at = created_at
-        db.session.add(order)
-        db.session.flush()
-        db.session.add(OrderItem(order=order, product=product, quantity=quantity, unit_price=unit_price))
-        order.delivery = OrderDelivery(
-            customer_name=user.name,
-            customer_email=user.email,
-            customer_phone="1122334455",
-            delivery_method=delivery_method,
-            address="Calle 123" if delivery_method == "delivery" else None,
-            neighborhood=neighborhood,
-            city="General San Martin",
-            shipping_amount=shipping,
-            notes="Timbre 2",
-            payment_method=payment_method,
-        )
-        db.session.commit()
-        return order
-
-    def create_payment(
-        self,
-        *,
-        order: Order,
-        provider_payment_id: str = "pay-1",
-        status: str = "pending",
-        amount: str | None = None,
-    ) -> Payment:
-        payment = Payment(
-            order_id=order.id,
-            provider="mercado_pago",
-            provider_payment_id=provider_payment_id,
-            amount=Decimal(amount or str(order.total_amount)),
-            currency="ars",
-            status=status,
-        )
-        db.session.add(payment)
-        db.session.commit()
-        return payment
 
 
 class ApiTestCase(unittest.TestCase):

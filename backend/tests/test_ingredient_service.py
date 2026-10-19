@@ -22,6 +22,15 @@ class IngredientServiceTestCase(BackendServiceTestCase):
         super().setUp()
         self.service = IngredientService()
 
+    def test_un_nombre_que_normaliza_vacio_da_400_y_no_500(self) -> None:
+        """Misma puerta que en los grupos de opciones (review de T18)."""
+        with self.assertRaises(ValidationError):
+            self.service.create({"name": "\u0301"})
+        with self.assertRaises(ValidationError):
+            self.service.create({"name": "\u0302"})
+
+        self.assertEqual(0, Ingredient.query.count())
+
     def test_create_devuelve_el_que_ya_existe_en_vez_de_duplicarlo(self) -> None:
         payload, creado = self.service.create({"name": "Coco rallado"})
         self.assertTrue(creado)

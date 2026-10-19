@@ -4,6 +4,7 @@ import { Navigate } from "react-router-dom";
 import { ErrorBanner, LoadingPanel, SectionHeading } from "../../components/ui";
 import { useSiteConfig } from "../../contexts/SiteConfigContext";
 import type { DashboardTab } from "../../lib/ui-types";
+import { OpcionesTab } from "./OpcionesTab";
 import { OrdersTab } from "./OrdersTab";
 import { OverviewTab } from "./OverviewTab";
 import { PerfilTab } from "./PerfilTab";
@@ -16,6 +17,7 @@ const PESTANAS: Array<{ key: DashboardTab; label: string }> = [
   { key: "overview", label: "Resumen" },
   { key: "products", label: "La carta" },
   { key: "tags", label: "Etiquetas" },
+  { key: "opciones", label: "Gustos" },
   { key: "orders", label: "Pedidos" },
   { key: "perfil", label: "Tu perfil" },
   { key: "story", label: "Tu historia" },
@@ -74,6 +76,7 @@ export function AdminPage() {
         <ProductsTab
           products={panel.productos}
           tags={panel.etiquetas}
+          gruposDeOpciones={panel.gruposDeOpciones}
           ingredientes={panel.ingredientes}
           usosDeIngredientes={panel.usosDeIngredientes}
           onCrearIngrediente={panel.crearIngrediente}
@@ -101,6 +104,23 @@ export function AdminPage() {
           onSubmit={panel.guardarEtiqueta}
           onReset={panel.resetEtiqueta}
           onDelete={panel.borrarEtiqueta}
+        />
+      ) : null}
+
+      {pestana === "opciones" ? (
+        <OpcionesTab
+          grupos={panel.gruposDeOpciones}
+          usos={panel.usosDeGrupos}
+          buscarGrupo={panel.buscarGrupo}
+          etiquetaLista={panel.etiquetaDeTortasLista}
+          onCrearEtiqueta={panel.crearEtiquetaDeTortas}
+          onCrearGrupo={panel.crearGrupoDeOpciones}
+          onRenombrarGrupo={panel.renombrarGrupoDeOpciones}
+          onObligatoriedad={panel.cambiarObligatoriedadDelGrupo}
+          onBorrarGrupo={panel.borrarGrupoDeOpciones}
+          onCrearOpcion={panel.crearOpcionDelGrupo}
+          onRenombrarOpcion={panel.renombrarOpcionDelGrupo}
+          onBorrarOpcion={panel.borrarOpcionDelGrupo}
         />
       ) : null}
 

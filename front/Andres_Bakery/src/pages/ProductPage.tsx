@@ -7,6 +7,8 @@ import { TagBadge } from "../components/TagBadge";
 import { EmptyState, ErrorBanner, LoadingPanel } from "../components/ui";
 import { useCart } from "../contexts/CartContext";
 import { useSiteConfig } from "../contexts/SiteConfigContext";
+import { Personalizacion } from "./producto/Personalizacion";
+import { usePersonalizacion } from "./producto/usePersonalizacion";
 import { productsApi } from "../lib/api";
 import { bajarCantidad, cantidadInicial, subirCantidad } from "../lib/cantidades";
 import { heroFallback } from "../lib/constants";
@@ -20,9 +22,9 @@ export function ProductPage() {
   const { config } = useSiteConfig();
   const [product, setProduct] = useState<Product | null>(null);
   const [cantidad, setCantidad] = useState(1);
-  const [variante, setVariante] = useState<number | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
+  const armado = usePersonalizacion(product);
 
   useEffect(() => {
     let vigente = true;
@@ -36,7 +38,6 @@ export function ProductPage() {
         }
         setProduct(datos);
         setCantidad(cantidadInicial(datos));
-        setVariante(datos.variants?.length ? datos.variants[0].id : null);
       })
       .catch((reason: unknown) => {
         if (vigente) {
@@ -92,8 +93,7 @@ export function ProductPage() {
     );
   }
 
-  const elegida = product.variants?.find((item) => item.id === variante) ?? null;
-  const precio = elegida ? elegida.price : product.price;
+  const { grupos, variante, setVariante, varianteElegida: elegida, falta, precio } = armado;
 
   return (
     <div className="space-y-8 pb-10">
@@ -180,6 +180,18 @@ export function ProductPage() {
             </div>
           ) : null}
 
+          {armado.personalizable ? (
+            <Personalizacion
+              grupos={grupos}
+              elegidas={armado.elegidas}
+              onElegir={armado.elegir}
+              nota={armado.nota}
+              onNota={armado.setNota}
+              foto={armado.foto}
+              onFoto={armado.setFoto}
+            />
+          ) : null}
+
           {product.prep_note ? (
             <p className="flex items-start gap-2 border-[3px] border-borde bg-superficie-alt p-3 text-sm leading-6 text-tinta-suave">
               <Clock className="mt-0.5 h-4 w-4 shrink-0" />
@@ -213,13 +225,22 @@ export function ProductPage() {
             <button
               type="button"
               className="btn-primary flex-1 justify-center"
-              disabled={!product.available}
-              onClick={() => addItem(product, cantidad)}
+              disabled={!product.available || Boolean(falta)}
+              onClick={() => addItem(product, cantidad, armado.personalizacion)}
             >
               <ShoppingBag className="h-4 w-4" />
               {product.available ? `Agregar ${cantidad}` : "Sin stock"}
             </button>
           </div>
+
+          {/* El aviso va pegado al botón, que es donde la persona está
+              mirando. El servidor valida lo mismo (ADR-031): esto es para no
+              hacerle descubrir en el checkout que falta elegir el relleno. */}
+          {falta ? (
+            <p className="border-[3px] border-borde bg-superficie-alt px-3 py-2 text-xs leading-5 text-tinta">
+              {falta}
+            </p>
+          ) : null}
 
           <p className="text-right font-display text-xl font-bold text-tinta">
             {formatCurrency(precio * cantidad)}

@@ -1,6 +1,6 @@
 # security.md · Andres Bakery
 
-**Versión:** 0.4.0 · **Clasificado el:** 2026-10-16 · **Reclasificado el:** 2026-10-19 (R27: **F59 va a convertir N5 en escritura pública de archivos**; antes, el 2026-10-17, F45 prendió N5, F46 prendió N4 y F23 abrió la primera escritura pública) · **Reclasificar:** con cada feature nueva
+**Versión:** 0.6.0 · **Clasificado el:** 2026-10-16 · **Reclasificado el:** 2026-10-19 (R27: **F59 convirtió N5 en escritura pública de archivos — implementada y medida**; antes, el 2026-10-17, F45 prendió N5, F46 prendió N4 y F23 abrió la primera escritura pública) · **Reclasificar:** con cada feature nueva
 
 ## 1 · Superficie (R27)
 
@@ -11,7 +11,7 @@
 | **N2 · Datos** | Sí | nombre, email, teléfono y dirección de entrega de personas. **Desde el 2026-10-17 también de gente sin cuenta** (pedido de invitado, F23): esos datos entran por una ruta pública |
 | **N3 · Plata** | Sí (latente) | Mercado Pago está implementado, apagado hasta tener credenciales (ADR-002) |
 | **N4 · IA** | **Sí** desde el 2026-10-17 | el asistente de recetas manda una foto a un modelo (F46, ADR-020). El panel de Ayuda sigue siendo un árbol fijo |
-| **N5 · Archivos** | **Sí** desde el 2026-10-17, y **sube de grado con F59** | el panel sube fotos de verdad (F45, ADR-018), **solo admin**. F59 (planificada, ADR-031) abre una ruta donde **sube cualquier anónimo**: es la superficie más grande del proyecto. Ver §1b |
+| **N5 · Archivos** | **Sí**, y **de grado alto desde el 2026-10-19** | el panel sube fotos (F45, ADR-018) y, desde F59, **sube cualquier anónimo** por `POST /api/uploads/referencia`: es la superficie más grande del proyecto. Ver §1b y §2-N5 |
 | **N6 · Superficie pública** | Sí | la API Flask queda expuesta |
 
 ## 1b · Lo que F59 cambia, escrito antes de construirlo (2026-10-19)
@@ -41,7 +41,16 @@ ADR-025 en el envío.
 el nombre elegido por el servidor y el `GET /uploads/<nombre>` inerte con `nosniff` (ADR-018). El
 riesgo nuevo no es el archivo que entra: es **quién** puede hacerlo entrar, y cuántas veces.
 
-**Estado: planificado, no implementado.** Esta sección se reescribe con lo medido cuando F59 salga.
+**Estado: implementado el 2026-10-19.** Los cuatro controles están, y uno cambió de forma: la
+cuota y el barrido no miden el disco a ojo sino un **registro** (`stored_image`), porque desde
+ADR-032 la foto puede estar en Cloudinary y no en disco. Lo medido, en §2-N5.
+
+**Lo que esta sección prometía y conviene releer con lo construido al lado:** el riesgo no era el
+archivo que entra sino **quién** puede hacerlo entrar y cuántas veces. Eso se acotó por IP (4/min,
+15/hora), por tamaño (2 MB, nunca más que el del panel), por cuota total y por tiempo de vida de lo
+provisorio. Lo que **no** se acotó es la cantidad de IPs distintas: una conexión IPv6 residencial
+tiene un /64 entero (`rate_limit.py` lo dice desde ADR-026). Contra eso no alcanza un contador, y
+hoy el freno real es la cuota.
 
 ## 2 · Estado medido el 2026-10-16
 
@@ -126,14 +135,38 @@ El asistente de recetas manda una foto a la API de Anthropic y recibe un borrado
 | Tipo por contenido, no por extensión | ✅ se parsea la estructura: marcadores `FFD8…FFD9` en JPEG, firma + chunks en PNG. El `Content-Type` del navegador y el nombre del archivo **no deciden nada** |
 | Metadatos fuera | ✅ el archivo se **reescribe**: se van EXIF (incluido el GPS de la foto del celular), XMP, ICC y comentarios |
 | Archivo políglota | ✅ muere en la reescritura: lo que sale es solo lo que el parser entendió |
-| Lo que sobrevive a la limpieza | ⚠️ **precisión**: se conserva la data comprimida tal cual, así que un admin podría esconder bytes arbitrarios adentro. "Se reescribe sin metadatos" **no** quiere decir "el resultado es una imagen válida": un archivo con estructura correcta y relleno adentro pasa. No es ejecutable (tipo fijo + `nosniff`) y subir es admin-only, pero conviene no leer la promesa de más |
+| Lo que sobrevive a la limpieza | ⚠️ **precisión, y cambió de dueño el 2026-10-19**: se conserva la data comprimida tal cual, así que **cualquiera** —ya no solo un admin— puede esconder bytes arbitrarios adentro de un `IDAT` con CRC válido, hasta 2 MB por archivo, y si los ata a un pedido no se borran nunca. Lo midió el pentester de T18. No es ejecutable (tipo fijo + `nosniff` + CSP) y no es XSS; es almacenamiento de datos opacos en el disco de ella. La salida real es reencodear los píxeles, que hoy es el precio de no tener `Pillow` (D16/D19). "Se reescribe sin metadatos" **no** quiere decir "el resultado es una imagen válida": un archivo con estructura correcta y relleno adentro pasa. No es ejecutable (tipo fijo + `nosniff`) y subir es admin-only, pero conviene no leer la promesa de más |
 | Nombre generado por el servidor | ✅ `secrets.token_hex(16)` + extensión del tipo detectado. El nombre que manda el cliente se descarta ⇒ no hay path traversal posible |
 | Fuera del árbol de código y del repo | ✅ `instance/uploads/`, con `.gitignore` |
 | Nunca se ejecuta lo subido | ✅ lo sirve `GET /uploads/<nombre>` con `Content-Type` fijo, `nosniff` y sin interpretar nada |
 | Headers de seguridad | ✅ **entraron con esto** (cierra D3): `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Cross-Origin-Resource-Policy` y CSP mínima, globales en `after_request` |
-| Borrado de lo subido | ❌ **no hay**. Reemplazar la foto de un producto deja la anterior en disco. Deuda **D17** |
-| Cuota total en disco | ❌ no hay. Un admin distraído puede llenar el disco a 4 MB por vez. Deuda **D18** |
+| Borrado de lo subido | ⚠️ **a medias desde el 2026-10-19**: las fotos de referencia que nunca llegaron a un pedido se borran solas (ver abajo). Reemplazar la foto de un producto **sigue** dejando la anterior. Deuda **D17**, ahora acotada |
+| Cuota total | ✅ **desde el 2026-10-19** (cierra **D18**), y **sostenida por la fila, no por una mirada**: se reserva la fila y después se verifica la suma. La primera versión medía-y-escribía, y el reviewer de T18 metió **seis subidas simultáneas contra una cuota de una** (5,7×); hay test con hilos y barrera. Con N workers el candado no cruza procesos, pero la reserva acota el exceso a una foto por worker en vez de un número sin techo. Pasarse es un **507 explicado**, con mensaje distinto para ella y para quien compra. Lo que ya estaba en disco antes del registro no se cuenta: la cuota lo cuenta de menos hasta que se reemplace |
+| Cuota por puerta | ✅ `REFERENCE_UPLOAD_QUOTA_BYTES` (100 MB por default) para lo que sube cualquiera. Sin esto, un anónimo llenaba la cuota y **Andrea recibía un 507 al subir la foto de un producto**, con un mensaje escrito para clientes (lo marcó el pentester de T18) |
 | WEBP / HEIC | ❌ rechazados a propósito (ADR-018). HEIC es el default de iPhone ⇒ va a pasar seguido. Deuda **D16** |
+
+#### N5b · La subida pública (F59, ADR-031/032) — medida el 2026-10-19
+
+| Control | Estado |
+|---|---|
+| Ruta separada, no el `@admin_required` sacado | ✅ `POST /api/uploads/referencia`, con su propia política. La del panel sigue siendo admin-only (hay test) |
+| Tope por IP | ✅ 4/min y 15/hora ⇒ `429` + `Retry-After` (hay test que lo mide por HTTP) |
+| Tamaño menor que el del panel | ✅ 2 MB por default, y `min(REFERENCE_UPLOAD_MAX_BYTES, UPLOAD_MAX_BYTES)`: subir el tope general sin mirar este **no** abre la ruta pública |
+| Mismo validador que el panel | ✅ la misma `image_file.limpiar`: contenido, no extensión; reescritura sin metadatos; políglota y HEIC rechazados |
+| Barrido de huérfanas | ✅ lo subido nace **provisorio**; se vuelve del pedido cuando el pedido lo usa, y lo provisorio que pasó `REFERENCE_UPLOAD_TTL_HOURS` se borra (del destino **y** del registro). Lo **usado no se toca nunca**: hay test de las dos cosas |
+| La URL del pedido es una que emitimos | ✅ forma (`/uploads/<32 hex>.<jpg\|png>` o `res.cloudinary.com/<nuestro cloud>/…`) **más** fila en el registro **más**, en disco, el archivo existiendo. Una URL externa, un `../`, otra extensión o un hex inventado son 400 (hay test de los diez casos) |
+| La foto del panel no sirve como referencia de un cliente | ✅ el registro guarda `kind`: es nuestra, pero no la subió quien pide |
+| Secreto de Cloudinary | ✅ el `api_secret` no sale del servidor: el navegador manda el archivo a **nuestra** ruta y el back sube firmado. Sin preset `unsigned`, que sería una puerta pública de escritura a su cuenta |
+
+**Lo que queda abierto, dicho sin maquillaje:**
+
+- **Borrar un pedido a mano deja su foto marcada como usada para siempre**, y el barrido no la
+  levanta. Hoy no hay forma de borrar un pedido desde la app, así que solo pasa editando la base
+  (pasó en la verificación de hoy, y se limpió a mano). Si alguna vez el panel borra pedidos, ese
+  camino tiene que devolver la foto a provisoria.
+- **El barrido se dispara al subir** una foto nueva, no por reloj. Si nadie sube nada durante un
+  mes, lo provisorio de ese mes espera. Acotado por la cuota, no por el tiempo.
+- **D19 sigue**: el perfil de color se descarta en el limpiador, antes de Cloudinary.
 
 ### N6 · Superficie pública
 

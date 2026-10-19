@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ChefHat, RotateCcw, ShoppingBag } from "lucide-react";
 
 import { textoRegla } from "../lib/cantidades";
+import { precioDesde, sePersonaliza } from "../lib/carrito";
 import { heroFallback } from "../lib/constants";
 import { formatCurrency } from "../lib/format";
 import { urlDeImagen } from "../lib/imagenes";
@@ -22,6 +23,10 @@ export function ProductCard({ product, onAddToCart }: { product: Product; onAddT
   const [volteada, setVolteada] = useState(false);
   const regla = textoRegla(product);
   const etiquetas = product.tags ?? [];
+  /** Una torta con tamaños o sabores no se puede agregar desde la tarjeta:
+   *  si el grupo es obligatorio el servidor rechaza el pedido, y con razón
+   *  (ADR-031). La tarjeta manda a la ficha, que es donde se elige. */
+  const seArma = sePersonaliza(product);
 
   const caraDeAdelante = useRef<HTMLElement>(null);
   const dorso = useRef<HTMLElement>(null);
@@ -114,8 +119,15 @@ export function ProductCard({ product, onAddToCart }: { product: Product; onAddT
 
             <div className="mt-auto pt-4">
               <p className="font-display text-3xl font-bold text-acento">
-                {formatCurrency(product.price)}
-                <span className="ml-1 font-sans text-sm font-bold text-tinta-tenue">/ {product.unit_label}</span>
+                {/* Con tamaños, el precio base puede no ser comprable: la
+                    tarjeta dice "desde" y el más barato (review de T18). */}
+                {product.variants?.length ? (
+                  <span className="mr-1 font-sans text-sm font-bold text-tinta-tenue">desde</span>
+                ) : null}
+                {formatCurrency(precioDesde(product))}
+                {product.variants?.length ? null : (
+                  <span className="ml-1 font-sans text-sm font-bold text-tinta-tenue">/ {product.unit_label}</span>
+                )}
               </p>
               {regla ? (
                 <p className="mt-1 inline-block border-[3px] border-borde bg-superficie-alt px-2 py-1 text-xs font-bold text-tinta">
@@ -125,15 +137,26 @@ export function ProductCard({ product, onAddToCart }: { product: Product; onAddT
             </div>
 
             <div className="mt-4">
-              <button
-                className="btn-primary w-full justify-center"
-                type="button"
-                onClick={onAddToCart}
-                disabled={!product.available}
-              >
-                <ShoppingBag className="h-4 w-4" />
-                Agregar
-              </button>
+              {seArma ? (
+                <Link
+                  to={`/producto/${product.slug}`}
+                  className="btn-primary w-full justify-center"
+                  aria-disabled={!product.available}
+                >
+                  <ShoppingBag className="h-4 w-4" />
+                  Elegir y pedir
+                </Link>
+              ) : (
+                <button
+                  className="btn-primary w-full justify-center"
+                  type="button"
+                  onClick={onAddToCart}
+                  disabled={!product.available}
+                >
+                  <ShoppingBag className="h-4 w-4" />
+                  Agregar
+                </button>
+              )}
             </div>
           </div>
         </article>
@@ -170,15 +193,26 @@ export function ProductCard({ product, onAddToCart }: { product: Product; onAddT
           ) : null}
 
           <div className="mt-5 space-y-3 border-t-[3px] border-borde pt-4">
-            <button
-              className="btn-primary w-full justify-center"
-              type="button"
-              onClick={onAddToCart}
-              disabled={!product.available}
-            >
-              <ShoppingBag className="h-4 w-4" />
-              Agregar
-            </button>
+            {seArma ? (
+              <Link
+                to={`/producto/${product.slug}`}
+                className="btn-primary w-full justify-center"
+                aria-disabled={!product.available}
+              >
+                <ShoppingBag className="h-4 w-4" />
+                Elegir y pedir
+              </Link>
+            ) : (
+              <button
+                className="btn-primary w-full justify-center"
+                type="button"
+                onClick={onAddToCart}
+                disabled={!product.available}
+              >
+                <ShoppingBag className="h-4 w-4" />
+                Agregar
+              </button>
+            )}
             <div className="flex items-center justify-between gap-3">
               <Link to={`/producto/${product.slug}`} className="btn-secondary px-3 py-2 text-sm">
                 Ver la ficha

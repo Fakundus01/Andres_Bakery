@@ -2,18 +2,21 @@ import type { Dispatch, FormEvent, SetStateAction } from "react";
 
 import { TagBadge } from "../../components/TagBadge";
 import { FotoDelProducto } from "./FotoDelProducto";
+import { SelectorDeGruposDeOpciones } from "./SelectorDeGruposDeOpciones";
 import { SelectorDeIngredientes } from "./SelectorDeIngredientes";
 import { Field } from "../../components/ui";
 import { textoRegla } from "../../lib/cantidades";
+import { estadoDeLaEtiqueta } from "../../lib/carrito";
 import { heroFallback } from "../../lib/constants";
 import { urlDeImagen } from "../../lib/imagenes";
 import { formatCurrency } from "../../lib/format";
-import type { BorradorReceta, Ingredient, Product, Tag } from "../../lib/types";
+import type { BorradorReceta, Ingredient, OptionGroup, Product, Tag } from "../../lib/types";
 import type { ProductForm } from "../../lib/ui-types";
 
 export function ProductsTab({
   products,
   tags,
+  gruposDeOpciones,
   ingredientes,
   usosDeIngredientes,
   onCrearIngrediente,
@@ -31,6 +34,7 @@ export function ProductsTab({
 }: {
   products: Product[];
   tags: Tag[];
+  gruposDeOpciones: OptionGroup[];
   ingredientes: Ingredient[];
   usosDeIngredientes: Record<number, number>;
   onCrearIngrediente: (nombre: string) => Promise<Ingredient | null>;
@@ -69,6 +73,14 @@ export function ProductsTab({
       tag_ids: current.tag_ids.includes(tagId)
         ? current.tag_ids.filter((id) => id !== tagId)
         : [...current.tag_ids, tagId],
+    }));
+
+  const alternarGrupo = (grupoId: number) =>
+    setProductForm((current) => ({
+      ...current,
+      option_group_ids: current.option_group_ids.includes(grupoId)
+        ? current.option_group_ids.filter((id) => id !== grupoId)
+        : [...current.option_group_ids, grupoId],
     }));
 
   const alternarIngrediente = (ingredienteId: number) =>
@@ -158,6 +170,14 @@ export function ProductsTab({
           onBorrar={onBorrarIngrediente}
         />
 
+        <SelectorDeGruposDeOpciones
+          grupos={gruposDeOpciones}
+          elegidos={productForm.option_group_ids}
+          onAlternar={alternarGrupo}
+          productoEtiquetado={estadoDeLaEtiqueta(tags, productForm.tag_ids).etiquetada}
+          etiquetaParecida={estadoDeLaEtiqueta(tags, productForm.tag_ids).parecida}
+        />
+
         {tags.length > 0 ? (
           <div>
             <p className="text-sm font-semibold text-tinta-suave">Etiquetas</p>
@@ -233,6 +253,9 @@ export function ProductsTab({
                 {formatCurrency(product.price)} por {product.unit_label}
                 {textoRegla(product) ? ` · ${textoRegla(product)}` : ""}
                 {product.steps ? " · con receta" : ""}
+                {product.option_groups?.length
+                  ? ` · ${product.option_groups.map((grupo) => grupo.name).join(", ")}`
+                  : ""}
               </p>
 
               <div className="mt-4 flex items-center justify-end gap-2">
@@ -257,6 +280,7 @@ export function ProductsTab({
                       allows_delivery: product.allows_delivery,
                       tag_ids: (product.tags ?? []).map((tag) => tag.id),
                       ingredient_ids: (product.ingredients ?? []).map((ingrediente) => ingrediente.id),
+                      option_group_ids: (product.option_groups ?? []).map((grupo) => grupo.id),
                     });
                   }}
                 >

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..extensions import db
-from ..models import Ingredient, Product, ProductVariant, Tag
+from ..models import Ingredient, OptionGroup, Product, ProductVariant, Tag
 from .base import ServiceBase
 from .exceptions import NotFoundError, ValidationError
 from .serializers import Serializer
@@ -106,8 +106,14 @@ class ProductService(ServiceBase):
             product.ingredients = self._resolve(Ingredient, data.get("ingredient_ids"), "ingredient")
         if "tag_ids" in data:
             product.tags = self._resolve(Tag, data.get("tag_ids"), "tag")
+        if "option_group_ids" in data:
+            # Que grupos de sabores aplican a ESTA torta (F57). Es la mitad de
+            # la frontera de ADR-031: el cliente solo puede elegir de estos.
+            product.option_groups = self._resolve(
+                OptionGroup, data.get("option_group_ids"), "option_group"
+            )
         if "variants" in data:
-            product.variants = self._build_variants(data.get("variants"))
+            product.variants = self._build_variants(product, data.get("variants"))
 
     def _resolve(self, model: type[Any], raw_ids: Any, label: str) -> list[Any]:
         if not isinstance(raw_ids, list):
@@ -121,25 +127,65 @@ class ProductService(ServiceBase):
             raise ValidationError(f"one or more {label}s do not exist")
         return rows
 
-    def _build_variants(self, raw_variants: Any) -> list[ProductVariant]:
+    def _build_variants(self, product: Product, raw_variants: Any) -> list[ProductVariant]:
+        """Actualiza las filas que ya estaban en vez de reemplazarlas.
+
+        Es la tercera parte de ADR-029, y estuvo escrita como hecha sin estar
+        (lo marcaron las dos revisiones de T18). Reemplazar la lista entera
+        sobre una relacion con `delete-orphan` borra las filas viejas y las
+        nuevas sacan ids nuevos: el `variant_id` que alguien tiene en su
+        carrito de `localStorage` queda invalido y el 400 le cae en el
+        checkout, con el mismo mensaje que recibe un atacante.
+
+        Peor todavia, y es lo que encontro el pentester: SQLite reusa los
+        rowid, asi que un id viejo puede caer sobre **otra** variante del
+        mismo producto y cobrar un tamano por otro. Mientras los ids no se
+        muevan, eso no puede pasar.
+
+        El `id` que manda el cliente se acepta solo si esa variante es de
+        **este** producto: es el mismo control que `_variante` hace en el
+        pedido (ADR-029).
+        """
         if not isinstance(raw_variants, list):
             raise ValidationError("variants must be a list")
 
-        variants = []
+        existentes = {variant.id: variant for variant in product.variants}
+        variants: list[ProductVariant] = []
         for position, raw in enumerate(raw_variants):
             if not isinstance(raw, dict):
                 raise ValidationError("invalid variant data")
             name = (raw.get("name") or "").strip()
             if not name or raw.get("price") is None:
                 raise ValidationError("each variant needs name and price")
-            variants.append(
-                ProductVariant(
-                    name=name,
-                    price=self.parse_decimal(raw.get("price"), "variant price"),
-                    sort_order=self.parse_int(raw.get("sort_order", position), "sort_order"),
-                )
-            )
+
+            price = self.parse_decimal(raw.get("price"), "variant price")
+            sort_order = self.parse_int(raw.get("sort_order", position), "sort_order")
+
+            variante = self._variante_a_reusar(existentes, raw.get("id"))
+            if variante is None:
+                variante = ProductVariant(name=name, price=price, sort_order=sort_order)
+            else:
+                variante.name = name
+                variante.price = price
+                variante.sort_order = sort_order
+            variants.append(variante)
+
+        # Lo que no vino en la lista se borra, que es lo que la pantalla
+        # espera al sacar un tamano: el `delete-orphan` se encarga.
         return variants
+
+    def _variante_a_reusar(
+        self, existentes: dict[int, ProductVariant], crudo: Any
+    ) -> ProductVariant | None:
+        if crudo is None:
+            return None
+        variant_id = self.parse_int(crudo, "variant_id")
+        variante = existentes.get(variant_id)
+        if variante is None:
+            # Un id que no es de este producto no se reusa **ni se inventa**:
+            # es un error del que llama, no un tamano nuevo en silencio.
+            raise ValidationError("one or more variants do not belong to this product")
+        return variante
 
     @staticmethod
     def _text(value: Any) -> str | None:

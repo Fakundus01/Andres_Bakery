@@ -7,9 +7,20 @@ import {
 } from "react";
 
 import { acomodarCantidad, bajarCantidad, cantidadInicial, subirCantidad } from "../lib/cantidades";
+import {
+  claveDelRenglon,
+  subtotalDelCarrito,
+  type Personalizacion,
+} from "../lib/carrito";
 import type { Product } from "../lib/types";
 
-export interface CartItem extends Product {
+/** Un renglón del carrito: el producto más lo que se eligió para ÉSTE.
+ *
+ *  Dos tortas iguales con distinto relleno son dos renglones, así que el
+ *  producto ya no alcanza como identidad: la calcula `claveDelRenglon`
+ *  (F19a, F58). Guardar la clave sería peor —un carrito viejo no la tiene—,
+ *  por eso se calcula siempre. */
+export interface CartItem extends Product, Personalizacion {
   quantity: number;
 }
 
@@ -18,12 +29,14 @@ interface CartContextValue {
   isCartOpen: boolean;
   openCart: () => void;
   closeCart: () => void;
-  addItem: (product: Product, cantidad?: number) => void;
-  removeItem: (productId: number) => void;
+  addItem: (product: Product, cantidad?: number, personalizacion?: Personalizacion) => void;
+  /** Todas toman la clave del renglón (`claveDelRenglon`), no el id del
+   *  producto: con tamaños y sabores, el id ya no identifica un renglón. */
+  removeItem: (clave: string) => void;
   /** Suma un salto del producto (de a 6 si se vende de a 6). */
-  subir: (productId: number) => void;
-  /** Resta un salto; por debajo del mínimo saca el producto del carrito. */
-  bajar: (productId: number) => void;
+  subir: (clave: string) => void;
+  /** Resta un salto; por debajo del mínimo saca el renglón del carrito. */
+  bajar: (clave: string) => void;
   clearCart: () => void;
   itemCount: number;
   subtotal: number;
@@ -96,12 +109,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems(next);
   };
 
-  const addItem = (product: Product, cantidad?: number) => {
-    const existing = items.find((item) => item.id === product.id);
-    if (existing) {
+  const addItem = (product: Product, cantidad?: number, personalizacion?: Personalizacion) => {
+    const nuevo: CartItem = {
+      ...product,
+      ...personalizacion,
+      quantity: cantidad ? acomodarCantidad(product, cantidad) : cantidadInicial(product),
+    };
+    const clave = claveDelRenglon(nuevo);
+
+    const existente = items.find((item) => claveDelRenglon(item) === clave);
+    if (existente) {
+      // Misma configuración ⇒ sube la cantidad del renglón que ya está, no
+      // aparece uno repetido debajo del otro.
       persist(
         items.map((item) =>
-          item.id === product.id
+          claveDelRenglon(item) === clave
             ? { ...item, quantity: subirCantidad(item, item.quantity) }
             : item,
         ),
@@ -110,37 +132,38 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const inicial = cantidad ? acomodarCantidad(product, cantidad) : cantidadInicial(product);
-    persist([...items, { ...product, quantity: inicial }]);
+    persist([...items, nuevo]);
     setIsCartOpen(true);
   };
 
-  const removeItem = (productId: number) => {
-    persist(items.filter((item) => item.id !== productId));
+  const removeItem = (clave: string) => {
+    persist(items.filter((item) => claveDelRenglon(item) !== clave));
   };
 
-  const subir = (productId: number) => {
+  const subir = (clave: string) => {
     persist(
       items.map((item) =>
-        item.id === productId ? { ...item, quantity: subirCantidad(item, item.quantity) } : item,
+        claveDelRenglon(item) === clave
+          ? { ...item, quantity: subirCantidad(item, item.quantity) }
+          : item,
       ),
     );
   };
 
-  const bajar = (productId: number) => {
-    const item = items.find((candidato) => candidato.id === productId);
+  const bajar = (clave: string) => {
+    const item = items.find((candidato) => claveDelRenglon(candidato) === clave);
     if (!item) {
       return;
     }
 
     const siguiente = bajarCantidad(item, item.quantity);
     if (siguiente === 0) {
-      removeItem(productId);
+      removeItem(clave);
       return;
     }
     persist(
       items.map((candidato) =>
-        candidato.id === productId ? { ...candidato, quantity: siguiente } : candidato,
+        claveDelRenglon(candidato) === clave ? { ...candidato, quantity: siguiente } : candidato,
       ),
     );
   };
@@ -152,7 +175,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<CartContextValue>(() => {
     const itemCount = items.reduce((total, item) => total + item.quantity, 0);
-    const subtotal = items.reduce((total, item) => total + item.price * item.quantity, 0);
+    // El precio del renglón, no el del producto: con la torta de 8 porciones
+    // el resumen decía $6.000 y el servidor cobraba $14.000 (F19a).
+    const subtotal = subtotalDelCarrito(items);
 
     return {
       items,

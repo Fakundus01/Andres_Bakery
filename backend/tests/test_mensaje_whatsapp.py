@@ -4,7 +4,7 @@ from decimal import Decimal
 import unittest
 
 from backend.extensions import db
-from backend.models import Order, OrderDelivery, OrderItem
+from backend.models import Order, OrderDelivery, OrderItem, OrderItemOption
 from backend.services.mensaje_whatsapp import TOPE_CARACTERES, armar_mensaje, plata
 from backend.tests.support import BackendServiceTestCase
 
@@ -136,6 +136,127 @@ class MensajeWhatsAppTestCase(BackendServiceTestCase):
         mensaje = armar_mensaje(order)
         self.assertIn(f"Pedido #{order.id}", mensaje)
         self.assertNotIn("Nombre:", mensaje)
+
+
+class MensajeDeTortaAPedidoTestCase(BackendServiceTestCase):
+    """El mensaje tiene que alcanzar para empezar a hacer la torta (F19a/F58)."""
+
+    def armar_torta(
+        self,
+        *,
+        variante: str | None = "8 porciones",
+        precio: str = "14000.00",
+        sabores: tuple[tuple[str, str], ...] = (("Bizcocho", "Vainilla"), ("Relleno", "Dulce de leche")),
+        nota: str | None = None,
+        foto: str | None = None,
+    ) -> Order:
+        producto = self.create_product(name="Torta de chocolate", price=precio)
+        order = Order(status="pending", channel="whatsapp")
+        order.total_amount = Decimal(precio)
+        db.session.add(order)
+        db.session.flush()
+        item = OrderItem(
+            order=order,
+            product=producto,
+            quantity=1,
+            unit_price=Decimal(precio),
+            variant_name=variante,
+            note=nota,
+            reference_image=foto,
+        )
+        for grupo, opcion in sabores:
+            item.options.append(OrderItemOption(group_name=grupo, option_name=opcion))
+        db.session.add(item)
+        order.delivery = OrderDelivery(
+            customer_name="Vecina",
+            customer_phone="1144556677",
+            delivery_method="pickup",
+            shipping_amount=Decimal("0.00"),
+            payment_method="whatsapp",
+        )
+        db.session.commit()
+        return order
+
+    def test_el_renglon_nombra_el_tamano(self) -> None:
+        mensaje = armar_mensaje(self.armar_torta())
+
+        self.assertIn("- 1 x Torta de chocolate (8 porciones): $14.000", mensaje)
+
+    def test_sin_variante_el_renglon_queda_como_antes(self) -> None:
+        mensaje = armar_mensaje(self.armar_torta(variante=None, sabores=()))
+
+        self.assertIn("- 1 x Torta de chocolate: $14.000", mensaje)
+
+    def test_el_mensaje_nombra_los_sabores_elegidos(self) -> None:
+        mensaje = armar_mensaje(self.armar_torta())
+
+        self.assertIn("Bizcocho: Vainilla", mensaje)
+        self.assertIn("Relleno: Dulce de leche", mensaje)
+
+    def test_el_mensaje_lleva_la_nota_y_la_foto(self) -> None:
+        mensaje = armar_mensaje(
+            self.armar_torta(
+                nota="Que diga Feliz cumple Mica, en azul",
+                foto="/uploads/" + "ab" * 16 + ".jpg",
+            )
+        )
+
+        self.assertIn("Nota: Que diga Feliz cumple Mica, en azul", mensaje)
+        self.assertIn("Foto: /uploads/" + "ab" * 16 + ".jpg", mensaje)
+
+    def test_la_foto_sale_con_el_dominio_del_back_si_esta_configurado(self) -> None:
+        """El link tiene que poder abrirse desde el celular de ella."""
+        self.app.config["BACKEND_PUBLIC_URL"] = "https://api.andresbakery.test/"
+
+        mensaje = armar_mensaje(self.armar_torta(foto="/uploads/" + "ab" * 16 + ".jpg"))
+
+        self.assertIn("Foto: https://api.andresbakery.test/uploads/", mensaje)
+
+    def test_la_foto_de_cloudinary_ya_viene_absoluta(self) -> None:
+        url = "https://res.cloudinary.com/andres-bakery/image/upload/v1/x/" + "ab" * 16 + ".jpg"
+
+        mensaje = armar_mensaje(self.armar_torta(foto=url))
+
+        self.assertIn(f"Foto: {url}", mensaje)
+
+    def test_diez_tortas_con_nota_larga_siguen_entrando_en_el_tope(self) -> None:
+        """Lo que ADR-031 dejo anotado: los productos se empiezan a caer.
+
+        Lo que no puede pasar es que el mensaje pase el tope, porque el link
+        de WhatsApp queda inservible justo en el ultimo paso del pedido.
+        """
+        producto = self.create_product(name="Torta grande de chocolate", price="14000.00")
+        order = Order(status="pending", channel="whatsapp")
+        order.total_amount = Decimal("140000.00")
+        db.session.add(order)
+        db.session.flush()
+        for _ in range(10):
+            item = OrderItem(
+                order=order,
+                product=producto,
+                quantity=1,
+                unit_price=Decimal("14000.00"),
+                variant_name="12 porciones",
+                note="X" * 300,
+                reference_image="/uploads/" + "ab" * 16 + ".jpg",
+            )
+            item.options.append(OrderItemOption(group_name="Relleno", option_name="Dulce de leche"))
+            db.session.add(item)
+        order.delivery = OrderDelivery(
+            customer_name="Vecina",
+            customer_phone="1144556677",
+            delivery_method="pickup",
+            shipping_amount=Decimal("0.00"),
+            payment_method="whatsapp",
+        )
+        db.session.commit()
+
+        mensaje = armar_mensaje(order)
+
+        self.assertLessEqual(len(mensaje), TOPE_CARACTERES)
+        self.assertIn("Total: $140.000", mensaje)
+        self.assertIn("Nombre: Vecina", mensaje)
+        self.assertIn("productos mas", mensaje)
 
 
 if __name__ == "__main__":

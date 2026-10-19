@@ -1,6 +1,18 @@
 ﻿from __future__ import annotations
 
-from ..models import Ingredient, Order, OrderDelivery, Payment, Product, ProductVariant, Tag, User
+from ..models import (
+    Ingredient,
+    Option,
+    OptionGroup,
+    Order,
+    OrderDelivery,
+    OrderItem,
+    Payment,
+    Product,
+    ProductVariant,
+    Tag,
+    User,
+)
 
 
 class Serializer:
@@ -37,6 +49,25 @@ class Serializer:
         }
 
     @staticmethod
+    def option(option: Option) -> dict:
+        return {"id": option.id, "name": option.name, "sort_order": option.sort_order}
+
+    @staticmethod
+    def option_group(group: OptionGroup) -> dict:
+        """Lo que el cliente necesita para elegir, y nada mas.
+
+        Sin `normalized_name`: es un detalle de como se decide la unicidad
+        (ADR-030), no algo que la pantalla tenga que saber.
+        """
+        return {
+            "id": group.id,
+            "name": group.name,
+            "required": group.required,
+            "sort_order": group.sort_order,
+            "options": [Serializer.option(option) for option in group.options],
+        }
+
+    @staticmethod
     def variant(variant: ProductVariant) -> dict:
         return {
             "id": variant.id,
@@ -67,6 +98,9 @@ class Serializer:
                 for ingredient in product.ingredients
             ],
             "tags": [Serializer.tag(tag) for tag in product.tags],
+            "option_groups": [
+                Serializer.option_group(group) for group in product.option_groups
+            ],
             "variants": [Serializer.variant(variant) for variant in product.variants],
         }
 
@@ -100,6 +134,29 @@ class Serializer:
         }
 
     @staticmethod
+    def order_item(item: OrderItem) -> dict:
+        """El renglon como lo vendio: el nombre de la variante y lo elegido.
+
+        `variant_name` y las opciones son copias del momento del pedido
+        (ADR-029/031), asi que lo que sale de aca es lo que ella vendio ese
+        dia, no lo que el producto diga hoy.
+        """
+        return {
+            "id": item.id,
+            "product_id": item.product_id,
+            "quantity": item.quantity,
+            "unit_price": float(item.unit_price),
+            "product_name": item.product.name,
+            "variant_name": item.variant_name,
+            "note": item.note,
+            "reference_image": item.reference_image,
+            "options": [
+                {"group_name": elegida.group_name, "option_name": elegida.option_name}
+                for elegida in item.options
+            ],
+        }
+
+    @staticmethod
     def order(order: Order) -> dict:
         return {
             "id": order.id,
@@ -111,16 +168,7 @@ class Serializer:
             # Un pedido de invitado no tiene usuario (ADR-012): los datos de
             # contacto estan en "delivery".
             "user": Serializer.user(order.user) if order.user else None,
-            "items": [
-                {
-                    "id": item.id,
-                    "product_id": item.product_id,
-                    "quantity": item.quantity,
-                    "unit_price": float(item.unit_price),
-                    "product_name": item.product.name,
-                }
-                for item in order.items
-            ],
+            "items": [Serializer.order_item(item) for item in order.items],
             "delivery": Serializer.delivery(order.delivery),
             "payments": [Serializer.payment(payment) for payment in order.payments],
         }

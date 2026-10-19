@@ -37,6 +37,10 @@ TOPE_TELEFONO = 40
 # lo que seguro no lo es, incluidos los saltos de linea que rompen el envio.
 _MAIL = re.compile(r"^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$")
 
+# Lo que el propio saneado agrega (el separador de linea) mas espacios: si
+# no queda nada aparte de esto, el campo estaba vacio.
+_SIN_CONTENIDO = re.compile(r"[·\s]+")
+
 
 def diccionario(valor: object, campo: str) -> dict:
     if valor is None:
@@ -62,6 +66,12 @@ def texto(
     """
     limpio = _a_texto(valor, campo)
     limpio = _sin_caracteres_de_control(limpio, una_linea=una_linea).strip()
+    # Un texto hecho solo de espacios y saltos quedaba convertido en el
+    # separador: una nota de dos saltos y nada mas se guardaba como "·", y el
+    # panel y el WhatsApp mostraban "Nota: ·". Lo encontro el test del espejo
+    # de la nota (review de T18). Si no quedo contenido, no hay texto.
+    if not _SIN_CONTENIDO.sub("", limpio):
+        return ""
     if obligatorio and not limpio:
         raise ValidationError(f"Falta «{campo}».")
     return limpio[:tope]
@@ -132,6 +142,44 @@ def sin_invisibles(valor: str) -> str:
     return valor.translate(_INVISIBLES)
 
 
+def nombre_para_guardar(valor: object, campo: str, *, tope: int) -> str:
+    """El nombre tal como se **guarda**: con sus acentos y sus mayusculas.
+
+    Lo contrario de `normalizar_nombre`, que es para comparar. Lo unico que se
+    saca es lo que no se ve y el espacio de mas: "Harina   0000" se guarda
+    "Harina 0000", porque si no queda escrito asi en la lista de Andrea para
+    siempre. Devuelve "" si no quedo nada, para que cada servicio escriba su
+    propio mensaje.
+
+    El tope que se le pasa a `texto` es holgado **a proposito**: `texto`
+    recorta ANTES de que midamos, asi que con `tope=121` un nombre de 5.000
+    caracteres con invisibles entraba recortado a 61 y con un 201, que es
+    justo el recorte en silencio que ADR-030 dice no hacer. Con el tope
+    holgado, lo que no entra se mide y se rechaza.
+
+    `una_linea=False` tambien a proposito: el " . " con el que `texto`
+    reemplaza el salto existe para que una nota de pedido no finja un campo
+    del sistema. En un nombre no aplica —ahi un salto es un espacio— y rompia
+    el espejo con el front, que colapsa cualquier espacio en blanco.
+    """
+    limpio = sin_invisibles(texto(valor, campo, tope=1000, una_linea=False)).strip()
+    if len(limpio) > tope:
+        raise ValidationError(f"El nombre no puede pasar de {tope} caracteres.")
+    limpio = " ".join(limpio.split())
+
+    # Un nombre que **se ve** pero cuyo normalizado queda vacio —marcas
+    # combinantes sueltas, categoria Unicode M— rompia el rescate del
+    # IntegrityError: `_buscar_por_nombre` no encuentra nada con `""`, el
+    # error subia crudo y salia **500 con HTML** en una API JSON. Lo encontro
+    # el reviewer de T18, y es el hallazgo 1 de la review de T6-F20b
+    # reaparecido en el modulo de al lado. Se corta aca, donde nacen los dos.
+    if limpio and not normalizar_nombre(limpio, campo, tope=tope):
+        raise ValidationError(
+            f"Ese «{campo}» no se puede usar: escribilo con letras o números."
+        )
+    return limpio
+
+
 def normalizar_nombre(valor: object, campo: str, *, tope: int) -> str:
     """La forma de un nombre **para comparar**, no para guardar.
 
@@ -160,7 +208,13 @@ rallado" normalizara distinto. Lo midio el
     # linea siguiente la dejaria en "n". Se recompone antes de barrer.
     con_enie = descompuesto.replace("ñ", "ñ").replace("Ñ", "Ñ")
     sin_marcas = "".join(c for c in con_enie if unicodedata.category(c)[0] != "M")
-    return " ".join(sin_marcas.lower().split(" "))
+    # `split()` sin argumento, no `split(" ")`: colapsa las corridas de
+    # espacios **y recorta las puntas**. Con `split(" ")`, un nombre hecho de
+    # dos marcas combinantes separadas por un espacio normalizaba a " " —no
+    # vacio, un espacio— y se guardaba una fila con ese normalizado. Ademas
+    # era una divergencia con el front, que hace `trim()`: el espejo que
+    # ADR-030 dice sostener. Lo encontro el test del arreglo del review de T18.
+    return " ".join(sin_marcas.lower().split())
 
 
 def _limpiar_para_comparar(valor: str) -> str:

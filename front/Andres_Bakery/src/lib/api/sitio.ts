@@ -55,39 +55,53 @@ export const siteApi = {
   },
 };
 
-/** Sube una foto. No pasa por `apiRequest` porque va como multipart: poner
- *  `Content-Type: application/json` ahí rompe el borde del formulario. */
+/** Las dos puertas de subida: la del panel (con token) y la del cliente. */
 export const uploadsApi = {
   async subirImagen(archivo: File, token: string): Promise<SubidaDeImagen> {
-    const cuerpo = new FormData();
-    cuerpo.append("file", archivo);
-    const response = await fetch(`${API_URL}/api/uploads`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: cuerpo,
-    });
-    if (!response.ok) {
-      // Esta llamada no pasa por `apiRequest` porque va multipart, así que el
-      // aviso de sesión vencida hay que darlo también acá: si no, subir una
-      // foto con la sesión caída dejaba el panel fingiendo que anda, que es
-      // justo lo que el aviso vino a resolver.
-      if (response.status === 401 || response.status === 422) {
-        avisarSesionVencida(token);
-      }
-      let message = `Error ${response.status}`;
-      try {
-        const data = (await response.json()) as { error?: string; msg?: string };
-        if (data.error || data.msg) {
-          message = data.error ?? data.msg ?? message;
-        }
-      } catch {
-        message = `No se pudo subir la imagen (error ${response.status}).`;
-      }
-      throw new ApiError(message, response.status);
-    }
-    return (await response.json()) as SubidaDeImagen;
+    return subir(archivo, "/api/uploads", token);
+  },
+  /** La foto de referencia de una torta a pedido (F59). **Sin token**: la
+   *  sube quien compra, que puede no tener cuenta. Es otra ruta y no la de
+   *  ella con el permiso sacado: dos rutas, dos políticas (ADR-032). */
+  async subirReferencia(archivo: File): Promise<SubidaDeImagen> {
+    return subir(archivo, "/api/uploads/referencia");
   },
 };
+
+/** No pasa por `apiRequest` porque va como multipart: poner
+ *  `Content-Type: application/json` ahí rompe el borde del formulario. */
+async function subir(archivo: File, ruta: string, token?: string): Promise<SubidaDeImagen> {
+  const cuerpo = new FormData();
+  cuerpo.append("file", archivo);
+  const response = await fetch(`${API_URL}${ruta}`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: cuerpo,
+  });
+
+  if (!response.ok) {
+    // Esta llamada no pasa por `apiRequest` porque va multipart, así que el
+    // aviso de sesión vencida hay que darlo también acá: si no, subir una
+    // foto con la sesión caída dejaba el panel fingiendo que anda, que es
+    // justo lo que el aviso vino a resolver. Sin token no hay sesión que
+    // avisar: un 429 de la ruta pública no es una sesión vencida.
+    if (token && (response.status === 401 || response.status === 422)) {
+      avisarSesionVencida(token);
+    }
+    throw new ApiError(await mensajeDeError(response), response.status);
+  }
+
+  return (await response.json()) as SubidaDeImagen;
+}
+
+async function mensajeDeError(response: Response): Promise<string> {
+  try {
+    const data = (await response.json()) as { error?: string; msg?: string };
+    return data.error ?? data.msg ?? `Error ${response.status}`;
+  } catch {
+    return `No se pudo subir la imagen (error ${response.status}).`;
+  }
+}
 
 export const metricsApi = {
   /** Cuenta una visita. Si falla, se ignora: un contador no corta la navegación. */

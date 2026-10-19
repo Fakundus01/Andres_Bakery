@@ -120,24 +120,10 @@ class IngredientService(ServiceBase):
 
     @staticmethod
     def _nombre(valor: object) -> str:
-        # El tope que se le pasa a `saneado.texto` es holgado **a proposito**:
-        # `texto` recorta ANTES de que midamos, asi que con `tope=121` un
-        # nombre de 5.000 caracteres con invisibles entraba recortado a 61 y
-        # con un 201, que es justo el recorte en silencio que ADR-030 dice no
-        # hacer. Con el tope holgado, lo que no entra se mide y se rechaza.
-        # `una_linea=False` a proposito: el " · " con el que `texto` reemplaza
-        # el salto existe para que una nota de pedido no finja un campo del
-        # sistema. En el nombre de un ingrediente no aplica — ahi un salto es
-        # un espacio — y ademas rompia el espejo con el front, que colapsa
-        # cualquier espacio en blanco. El `split()` de abajo los junta.
-        limpio = saneado.sin_invisibles(
-            saneado.texto(valor, "nombre", tope=1000, una_linea=False)
-        ).strip()
+        limpio = saneado.nombre_para_guardar(valor, "nombre", tope=TOPE_NOMBRE)
         if not limpio:
             raise ValidationError("El ingrediente necesita un nombre.")
-        if len(limpio) > TOPE_NOMBRE:
-            raise ValidationError(f"El nombre no puede pasar de {TOPE_NOMBRE} caracteres.")
-        return " ".join(limpio.split())
+        return limpio
 
     @staticmethod
     def _unidad(valor: object) -> str:

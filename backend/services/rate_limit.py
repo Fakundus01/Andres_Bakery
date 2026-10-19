@@ -43,6 +43,10 @@ TOPES_PEDIDO_CON_CUENTA: tuple[Tope, ...] = ((5, 60), (30, 3600))
 # Lo que se cuenta aunque falle: deja equivocarse con el formulario sin
 # quemar el tope de pedidos, pero acota el trabajo que puede pedir una IP.
 TOPES_INTENTOS_PEDIDO: tuple[Tope, ...] = ((15, 60), (40, 3600))
+# Foto de referencia de una torta a pedido (F59). Es escritura publica de
+# archivos: mas angosto que el pedido, porque cada una cuesta disco (o cuota de
+# Cloudinary) y no solo una fila.
+TOPES_FOTO_REFERENCIA: tuple[Tope, ...] = ((4, 60), (15, 3600))
 TOPES_LOGIN: tuple[Tope, ...] = ((10, 300),)
 TOPES_REGISTRO: tuple[Tope, ...] = ((5, 3600),)
 TOPES_CONTACTO: tuple[Tope, ...] = ((5, 3600),)

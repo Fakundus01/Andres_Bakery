@@ -1,6 +1,13 @@
 // Tipos de presentacion. Los DTO de la API viven en types.ts.
 
-export type DashboardTab = "overview" | "products" | "tags" | "orders" | "perfil" | "story";
+export type DashboardTab =
+  | "overview"
+  | "products"
+  | "tags"
+  | "opciones"
+  | "orders"
+  | "perfil"
+  | "story";
 
 export type Slide = {
   eyebrow: string;
@@ -29,6 +36,8 @@ export type ProductForm = {
   allows_delivery: boolean;
   tag_ids: number[];
   ingredient_ids: number[];
+  /** Qué grupos de sabores aplican a este producto (F57). */
+  option_group_ids: number[];
 };
 
 export type TagForm = {

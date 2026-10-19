@@ -7,26 +7,30 @@ import unicodedata
 from flask import current_app
 
 from ..extensions import db
-from ..models import Order, OrderDelivery, OrderItem, Product, User
+from ..models import Order, OrderDelivery, User
 from .base import ServiceBase
 from .exceptions import AuthorizationError, ValidationError
 from .mensaje_whatsapp import armar_mensaje
 from .notifications import NotificationService, notification_service
-from .quantity import validate_quantity
+from .renglon_del_pedido import ArmadorDeRenglon, armador_de_renglon
 from . import saneado
 from .serializers import Serializer
 
 
-# Más que esto no es un pedido de una repostería: es alguien probando.
-MAX_PRODUCT_ID = 2**31 - 1
 METODOS_DE_ENTREGA = {"delivery", "pickup"}
 
 
 class OrderService(ServiceBase):
-    def __init__(self, notifications: NotificationService | None = None) -> None:
+    def __init__(
+        self,
+        notifications: NotificationService | None = None,
+        renglones: ArmadorDeRenglon | None = None,
+    ) -> None:
         self.notifications = notifications or notification_service
+        self.renglones = renglones or armador_de_renglon
 
     def create_order(self, user_identity: int | str | None, data: dict) -> dict:
+        data = saneado.diccionario(data, "pedido")
         user = self.require_entity(User, self.parse_identity(user_identity), "user")
         order = self.armar_pedido(
             data,
@@ -48,6 +52,11 @@ class OrderService(ServiceBase):
         la feature, ver `mensaje_whatsapp.py`. No devuelve el resultado de los
         mails —eso es asunto interno— ni nada del pedido de otra persona.
         """
+        # Un body que no es objeto —`[1,2,3]`, `"x"`, `5`, `true`— reventaba en
+        # el `data.get` de abajo y salia **500 con HTML** en la ruta publica.
+        # `_armar_pedido` ya lo validaba, pero esto corre antes. Lo encontro
+        # el pentester de T18; venia de antes de esta tanda.
+        data = saneado.diccionario(data, "pedido")
         customer = saneado.diccionario(data.get("customer"), "customer")
         nombre = saneado.texto(
             customer.get("name") or (user.name if user else ""),
@@ -125,7 +134,7 @@ class OrderService(ServiceBase):
 
         total = Decimal("0.00")
         for raw_item in items:
-            total += self._agregar_renglon(order, raw_item)
+            total += self.renglones.armar(order, raw_item)
 
         order.total_amount = total + shipping_amount
         order.delivery = OrderDelivery(
@@ -165,38 +174,6 @@ class OrderService(ServiceBase):
             ),
         )
         return order
-
-    def _agregar_renglon(self, order: Order, raw_item: object) -> Decimal:
-        if not isinstance(raw_item, dict):
-            raise ValidationError("Hay un producto mal formado en el pedido.")
-
-        product_id = saneado.entero(
-            raw_item.get("product_id"), "product_id", minimo=1, maximo=MAX_PRODUCT_ID
-        )
-        # El tope de unidades entra en el rango: así una cantidad absurda sale
-        # por la misma puerta que un cero o un texto, con un 400 explicado.
-        tope_unidades = int(current_app.config.get("ORDER_MAX_UNITS", 1000))
-        quantity = saneado.entero(
-            raw_item.get("quantity"), "cantidad", minimo=1, maximo=tope_unidades
-        )
-
-        product = self.require_entity(Product, product_id, "product")
-        if not product.available:
-            raise ValidationError(f"«{product.name}» no está disponible por ahora.")
-        # El minimo y el salto los decide el servidor: el control del
-        # carrito es comodidad, no seguridad (V4).
-        validate_quantity(product, quantity)
-
-        unit_price = Decimal(str(product.price))
-        db.session.add(
-            OrderItem(
-                order=order,
-                product=product,
-                quantity=quantity,
-                unit_price=unit_price,
-            )
-        )
-        return unit_price * quantity
 
     def list_orders(self, user_identity: int | str | None) -> list[dict]:
         user = self.require_entity(User, self.parse_identity(user_identity), "user")

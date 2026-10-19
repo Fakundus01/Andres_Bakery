@@ -1,5 +1,11 @@
 import type { CartItem } from "../../contexts/CartContext";
-import type { DeliveryMethod, OrderCreationPayload, PaymentMethod } from "../../lib/types";
+import { TOPE_NOTA, notaParaElPedido } from "../../lib/carrito";
+import type {
+  DeliveryMethod,
+  OrderCreationPayload,
+  OrderItemPayload,
+  PaymentMethod,
+} from "../../lib/types";
 
 export interface FormularioDeCheckout {
   name: string;
@@ -63,7 +69,7 @@ export function armarPayload({
 }): OrderCreationPayload {
   const envio = deliveryMethod === "delivery";
   return {
-    items: items.map((item) => ({ product_id: item.id, quantity: item.quantity })),
+    items: items.map(renglonDelPedido),
     customer: {
       name: form.name.trim(),
       email: form.email.trim() || undefined,
@@ -78,6 +84,39 @@ export function armarPayload({
     },
     payment_method: paymentMethod,
   };
+}
+
+/** Un renglón tal como lo espera el back (F19a, F58).
+ *
+ *  **El precio no viaja**: va `variant_id` y el servidor busca la fila, que
+ *  es lo que cierra el agujero de ADR-029. Lo mismo con los sabores: van los
+ *  ids y el servidor verifica que sean de ese producto.
+ *
+ *  Los campos vacíos no se mandan: un `note: ""` o un `option_ids: []` son
+ *  ruido en el pedido de quien compró una docena de cookies. */
+export function renglonDelPedido(item: CartItem): OrderItemPayload {
+  const renglon: OrderItemPayload = { product_id: item.id, quantity: item.quantity };
+  if (item.variante) {
+    renglon.variant_id = item.variante.id;
+    // El nombre viaja como **testigo**, no como dato de precio: si el id
+    // cayó sobre otro tamaño (pasa si ella borró uno y la base reusó el id),
+    // el servidor lo corta con un 400 en vez de cobrar otra cosa (ADR-029).
+    renglon.variant_name = item.variante.name;
+  }
+  if (item.opciones?.length) {
+    renglon.option_ids = item.opciones.map((opcion) => opcion.id);
+  }
+  // Se manda ya en una línea, con la misma regla del back: así el recorte
+  // (si hace falta) lo decide la pantalla que mostró el contador, y no el
+  // servidor en silencio.
+  const nota = notaParaElPedido(item.nota);
+  if (nota) {
+    renglon.note = nota.slice(0, TOPE_NOTA);
+  }
+  if (item.fotoDeReferencia) {
+    renglon.reference_image = item.fotoDeReferencia;
+  }
+  return renglon;
 }
 
 /** El formulario solo pide dirección cuando es envío, así que alcanza con

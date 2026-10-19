@@ -4,6 +4,133 @@ Semver `MAJOR.MINOR.PATCH` (R13). No se borra nada: lo viejo queda.
 
 ---
 
+## [0.12.0] · 2026-10-19 · Tortas a pedido: la chef pone los gustos, el cliente arma la suya
+
+**El selector de tamaño dejó de ser decorativo.** Cambiaba el número en pantalla y el pedido se
+cobraba al precio base: el cliente veía $19.800 y Andrea cobraba $14.200. Era plata que ella perdía
+en cada torta grande vendida. Ahora el renglón manda `variant_id`, **el precio sale de la base** y
+el servidor verifica que la variante sea de ese producto —si no, mandar el `variant_id` del alfajor
+compraría la torta grande a ese precio—. El pedido guarda el **nombre** del tamaño, no una FK:
+`Product.variants` tiene `delete-orphan` y guardar el producto desde el panel borra las filas
+viejas (ADR-029). Cierra el DRIFT que se levantó al abrir T4.
+
+**La chef define los gustos y el cliente elige de esa lista.** Pestaña nueva en el panel: grupos
+("Bizcocho", "Relleno") con sus sabores, globales y reusables como las etiquetas y los ingredientes,
+y en cada producto se marca cuáles aplican. El cliente elige, escribe cómo la quiere en un texto
+libre y puede subir una foto de referencia. **Los sabores se eligen, no se escriben**: si se
+pudieran escribir, el pedido sería una carta de deseos y ella no podría cumplirlo (ADR-031).
+
+**Solo para las tortas, y eso lo decide una etiqueta.** Lo pidió el humano a mitad del ciclo: una
+docena de cookies no se personaliza. La puerta es la etiqueta `tortas personalizadas` y **no** la
+presencia de grupos, porque si fuera por los grupos, asignarle "Relleno" por error a las cookies las
+sacaría de la venta (ADR-033). El panel dice qué etiqueta hace falta, la crea con un botón y avisa
+en el formulario del producto cuando falta.
+
+**Las fotos se van a Cloudinary, y el back es el único que escribe ahí** (ADR-032). Una capa de
+almacenamiento con dos destinos: con las credenciales en el `.env` sube a Cloudinary, sin ellas al
+disco local, que es lo que pasa hoy en desarrollo. El navegador **nunca** habla con Cloudinary: un
+preset `unsigned` habría sido más simple y es una puerta pública de escritura a su cuenta. Sin
+dependencia nueva: `urllib` y un SHA-1, el mismo camino que ya usa Mercado Pago.
+
+### Lo que esto obligó a pagar, y es la mitad del trabajo
+
+**F59 convierte N5 en escritura pública de archivos** (`security.md` §1b), y los cuatro controles
+entraron completos: ruta separada de la de admin (no el `@admin_required` sacado), tope por IP
+(4/min, 15/hora con `Retry-After`), tamaño más chico que el del panel —y que **nunca** puede quedar
+más permisivo que él—, y cuota total, que **cierra D18** con un 507 explicado.
+
+**D17 se cierra para estas fotos.** El cliente sube la foto **antes** de que el pedido exista: si
+abandona el carrito —lo más común en una tienda— esa foto quedaba para siempre, subida por un
+anónimo. Ahora nace provisoria, se vuelve del pedido cuando un pedido la usa, y lo provisorio
+vencido se borra del destino y del registro. **Lo usado no se toca nunca**: hay un test de cada
+cosa.
+
+**La URL de la foto que acepta el pedido es solo una que emitimos nosotros**: la forma de nuestros
+nombres, la fila en el registro y, en disco, el archivo existiendo. Una URL externa, un `../`, otra
+extensión o un hex inventado son 400. Sin eso, el renglón del pedido es un lugar donde pegar un link
+a cualquier cosa y el panel de Andrea lo muestra con su firma.
+
+### Lo que apareció construyendo
+
+- **El rojo se midió rompiendo los dos controles a propósito** (R29): sin la verificación de la
+  variante, el test que compra con el `variant_id` ajeno pasa y **cobra de menos**; sin la de las
+  opciones, el pedido con el sabor de otro producto **revienta con un 500**, que es la clase de bug
+  con la que arranca `saneado.py`. Los dos quedaron en verde con el control puesto.
+- **`models.py` pasó las 300 líneas** al entrar los grupos (R05) y se partió en paquete
+  —`catalogo`, `pedidos`, `sitio`, `usuarios`— con un `__init__` que mantiene la puerta: ningún
+  import del back cambió. Lo mismo con `lib/types.ts` en el front, y `order_service.py` dejó el
+  armado del renglón en `renglon_del_pedido.py`.
+- **La tarjeta de un producto que se arma ya no dice "Agregar"**, dice "Elegir y pedir" y lleva a la
+  ficha: agregarlo desde la tarjeta mandaría un pedido que el servidor rechaza, y con razón.
+- **El asistente de IA iba a romperse con Cloudinary prendido.** Leía la foto del disco a mano, así
+  que una foto en Cloudinary le habría hecho decir "primero subí la foto" sobre una foto que estaba
+  subida. Ahora la lee el almacén, que es el único que sabe dónde vive cada cosa.
+- **`normalizar_nombre` se usa en tres lugares** y el nombre que se guarda salió a `saneado`: los
+  grupos y los sabores tienen la misma unicidad normalizada que los ingredientes (ADR-030), así que
+  "CHOCOLATE" sobre "chocolate" devuelve el que estaba en vez de duplicar. Medido en el navegador.
+
+### Lo que encontraron las dos revisiones, y se corrigió antes del commit
+
+Dos revisores que **re-ejecutaron** (R30): el funcional y el de seguridad + pentester. Ninguno
+encontró nada CRÍTICA ni ALTA del lado de seguridad —22 formas de `variant_id` y ninguna pagó de
+menos; 33 payloads contra la URL de la foto y solo entraron las nuestras—, pero entre los dos
+rompieron tres cosas de fondo:
+
+- **La cuota se pasaba 5,7×.** Medía la suma y después escribía: seis subidas simultáneas por la
+  ruta **pública** veían las seis la misma suma vieja y entraban las seis. Era, en otro archivo, el
+  mismo `check-then-insert` que ADR-030 ya había tenido que cerrar para la unicidad del ingrediente.
+  Ahora la fila se reserva primero y la suma se verifica después, con un candado que lo hace exacto
+  en un proceso; hay test con hilos y barrera. Y **cada puerta tiene su techo**: el anónimo ya no
+  puede llenar el lugar de las fotos de la carta y dejar a Andrea con un 507.
+- **Los ids de las variantes se movían en cada guardado.** ADR-029 parte 3 estaba escrita como
+  decisión tomada y no estaba en el código: guardar un producto reemplazaba la lista entera, los
+  ids cambiaban, y el carrito de quien estaba comprando recibía un 400 en el checkout. Peor: SQLite
+  reusa los rowid, así que un id viejo podía caer sobre **otra** variante y cobrar un tamaño por
+  otro —un carrito que decía $14.000 salió como pedido de 12 porciones—. Ahora las filas se
+  actualizan en lugar de reemplazarse, y el carrito manda además el **nombre** del tamaño como
+  testigo: si no coincide, el servidor lo corta y pide elegir de nuevo en vez de cobrar otra cosa.
+- **Dos 500 con HTML en una API JSON**, que es la clase de bug con la que arranca `saneado.py`: un
+  nombre cuyo normalizado quedaba vacío (marcas combinantes sueltas) rompía el rescate del
+  `IntegrityError` en los grupos **y en los ingredientes**, y un body que no es objeto (`[1,2,3]`,
+  `"x"`, `5`) reventaba en la ruta pública de pedido —este venía de antes de esta tanda—.
+
+Y una que salió del test del arreglo: `normalizar_nombre` no recortaba las puntas, así que un
+nombre hecho de dos marcas y un espacio normalizaba a `" "` en vez de a vacío. **Era otra
+divergencia con el front**, que hace `trim()`: el espejo que ADR-030 dice sostener. Lo mismo con un
+texto de solo espacios y saltos, que se guardaba como `"·"` y el panel mostraba `Nota: ·`.
+
+Lo demás que corrigieron: el contador de la nota ahora cuenta lo que el servidor va a medir (cada
+salto viaja como `" · "` y ocupaba tres, así que se perdían hasta 198 caracteres sin aviso), la
+tarjeta de la carta dice **"desde $X"** cuando el producto solo se vende por tamaños, el carrito
+ofrece **"Cambiar lo elegido"** para salir de los tres callejones sin salida que encontró el
+reviewer (la foto barrida a las 24 h es el probable), el 413 de la ruta pública nombra **su** tope y
+no el de la otra, el panel **nombra la etiqueta parecida** cuando hay una que se llama igual pero no
+habilita, y se fue un `SAWarning` de autoflush que entraba en cada pedido.
+
+Lo que las revisiones dejaron **anotado y no corregido**, con su razón: un anónimo puede guardar
+bytes arbitrarios dentro de un PNG válido (la salida es reencodear los píxeles, que es el precio de
+no tener `Pillow`, D16/D19), `tag_service` sigue comparando el nombre exacto y no el normalizado
+(**D28**), y el criterio B3 de la tarjeta pedía 400 para `variant_id: "8"` — se acepta a propósito,
+porque un `"8"` que llega de un `<select>` es un error honesto del front y no un ataque.
+
+### Verificación
+
+- Tests: back **328 OK** (eran 228 al abrir el día; 307 al cerrar la tanda y 21 más de las correcciones de la revisión), front **135 OK** (eran 90). Lint y build limpios (402,71 KB JS).
+- Migraciones **`0006`, `0007` y `0008`**: probadas para arriba sobre una copia de la base real,
+  para abajo hasta `0005` con datos sembrados a propósito (un grupo, un sabor, un renglón con
+  tamaño, nota y opción) —los 7 pedidos y sus 8 renglones quedaron intactos—, otra vez para arriba,
+  y desde una base vacía. Después, sobre la base real, con respaldo previo.
+- **Navegador, sin sesión:** grupo "Relleno" creado desde el panel con dos sabores, `CHOCOLATE`
+  sobre `chocolate` **no duplicó**, la etiqueta creada con el botón, puesta en la torta ⇒ la ficha
+  ofrece tamaño, relleno, texto y foto; el box **no ofrece nada**; la foto subió sin sesión; el
+  pedido llegó con `12 porciones` a **$19.800** (no $14.200), su relleno, su nota y su foto, y el
+  mensaje de WhatsApp los nombra. 375px y 390px con `scrollWidth - clientWidth = 0` en la ficha, el
+  carrito, la carta y el panel.
+- La base de desarrollo quedó como estaba: los dos pedidos de prueba y la foto de prueba se
+  borraron. Quedan a propósito el grupo "Relleno", sus sabores y la etiqueta, que son datos útiles.
+
+---
+
 ## [0.11.2] · 2026-10-19 · Lo que el reviewer rompió, y lo que me hizo corregir
 
 La revisión de `T6-F20b` volvió **CHANGES_REQUESTED** con nueve hallazgos. Tres eran de fondo.

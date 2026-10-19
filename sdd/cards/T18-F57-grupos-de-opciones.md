@@ -4,6 +4,9 @@
 **Depende de:** nada · **Va antes de** `T18-F58`
 **Superficie (R27):** N1 (panel admin). No toca plata ni archivos.
 
+
+> **Implementada el 2026-10-19.** Las migraciones salieron `0007` (los grupos) en vez de `0005`, porque T6-F20b se quedó con ese número. La revisión encontró un 500 con HTML con un nombre cuyo normalizado queda vacío: corregido en `saneado`, para los grupos **y** para los ingredientes.
+
 ## Por qué
 
 La chef define **qué se puede elegir**; el cliente elige de eso. Esta tarjeta construye la mitad de

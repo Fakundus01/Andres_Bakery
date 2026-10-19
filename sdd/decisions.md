@@ -526,7 +526,7 @@ cliente ve $14.000, Andrea cobra $6.000 y la diferencia la paga ella.
    panel **borra las filas viejas**. Una FK desde `order_item` hacia algo que el panel borra de
    rutina revienta el día en que Andrea edite una torta que ya vendió.
 
-3. **Los ids de las variantes dejan de cambiar en cada guardado.** `_build_variants` pasa a aceptar un
+3. **Los ids de las variantes dejan de cambiar en cada guardado** (*implementado el 2026-10-19, después de que las dos revisiones de T18 mostraran que esta parte estaba escrita como hecha sin estarlo: `_build_variants` reemplazaba la lista entera y los ids se movían en cada guardado*). `_build_variants` pasa a aceptar un
    `id` opcional y actualizar en lugar de reemplazar. Si no, cada edición del panel invalida el
    `variant_id` que alguien tiene en su carrito de `localStorage`, y el 400 le cae en el checkout.
 
@@ -657,3 +657,105 @@ ADR-020 cerró en la IA y ADR-025 en el envío.
 relleno, cobertura y una descripción libre, los productos empiezan a caerse del mensaje. La nota va
 con tope corto (300) y `_recortar` tiene que contemplar lo nuevo, porque hoy solo mide renglones de
 producto.
+
+---
+
+## ADR-032 · Las fotos viven en Cloudinary, y el back es el único que escribe ahí
+
+**Fecha:** 2026-10-19 · **Estado:** Vigente · **Features:** F45, F59, F41 · **Deudas:** D17, D18, D19
+
+**Contexto:** F59 abre subida pública de archivos y el disco del back ya tenía tres problemas
+anotados: nada se borra nunca (D17), no hay cuota (D18) y **el disco de Render free no persiste**
+(F41). Con subida de admin eso era deuda; con subida de un anónimo es un agujero. El humano decidió
+Cloudinary y dejar las credenciales en el `.env`.
+
+**Decisión, en tres partes:**
+
+1. **Una capa de almacenamiento, dos destinos.** `services/almacen_de_imagenes.py` guarda y borra;
+   con `CLOUDINARY_*` en el entorno usa Cloudinary, y sin credenciales escribe en el disco local,
+   que es lo que pasa hoy en desarrollo. **Las dos fotos pasan por ahí**: las de producto que sube
+   Andrea (F45) y las de referencia que sube el cliente (F59). Dos caminos distintos para lo mismo
+   sería la clase de diferencia que se descubre en producción.
+
+2. **El back valida y después sube; el navegador nunca habla con Cloudinary.** Lo que llega pasa
+   por `image_file.limpiar` —que valida por contenido y reescribe sin metadatos— y recién entonces
+   el back lo sube **firmado**. Un `upload preset` sin firma habría sido más simple y es una puerta
+   pública de escritura a su cuenta: se saltea nuestro validador y cualquiera puede llenarle el
+   plan free. El `api_secret` no sale del servidor.
+
+3. **La URL que el pedido acepta sigue siendo solo una que emitimos nosotros.** Lo que cambia es la
+   forma, no la regla (ADR-031): o `/uploads/<32 hex>.<jpg|png>` existiendo en disco, o una de
+   `res.cloudinary.com/<nuestro cloud>/image/upload/.../<nuestra carpeta>/<32 hex>`. Cualquier otra
+   cosa es un 400. Sin eso, el renglón del pedido es un lugar donde pegar un link a cualquier cosa
+   y el panel de Andrea lo muestra con su firma.
+
+**Sin dependencia nueva (R28).** La API de Cloudinary se llama con `urllib` y la firma es un SHA-1
+de los parámetros ordenados más el `api_secret`, el mismo camino que ya usa `payment_service.py`
+para Mercado Pago. El SDK oficial sumaría una dependencia —y su auditoría (R19)— para armar un
+multipart y un hash.
+
+**Lo que esto cierra y lo que no:**
+
+- **D18 (cuota)** se cierra en los dos destinos, y **no con una mirada**: la fila se escribe
+  primero y la suma se verifica después (igual que ADR-030 punto 4 para el ingrediente), porque la
+  primera versión medía-y-escribía y seis subidas simultáneas por la ruta pública entraban las
+  seis, 5,7× la cuota. Lo midió el reviewer de T18 con una barrera; hay test con hilos. Además,
+  **cada puerta tiene su techo**: lo que sube cualquiera no puede comerse el lugar de las fotos de
+  la carta.
+- **D17 (nada se borra)** se cierra **para las fotos de referencia**: se registran al subirse, se
+  marcan usadas cuando el pedido se crea, y el barrido borra lo provisorio que pasó su ventana.
+  Para las fotos de producto sigue abierta: cambiar la foto de un producto deja la anterior.
+- **D19 (perfil de color)** sigue igual. Cloudinary no lo arregla: el perfil se tira **antes**, en
+  nuestro limpiador, que es el precio de no tener `Pillow`.
+- **Sin credenciales el deploy pierde las fotos igual.** La capa está lista; cargar las cuatro
+  variables es parte de F41, no algo que el código pueda resolver solo.
+
+---
+
+## ADR-033 · La personalización vive detrás de una etiqueta, no de los grupos
+
+**Fecha:** 2026-10-19 · **Estado:** Vigente · **Features:** F57, F58, F59
+
+**Contexto:** con F57/F58 construidas, la ficha ofrecía elegir sabores, escribir cómo la querés y
+subir una foto a **cualquier producto** que tuviera grupos asignados. El humano lo acotó en el mismo
+ciclo: *"solo es para el tag «tortas personalizadas», para lo otro no"*.
+
+**Decisión:** la puerta es la **etiqueta** `tortas-personalizadas` sobre el producto, y no la
+presencia de grupos de opciones.
+
+| Si el producto **tiene** la etiqueta | Si **no** la tiene |
+|---|---|
+| La ficha ofrece los grupos asignados, el texto libre y la foto | No ofrece nada de eso, aunque tenga grupos |
+| El servidor acepta `option_ids`, `note` y `reference_image` | Los **rechaza con 400 explicado** |
+| Un grupo `required` sin elegir frena el pedido | Los grupos se ignoran: el producto se vende como siempre |
+
+**Por qué la etiqueta y no los grupos.** Si la puerta fueran los grupos, asignarle "Relleno" por
+error a una docena de cookies la convertiría en algo que **no se puede pedir** sin elegir relleno:
+un clic equivocado en el panel saca un producto de la venta. Con la etiqueta, el error se ve y se
+deshace en el mismo lugar donde se cometió. Y es un mecanismo que Andrea ya usa todos los días.
+
+**Por qué 400 y no descartar en silencio.** Si los campos se ignoraran, alguien manda una nota con
+el pedido de cookies, ve un 201 y da por hecho que ella la va a leer. Decirle que ese producto no
+se pide personalizado es la verdad.
+
+**Lo que la etiqueta NO cierra:** vender por tamaños (`variants`, ADR-007) sigue siendo de la carta
+y no depende de esto. Una torta se puede cobrar por tamaño sin ser personalizable, y el tamaño
+elegido se cobra igual (ADR-029).
+
+**El costo honesto:** hay **un string** que tiene que coincidir en los dos lados
+(`renglon_del_pedido.py::TAG_PERSONALIZABLE` y `lib/carrito.ts::TAG_PERSONALIZABLE`). Es la misma
+clase de espejo que `normalizar_nombre` (ADR-030).
+
+> **Corregido el 2026-10-19, el mismo día.** La primera versión de esta ADR decía que *"si alguien
+> renombra la etiqueta desde el panel, el slug cambia y la personalización deja de ofrecerse"*.
+> **No es cierto y lo midió el reviewer de T18:** `tag_service.update` no recalcula el slug, así
+> que renombrarla no la rompe. El riesgo real es otro y es el de al lado: **puede haber dos
+> etiquetas que se llamen igual y solo una habilite**, porque `unique_slug` desempata con un
+> sufijo (`tortas-personalizadas-2`) y lo que manda es el slug. El síntoma sería el peor posible:
+> "le puse la etiqueta y no pasa nada", sin un error en ningún log.
+
+Mitigado donde se trabaja: el panel dice qué etiqueta hace falta, la ofrece con un botón, avisa en
+el formulario del producto cuando falta, y —desde la corrección del review— **nombra la etiqueta
+parecida** cuando hay una marcada que se llama igual pero no es la que habilita. Lo que queda
+abierto es que `tag_service` compare el nombre normalizado como ya hacen los ingredientes y los
+grupos: queda como **D28**.

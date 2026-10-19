@@ -4,6 +4,8 @@ import { ArrowRight, ShoppingBag, X } from "lucide-react";
 
 import { useCart } from "../contexts/CartContext";
 import { QuantityPicker } from "./QuantityPicker";
+import { DetalleDelRenglon } from "./DetalleDelRenglon";
+import { claveDelRenglon, grupoDeLaOpcion, precioDelRenglon } from "../lib/carrito";
 import { formatCurrency } from "../lib/format";
 import { EmptyState } from "./ui";
 
@@ -47,26 +49,40 @@ export function CartDrawer() {
               {items.length === 0 ? (
                 <EmptyState title="Todavía no agregaste productos" description="Sumá un box, torta o cookies desde la tienda para iniciar el checkout." />
               ) : (
-                items.map((item) => (
-                  <div key={item.id} className="border-[3px] border-borde bg-superficie-alt p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="font-semibold text-tinta">{item.name}</p>
-                        <p className="mt-1 text-sm text-tinta-tenue">{formatCurrency(item.price)} por {item.unit_label}</p>
+                items.map((item) => {
+                  const clave = claveDelRenglon(item);
+                  const unitario = precioDelRenglon(item);
+                  return (
+                    <div key={clave} className="border-[3px] border-borde bg-superficie-alt p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-tinta">{item.name}</p>
+                          <p className="mt-1 text-sm text-tinta-tenue">
+                            {formatCurrency(unitario)} por {item.variante?.name ?? item.unit_label}
+                          </p>
+                          <DetalleDelRenglon
+                            elegidas={(item.opciones ?? []).map(
+                              (opcion) => `${grupoDeLaOpcion(item.option_groups, opcion.id)}: ${opcion.name}`,
+                            )}
+                            nota={item.nota}
+                            foto={item.fotoDeReferencia}
+                            rearmarEn={item.slug}
+                          />
+                        </div>
+                        <button type="button" className="shrink-0 text-sm font-semibold text-tinta-tenue" onClick={() => removeItem(clave)}>Quitar</button>
                       </div>
-                      <button type="button" className="text-sm font-semibold text-tinta-tenue" onClick={() => removeItem(item.id)}>Quitar</button>
+                      <div className="mt-4 flex items-center justify-between">
+                        <QuantityPicker
+                          product={item}
+                          cantidad={item.quantity}
+                          onSubir={() => subir(clave)}
+                          onBajar={() => bajar(clave)}
+                        />
+                        <strong className="text-tinta">{formatCurrency(unitario * item.quantity)}</strong>
+                      </div>
                     </div>
-                    <div className="mt-4 flex items-center justify-between">
-                      <QuantityPicker
-                        product={item}
-                        cantidad={item.quantity}
-                        onSubir={() => subir(item.id)}
-                        onBajar={() => bajar(item.id)}
-                      />
-                      <strong className="text-tinta">{formatCurrency(item.price * item.quantity)}</strong>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
             <div className="mt-6 border-t-[3px] border-borde pt-4">

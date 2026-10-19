@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import type { CartItem } from "../../contexts/CartContext";
-import { TOPE_NOTAS, armarPayload, queFalta } from "./pedidoDelFormulario";
+import { TOPE_NOTAS, armarPayload, queFalta, renglonDelPedido } from "./pedidoDelFormulario";
+import { TOPE_NOTA } from "../../lib/carrito";
 
 const item = { id: 3, quantity: 6 } as CartItem;
 
@@ -151,5 +152,71 @@ describe("armarPayload", () => {
       paymentMethod: "mercado_pago",
     });
     expect(payload.customer.email).toBeUndefined();
+  });
+});
+
+describe("renglonDelPedido", () => {
+  const torta = {
+    id: 3,
+    quantity: 1,
+    variante: { id: 7, name: "8 porciones", price: 14000 },
+    opciones: [
+      { id: 11, name: "Dulce de leche", sort_order: 0 },
+      { id: 21, name: "Vainilla", sort_order: 0 },
+    ],
+    nota: "  Que diga Feliz cumple Mica  ",
+    fotoDeReferencia: "/uploads/aabbccddeeff00112233445566778899.jpg",
+  } as CartItem;
+
+  it("manda el tamaño elegido por id, nunca el precio", () => {
+    // El precio lo pone el servidor a partir del id (ADR-029): si viajara
+    // desde acá, cualquiera lo edita antes de mandarlo.
+    const renglon = renglonDelPedido(torta);
+
+    expect(renglon.variant_id).toBe(7);
+    expect(Object.keys(renglon)).not.toContain("price");
+    expect(Object.keys(renglon)).not.toContain("unit_price");
+  });
+
+  it("manda los sabores elegidos por id", () => {
+    expect(renglonDelPedido(torta).option_ids).toEqual([11, 21]);
+  });
+
+  it("la nota viaja sin el espacio de más y acotada", () => {
+    expect(renglonDelPedido(torta).note).toBe("Que diga Feliz cumple Mica");
+    expect(renglonDelPedido({ ...torta, nota: "A".repeat(500) } as CartItem).note).toHaveLength(
+      TOPE_NOTA,
+    );
+  });
+
+  it("manda la foto de referencia tal como la emitió el servidor", () => {
+    expect(renglonDelPedido(torta).reference_image).toBe(
+      "/uploads/aabbccddeeff00112233445566778899.jpg",
+    );
+  });
+
+  it("un producto sin personalizar manda solo producto y cantidad", () => {
+    // Un `note: ""` o un `option_ids: []` serían ruido en el pedido de quien
+    // compró una docena de cookies.
+    expect(renglonDelPedido({ id: 9, quantity: 12 } as CartItem)).toEqual({
+      product_id: 9,
+      quantity: 12,
+    });
+  });
+
+  it("una nota de solo espacios no viaja", () => {
+    expect(renglonDelPedido({ id: 9, quantity: 1, nota: "   " } as CartItem).note).toBeUndefined();
+  });
+
+  it("el payload entero lleva los renglones armados", () => {
+    const payload = armarPayload({
+      items: [torta],
+      form: invitado,
+      deliveryMethod: "pickup",
+      paymentMethod: "mercado_pago",
+    });
+
+    expect(payload.items[0].variant_id).toBe(7);
+    expect(payload.items[0].option_ids).toEqual([11, 21]);
   });
 });

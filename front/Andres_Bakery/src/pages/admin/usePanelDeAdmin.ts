@@ -1,49 +1,33 @@
 import { startTransition, useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { useAuth } from "../../contexts/AuthContext";
-import { ingredientsApi, metricsApi, ordersApi, productsApi, siteApi, tagsApi, usersApi } from "../../lib/api";
+import {
+  ingredientsApi,
+  metricsApi,
+  optionGroupsApi,
+  ordersApi,
+  productsApi,
+  siteApi,
+  tagsApi,
+  usersApi,
+} from "../../lib/api";
 import { getErrorMessage } from "../../lib/format";
 import type { Order, PerfilAndrea, Product, ResumenMetricas, Tag, User } from "../../lib/types";
 import type { ProductForm, TagForm } from "../../lib/ui-types";
+import { accionesDeIngredientes } from "./accionesDeIngredientes";
+import { accionesDeOpciones } from "./accionesDeOpciones";
+import {
+  formularioDeEtiquetaVacio,
+  formularioDeProductoVacio,
+  perfilVacio,
+} from "./valoresIniciales";
 import { useIngredientesDelPanel } from "./useIngredientesDelPanel";
+import { useOpcionesDelPanel } from "./useOpcionesDelPanel";
 
-export const formularioDeProductoVacio: ProductForm = {
-  name: "",
-  description: "",
-  steps: "",
-  prep_note: "",
-  price: "",
-  unit_label: "unidad",
-  min_qty: "1",
-  qty_step: "1",
-  category: "general",
-  image_url: "",
-  available: true,
-  allows_pickup: true,
-  allows_delivery: true,
-  tag_ids: [],
-  ingredient_ids: [],
-};
-
-export const formularioDeEtiquetaVacio: TagForm = { name: "", color_token: "acento", sort_order: "0" };
-
-const perfilVacio: PerfilAndrea = {
-  role: "",
-  tagline: "",
-  photo_url: "",
-  location: "",
-  socials: [],
-  cv: {
-    published: false,
-    headline: "",
-    summary: "",
-    contact_email: "",
-    file_url: "",
-    skills: [],
-    experience: [],
-    education: [],
-  },
-};
+export {
+  formularioDeEtiquetaVacio,
+  formularioDeProductoVacio,
+} from "./valoresIniciales";
 
 /** Todo el estado del panel, fuera de la pantalla.
  *
@@ -81,6 +65,19 @@ export function usePanelDeAdmin() {
   });
   const { recibirIngredientes } = ingredientes;
 
+  const {
+    crearEtiquetaDeTortas,
+    crearGrupo,
+    renombrarGrupo,
+    cambiarObligatoriedad,
+    borrarGrupo,
+    crearOpcion,
+    renombrarOpcion,
+    borrarOpcion,
+    ...opciones
+  } = useOpcionesDelPanel({ token, productos, etiquetas });
+  const { recibirGruposDeOpciones } = opciones;
+
   const cargar = useCallback(async () => {
     if (!token) {
       return;
@@ -96,6 +93,7 @@ export function usePanelDeAdmin() {
         usuariosData,
         historiaData,
         perfilData,
+        gruposData,
       ] = await Promise.all([
         productsApi.list(),
         tagsApi.list(),
@@ -104,6 +102,7 @@ export function usePanelDeAdmin() {
         usersApi.list(token),
         siteApi.getAbout(),
         siteApi.getProfile(),
+        optionGroupsApi.list(),
       ]);
       setProductos(productosData);
       setEtiquetas(etiquetasData);
@@ -112,12 +111,13 @@ export function usePanelDeAdmin() {
       setUsuarios(usuariosData);
       setHistoria(historiaData.content || "");
       setPerfil(perfilData);
+      recibirGruposDeOpciones(gruposData);
     } catch (reason: unknown) {
       setError(getErrorMessage(reason));
     } finally {
       setCargando(false);
     }
-  }, [token, recibirIngredientes]);
+  }, [token, recibirIngredientes, recibirGruposDeOpciones]);
 
   const cargarMetricas = useCallback(
     async (cuantosDias: number) => {
@@ -164,6 +164,34 @@ export function usePanelDeAdmin() {
       setError(getErrorMessage(reason));
     }
   };
+
+  /** Lo borrado se va de la copia del formulario (ver `accionesDeIngredientes`). */
+  const olvidarDelFormulario = (campo: "ingredient_ids" | "option_group_ids") => (id: number) =>
+    setFormProducto((actual) => ({
+      ...actual,
+      [campo]: actual[campo].filter((elegido) => elegido !== id),
+    }));
+
+  const accionesSobreIngredientes = accionesDeIngredientes(
+    { renombrar, borrar },
+    conAviso,
+    olvidarDelFormulario("ingredient_ids"),
+  );
+
+  const accionesSobreOpciones = accionesDeOpciones(
+    {
+      crearEtiquetaDeTortas,
+      crearGrupo,
+      renombrarGrupo,
+      cambiarObligatoriedad,
+      borrarGrupo,
+      crearOpcion,
+      renombrarOpcion,
+      borrarOpcion,
+    },
+    conAviso,
+    olvidarDelFormulario("option_group_ids"),
+  );
 
   const resetProducto = () => {
     setProductoEditado(null);
@@ -227,25 +255,9 @@ export function usePanelDeAdmin() {
     productos,
     etiquetas,
     ...ingredientes,
-    renombrarIngrediente: (id: number, nombre: string) =>
-      void conAviso(
-        () => renombrar(id, nombre),
-        "Ingrediente renombrado. Los productos que lo llevan se actualizan solos.",
-      ),
-    borrarIngrediente: (id: number) => {
-      // El formulario no se recarga con los datos, asi que su copia del id
-      // sobrevive al borrado: al guardar el producto salia "one or more
-      // ingredients do not exist", en ingles y sin explicar nada. Lo marco
-      // el reviewer de T6-F20b.
-      setFormProducto((actual) => ({
-        ...actual,
-        ingredient_ids: actual.ingredient_ids.filter((elegido) => elegido !== id),
-      }));
-      void conAviso(
-        () => borrar(id),
-        "Ingrediente eliminado. Salió de todos los productos que lo tenían.",
-      );
-    },
+    ...accionesSobreIngredientes,
+    ...opciones,
+    ...accionesSobreOpciones,
     ordenes,
     usuarios,
     historia,

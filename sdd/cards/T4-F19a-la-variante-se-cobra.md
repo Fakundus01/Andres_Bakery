@@ -7,6 +7,9 @@ de $14.000 y la cobra $6.000.
 **Superficie (R27):** **N3 — plata**. Un renglón de pedido cambia de precio según un id que manda el
 cliente. Lleva `security-reviewer` y `pentester` después del reviewer funcional (R31).
 
+
+> **Implementada el 2026-10-19.** Revisada por los dos revisores (R30). Dos desvíos, los dos a propósito y los dos anotados: **B3 acepta `variant_id: "8"`** —un string numérico que llega de un `<select>` es un error honesto del front, no un ataque, y `saneado.entero` ya lo trata así en todo el proyecto—, y el carrito manda además **`variant_name` como testigo**, que no estaba en la tarjeta: lo pidió el pentester porque SQLite reusa los rowid y un id viejo podía cobrar un tamaño por otro.
+
 ## Por qué
 
 El selector de tamaño de `ProductPage.tsx:161` es decorativo: cambia el número en pantalla

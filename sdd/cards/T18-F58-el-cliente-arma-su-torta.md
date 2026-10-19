@@ -5,6 +5,9 @@
 anónimo y que se muestra en el panel y en el mensaje de WhatsApp). Lleva `security-reviewer` y
 `pentester` después del reviewer funcional (R31).
 
+
+> **Implementada el 2026-10-19**, con un recorte que entró a mitad de camino y no estaba en la tarjeta: la personalización vive detrás de la etiqueta `tortas-personalizadas` (**ADR-033**). G5 quedó mejor de lo que pedía: el front cuenta lo que el servidor va a medir, así que la nota no se recorta en silencio.
+
 ## Por qué depende de F19a, y no es negociable
 
 Con personalización, **dos tortas iguales con distinto relleno son dos renglones** del carrito. Hoy

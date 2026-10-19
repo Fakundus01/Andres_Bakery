@@ -6,6 +6,9 @@
 **escritura pública de archivos**. Es la superficie más grande abierta hasta ahora. Lleva
 `security-reviewer` **y** `pentester` (R31), y `security.md` se reclasifica con fecha.
 
+
+> **Implementada el 2026-10-19**, con las fotos en Cloudinary si hay credenciales (**ADR-032**), que no estaba en la tarjeta. H3 no se cumplía de verdad y lo encontró la revisión: la cuota medía-y-escribía, y seis subidas simultáneas la pasaban 5,7×. Ahora se reserva la fila y después se verifica, y cada puerta tiene su techo.
+
 ## Lo que ya está, y lo que falta
 
 Lo que **no** hay que construir: el validador. `services/image_file.py` ya valida por contenido,

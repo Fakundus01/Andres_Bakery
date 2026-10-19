@@ -1,6 +1,8 @@
 /** La carta: productos, etiquetas e ingredientes. */
 import type {
   Ingredient,
+  OptionChoice,
+  OptionGroup,
   Product,
   ProductWritePayload,
   Tag,
@@ -95,5 +97,63 @@ export const ingredientsApi = {
       method: "DELETE",
       token,
     });
+  },
+};
+
+/** Los grupos de sabores que define la chef (F57, ADR-031).
+ *
+ *  El `GET` es publico porque la ficha del producto necesita saber que se
+ *  puede elegir; el resto es solo de ella.
+ */
+export const optionGroupsApi = {
+  list() {
+    return apiRequest<OptionGroup[]>("/api/option-groups");
+  },
+  /** 201 si lo creó, 200 si ya existía con ese nombre (ADR-030/031). */
+  create(
+    grupo: { name: string; required?: boolean; sort_order?: number; options?: string[] },
+    token: string,
+  ) {
+    return apiRequest<OptionGroup>("/api/option-groups", {
+      method: "POST",
+      body: grupo,
+      token,
+    });
+  },
+  update(
+    id: number,
+    grupo: { name?: string; required?: boolean; sort_order?: number },
+    token: string,
+  ) {
+    return apiRequest<{ status: string }>(`/api/option-groups/${id}`, {
+      method: "PUT",
+      body: grupo,
+      token,
+    });
+  },
+  remove(id: number, token: string) {
+    return apiRequest<{ status: string }>(`/api/option-groups/${id}`, {
+      method: "DELETE",
+      token,
+    });
+  },
+  crearOpcion(groupId: number, opcion: { name: string; sort_order?: number }, token: string) {
+    return apiRequest<OptionChoice>(`/api/option-groups/${groupId}/options`, {
+      method: "POST",
+      body: opcion,
+      token,
+    });
+  },
+  renombrarOpcion(groupId: number, optionId: number, name: string, token: string) {
+    return apiRequest<{ status: string }>(
+      `/api/option-groups/${groupId}/options/${optionId}`,
+      { method: "PUT", body: { name }, token },
+    );
+  },
+  borrarOpcion(groupId: number, optionId: number, token: string) {
+    return apiRequest<{ status: string }>(
+      `/api/option-groups/${groupId}/options/${optionId}`,
+      { method: "DELETE", token },
+    );
   },
 };

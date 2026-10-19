@@ -3,6 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 from backend.extensions import db
+from backend.models import ProductVariant
 from backend.models import Product
 from backend.services.exceptions import NotFoundError, ValidationError
 from backend.services.product_service import ProductService
@@ -152,3 +153,87 @@ class ProductServiceTestCase(BackendServiceTestCase):
     def test_get_by_slug_without_match_is_a_404(self) -> None:
         with self.assertRaises(NotFoundError):
             self.service.get_by_slug("no-existe")
+
+class VariantesQueNoSeMuevenTestCase(BackendServiceTestCase):
+    """ADR-029 parte 3, que estuvo escrita como hecha sin estar.
+
+    Lo marcaron las dos revisiones de T18: reemplazar la lista entera borraba
+    las filas viejas, los ids cambiaban en cada guardado y el carrito de quien
+    estaba comprando quedaba inservible. Peor: SQLite reusa los rowid, así que
+    un id viejo podía caer sobre **otra** variante y cobrar un tamaño por otro.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.service = ProductService()
+        self.torta = self.create_product(name="Torta de chocolate", price="6000.00")
+        self.ocho = self.create_variant(product=self.torta, name="8 porciones", price="14000.00")
+        self.doce = self.create_variant(
+            product=self.torta, name="12 porciones", price="19800.00", sort_order=1
+        )
+
+    def guardar(self, variantes: list[dict]) -> dict:
+        return self.service.update(self.torta.id, {"variants": variantes})
+
+    def test_guardar_mandando_los_mismos_ids_no_mueve_los_ids(self) -> None:
+        antes = [(v.id, v.name) for v in self.torta.variants]
+
+        self.guardar(
+            [
+                {"id": self.ocho.id, "name": "8 porciones", "price": 14000},
+                {"id": self.doce.id, "name": "12 porciones", "price": 19800},
+            ]
+        )
+
+        despues = [(v.id, v.name) for v in self.torta.variants]
+        self.assertEqual(antes, despues)
+
+    def test_cambiar_el_precio_de_una_variante_no_le_cambia_el_id(self) -> None:
+        """El caso real: ella sube el precio de la torta grande."""
+        self.guardar(
+            [
+                {"id": self.ocho.id, "name": "8 porciones", "price": 15000},
+                {"id": self.doce.id, "name": "12 porciones", "price": 19800},
+            ]
+        )
+
+        viva = db.session.get(ProductVariant, self.ocho.id)
+        self.assertEqual(Decimal("15000.00"), viva.price)
+        self.assertEqual("8 porciones", viva.name)
+
+    def test_una_variante_nueva_entra_sin_tocar_las_que_estaban(self) -> None:
+        self.guardar(
+            [
+                {"id": self.ocho.id, "name": "8 porciones", "price": 14000},
+                {"id": self.doce.id, "name": "12 porciones", "price": 19800},
+                {"name": "20 porciones", "price": 28000},
+            ]
+        )
+
+        ids = [v.id for v in self.torta.variants]
+        self.assertIn(self.ocho.id, ids)
+        self.assertIn(self.doce.id, ids)
+        self.assertEqual(3, len(ids))
+
+    def test_la_que_no_viene_en_la_lista_se_borra(self) -> None:
+        self.guardar([{"id": self.ocho.id, "name": "8 porciones", "price": 14000}])
+
+        self.assertEqual([self.ocho.id], [v.id for v in self.torta.variants])
+        self.assertIsNone(db.session.get(ProductVariant, self.doce.id))
+
+    def test_el_id_de_la_variante_de_otro_producto_no_se_reusa(self) -> None:
+        """Mismo control que en el pedido: el id tiene que ser de este producto."""
+        otro = self.create_product(name="Box")
+        ajena = self.create_variant(product=otro, name="Grande", price="9000.00")
+
+        with self.assertRaises(ValidationError):
+            self.guardar([{"id": ajena.id, "name": "Robada", "price": 1}])
+
+        self.assertEqual("Grande", db.session.get(ProductVariant, ajena.id).name)
+
+    def test_sin_ids_sigue_andando_como_antes(self) -> None:
+        """El panel viejo no manda ids: eso tiene que seguir funcionando."""
+        self.guardar([{"name": "Unica", "price": 10000}])
+
+        self.assertEqual(["Unica"], [v.name for v in self.torta.variants])
+

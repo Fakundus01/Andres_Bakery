@@ -6,6 +6,6 @@
 
 export { API_URL, ApiError, EVENTO_SESION_VENCIDA } from "./cliente";
 export type { DetalleSesionVencida } from "./cliente";
-export { productsApi, tagsApi, ingredientsApi } from "./catalogo";
+export { productsApi, tagsApi, ingredientsApi, optionGroupsApi } from "./catalogo";
 export { ordersApi, paymentsApi, contactApi } from "./pedidos";
 export { authApi, siteApi, uploadsApi, metricsApi, aiApi, usersApi } from "./sitio";

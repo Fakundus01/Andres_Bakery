@@ -34,6 +34,20 @@ class PedidoWhatsAppApiTestCase(ApiTestCase):
         datos.update(cambios)
         return datos
 
+    def test_un_body_que_no_es_objeto_da_400_y_no_500(self) -> None:
+        """Lo encontro el pentester de T18; venia de antes de esa tanda.
+
+        `[1,2,3]`, `"x"`, `5` o `true` reventaban en el primer `data.get` y
+        salia **500 con HTML** en la ruta publica, que es justo la clase de
+        bug con la que arranca `saneado.py`.
+        """
+        for body in ([1, 2, 3], "x", 5, True, [{"product_id": 1}]):
+            with self.subTest(body=body):
+                respuesta = self.client.post("/api/orders/whatsapp", json=body)
+                self.assertEqual(400, respuesta.status_code)
+                self.assertEqual("application/json", respuesta.mimetype)
+                self.assertIn("error", respuesta.get_json())
+
     def test_sin_token_el_invitado_puede_pedir(self) -> None:
         # La regresion que abre T7: esta misma llamada contra /api/orders da
         # 401, y eso era la pared entre el visitante y la compra.

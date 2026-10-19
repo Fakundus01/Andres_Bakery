@@ -1,119 +1,148 @@
-# T4/T6 · Terminar el panel (F19, F20) — tarjeta 1 revisada, y creció a 4
+# T4-F19a + T18 · Tortas a pedido (F19a, F57, F58, F59)
 
-**Rama:** `dev` · **Features:** F19, F20 · **ADR:** 029 · **Versión:** 0.11.0
-**Estado:** T6-F20 implementado, revisado por dos revisores y **corregido**; sin commitear (R01).
-**F20 NO está Complete**: la revisión destapó que la unicidad del ingrediente vive en el lugar
-equivocado, y eso es `T6-F20b`. Faltan además las dos de F19.
+**Rama:** `dev` · **Features:** F19 (la mitad que importaba), F57, F58, F59
+**ADR:** 029, 030, 031, **032** y **033** (los dos últimos, nuevos de hoy) · **Versión:** 0.12.0
+**Estado:** las cuatro tarjetas **implementadas y verdes**, verificadas en el navegador, **sin
+commitear** (R01). Falta la **revisión independiente** (R30/R31), que es lo único que separa esto
+de un `done`.
 
-> Si esta sesión se corta: F20 está implementado, verde y con su handback
-> ([`handback_T6-F20.md`](handback_T6-F20.md)), **sin commitear**. Las dos tarjetas de F19 no tienen
-> una línea de código escrita.
+> Si esta sesión se corta: el commit anterior (`ddaf6f0`) dejó T6-F20 cerrado. Todo lo de hoy está
+> en el árbol de trabajo, con los cuatro comandos en verde y la base de desarrollo migrada a `0008`
+> (respaldo en `instance/bakery.db.respaldo-pre-0006`).
 
 ---
 
-## Lo que apareció al planificar
+## Lo que pidió el humano, y lo que cambió a mitad de camino
 
-Leyendo el código en vez de la spec, F19 resultó más grande de lo que decía: el selector de tamaño de
-la ficha es **decorativo**. Cambia el precio en pantalla y el pedido se cobra al precio base. Se
-levantó como DRIFT (R25) con tres opciones; el humano eligió **A: completarla de punta a punta**.
-Queda en ADR-029.
+El pedido fue "run de la app, commit, y terminemos la sección de tortas", con el detalle de qué
+tenía que tener: la chef edita los gustos predeterminados, el cliente elige bizcocho y relleno, y
+lo personalizado va por un textarea donde además puede subir imágenes de ejemplo.
 
-El resto fue al revés, y para bien: **el back ya sabe todo**. `product_service._apply_relations`
-acepta `ingredient_ids` y `variants` desde T3, y `/api/ingredients` tiene el CRUD completo y sin usar
-(`contracts.md` líneas 23-24). F20 es pantalla y nada más.
+Se preguntaron cuatro cosas antes de escribir código (R04) y las cuatro se respondieron:
 
-## Las tres tarjetas, en este orden
+| Lo que no cerraba | Lo que se decidió |
+|---|---|
+| F58 depende de `T4-F19a` | **F19a primero**, y de paso cierra el agujero de plata |
+| ¿Qué fotos van a Cloudinary? | **Las dos**, con fallback a disco (ADR-032) |
+| ¿Cómo sube la foto? | **La valida el back y la sube él**, firmado. Nunca el navegador |
+| "el usuario puede elegir los que aparezcan" | **La chef elige por torta**, como ya decía ADR-031 |
 
-| # | Tarjeta | Qué cierra | Por qué en este lugar |
-|---|---|---|---|
-| 1 | [`T6-F20-ingredientes`](../../cards/T6-F20-ingredientes.md) ✅ **revisada y corregida** | F20 → 90% | No dependía de nada y borró el "copiá esto" de la IA |
-| 1b | [`T6-F20b-la-unicidad-vive-en-el-back`](../../cards/T6-F20b-la-unicidad-vive-en-el-back.md) ⬅ **nueva** | F20 → 100% | Salió de la revisión. Tiene una decisión pendiente para el humano (200 vs 400) |
-| 2 | [`T4-F19a-la-variante-se-cobra`](../../cards/T4-F19a-la-variante-se-cobra.md) | el agujero de plata | **Va antes que la 3.** Al revés hay una ventana donde el panel carga tortas que se cobran de menos |
-| 3 | [`T4-F19b-variantes-desde-el-panel`](../../cards/T4-F19b-variantes-desde-el-panel.md) | F19 → 100% | Necesita que el servidor ya sepa cobrar |
+**Y a mitad del ciclo entró un recorte que cambió el diseño:** *"solo es para el tag «tortas
+personalizadas», para lo otro no"*. Quedó en **ADR-033**, y es lo que hace que una docena de cookies
+no se personalice. La puerta es la etiqueta y **no** la presencia de grupos: si fuera por los grupos,
+asignarle "Relleno" por error a las cookies las sacaría de la venta.
+
+## Las cuatro tarjetas
+
+| # | Tarjeta | Estado |
+|---|---|---|
+| 1 | [`T4-F19a-la-variante-se-cobra`](../../cards/T4-F19a-la-variante-se-cobra.md) | ✅ implementada |
+| 2 | [`T18-F57-grupos-de-opciones`](../../cards/T18-F57-grupos-de-opciones.md) | ✅ implementada |
+| 3 | [`T18-F58-el-cliente-arma-su-torta`](../../cards/T18-F58-el-cliente-arma-su-torta.md) | ✅ implementada, con el recorte de ADR-033 |
+| 4 | [`T18-F59-foto-de-referencia`](../../cards/T18-F59-foto-de-referencia.md) | ✅ implementada, con Cloudinary de ADR-032 |
+
+`T4-F19b` (cargar variantes desde el panel) **sigue sin una línea escrita**.
 
 ## Base medida antes de empezar
 
-| Check | Base |
+| Check | Base | Después |
+|---|---|---|
+| Tests del back | 228 OK | **307 OK** |
+| Tests del front | 90 OK | **124 OK** |
+| Migración | `0005` | **`0008`** |
+| Último ADR | 031 | **033** |
+| Build | 381,91 KB | **402,04 KB** |
+
+## El rojo, medido rompiendo los controles a propósito (R29)
+
+El código se escribió antes de los tests —y conviene decirlo, porque R29 pide al revés—, así que el
+rojo se midió como pide la regla para un guard nuevo: **rompiendo el control una vez**.
+
+```
+--- con los dos controles apagados ---
+FAIL: test_la_variante_de_otro_producto_no_compra_la_torta_barata
+      AssertionError: ValidationError not raised        <- cobra de menos
+ERROR: test_un_sabor_de_un_grupo_que_no_es_del_producto_no_entra
+      KeyError en grupos[group_id]                      <- 500, no 400
+Ran 17 tests · FAILED (failures=1, errors=1)
+```
+
+El segundo dice algo que conviene anotar: **sin la verificación, el sabor ajeno no entra "mal", hace
+reventar el endpoint con un 500** — la clase de bug con la que arranca `saneado.py`. Con los dos
+controles puestos: 17 OK.
+
+Y el de la etiqueta (ADR-033) se midió igual, al revés: al poner la puerta, **7 tests de los que ya
+estaban se pusieron rojos** porque usaban un producto sin etiquetar. Eso es la regla nueva
+funcionando; se actualizaron a la fábrica `create_producto_personalizable`.
+
+## Lo que apareció construyendo, y no estaba en ninguna tarjeta
+
+- **`models.py` pasó las 300 líneas** (R05) y se partió en paquete (`catalogo`, `pedidos`, `sitio`,
+  `usuarios`) con un `__init__` que mantiene la puerta: ningún import cambió. Igual `lib/types.ts`.
+- **El asistente de IA se iba a romper con Cloudinary prendido**: leía la foto del disco a mano, así
+  que una foto en Cloudinary le habría hecho decir "primero subí la foto" sobre una foto subida.
+  Ahora la lee el almacén.
+- **La tarjeta de un producto que se arma dice "Elegir y pedir"** y lleva a la ficha: agregarlo
+  desde la tarjeta mandaba un pedido que el servidor rechaza.
+- **`nombre_para_guardar` salió a `saneado`**: los grupos y los sabores tienen la misma unicidad
+  normalizada que los ingredientes, sin copiar la función.
+
+## Verificación en navegador — hecha el 2026-10-19
+
+Panel: grupo "Relleno" creado con dos sabores · `CHOCOLATE` sobre `chocolate` **no duplicó** · la
+etiqueta creada con el botón de la pestaña · puesta en la torta ⇒ la ficha ofrece tamaño, relleno,
+textarea y foto, y el **box no ofrece nada** · la foto subió **sin sesión** · el pedido llegó con
+`12 porciones` a **$19.800** (no $14.200), su relleno, su nota y su foto · el mensaje de WhatsApp los
+nombra · `stored_image` marcó la foto como usada (`provisional=0`) · 375px y 390px con
+`scrollWidth - clientWidth = 0` en la ficha, el carrito, la carta y el panel.
+
+La base de desarrollo quedó como estaba: los dos pedidos de prueba y la foto de prueba se borraron a
+mano (verificado: 7 pedidos, 0 renglones huérfanos, 0 opciones huérfanas). Quedan a propósito el
+grupo "Relleno", sus sabores y la etiqueta.
+
+## La revisión independiente, y qué rompió (R30/R31)
+
+Dos revisores que **re-ejecutaron**: el funcional ([`review_T18.md`](review_T18.md),
+`CHANGES_REQUESTED`, 14 hallazgos) y el de seguridad + pentester
+([`security_review_T18.md`](security_review_T18.md), `CHANGES_REQUESTED`, 9, **ninguno CRÍTICA ni
+ALTA**). Los dos confirmaron los cinco números del handback.
+
+**Lo que aguantó**, y conviene no volver a probarlo: 22 formas de `variant_id` y ninguna pagó de
+menos; el total nunca quedó por debajo de la suma de los renglones; 33 payloads contra la URL de la
+foto y entraron solo las que emitimos nosotros; el tope por IP no se saltea con 10 headers de proxy
+distintos; 30 combinaciones de credencial × ruta de admin dieron 401/403/422; y la puerta de la
+etiqueta rechazó en seis disfraces.
+
+**Lo que rompieron, corregido con su test:**
+
+| Qué | Cómo quedó |
 |---|---|
-| Tests del back | 213 OK (sin cambios: F20 no tocó el back) |
-| Tests del front | 72 OK → **80 OK** tras F20 |
-| Migración | `0004` (la próxima es `0005`) |
-| Último ADR | 029 |
+| La cuota se pasaba **5,7×** con seis subidas simultáneas (el `check-then-insert` de ADR-030, en otro archivo) | se reserva la fila y después se verifica la suma, con candado; test con hilos y barrera |
+| **Los ids de variante se movían en cada guardado** — ADR-029 parte 3 estaba escrita como hecha sin estarlo. Con rowid reusado, un carrito de $14.000 salió como pedido de 12 porciones | `_build_variants` actualiza en lugar de reemplazar, y el carrito manda el **nombre como testigo** |
+| Una sola cuota para las dos puertas: el anónimo la llenaba y Andrea recibía 507 | `REFERENCE_UPLOAD_QUOTA_BYTES`, y un mensaje por puerta |
+| Dos **500 con HTML** en una API JSON (normalizado vacío; body que no es objeto) | 400 explicado, y el del body venía de antes de esta tanda |
+| El contador de la nota prometía 300 y el back recortaba hasta 198 | el front cuenta lo que el back mide |
+| Tres callejones sin salida del carrito | "Cambiar lo elegido" en el renglón |
+| La carta mostraba un precio que no se podía comprar | dice **"desde $X"** con tamaños |
 
-## Lo que dejó la tarjeta 1
+**Y una que salió del test del arreglo:** `normalizar_nombre` no recortaba las puntas, así que un
+nombre de dos marcas y un espacio normalizaba a `" "`. Era **otra divergencia con el front**, que
+hace `trim()` — el espejo que ADR-030 dice sostener.
 
-**Implementando:** Enter en el campo de ingrediente guardaba el producto a medio cargar (un
-`<input>` dentro de un `<form>` manda el formulario). Atajado y medido.
+## Lo que FALTA, y no es menor
 
-**La revisión funcional (CHANGES_REQUESTED, 13 hallazgos):** los 3 bloqueantes arreglados con su
-test — el alta fallida que no refrescaba la lista, el aviso de error lejos y en inglés, y el candado
-de "en vuelo" sobre el texto crudo. Más los invisibles (ZWSP, guión suave) y el espacio interno que
-se guardaba sin colapsar.
-
-**La revisión de seguridad (APPROVED, 1 MEDIA):** sin XSS, autorización correcta. El MEDIA —4 MB en
-un `name` que el `GET` público devuelve— se va a `T6-F20b` porque toca el back, fuera de la zona de
-la tarjeta.
-
-**Y lo que apareció probando el arreglo en el navegador**, que es lo que corre a F20 de "Complete":
-la unicidad del back es por **nombre exacto** y la del front es **normalizada**, así que con la lista
-local vieja el duplicado entra igual. El front solo puede evitar los duplicados que ve.
-
-Deuda honesta que sigue: el botón sobre los ingredientes que propone la IA **no se vio correr**,
-porque F46 está apagada por B7. Probada está la decisión que toma, no el clic.
-
-## Base medida después de la corrección
-
-front **88 OK** (eran 72) · back **213 OK** · lint limpio · build 377,83 KB · R05: el archivo más
-largo del panel quedó en 287 líneas.
-
-## T6-F20b · implementado el 2026-10-19
-
-Las tres decisiones las tomó el humano: **200 con la fila existente**, **borrar/renombrar entra en
-la tarjeta**, y **F20b antes que F19**. Quedan en ADR-030.
-
-| Pieza | Dónde |
-|---|---|
-| Unicidad normalizada, espejo del front | `services/saneado.py` · `normalizar_nombre`, `sin_invisibles` |
-| Get-or-create + topes de largo | `services/ingredient_service.py` (reescrito) |
-| 201 si creó, 200 si ya existía | `routes/ingredients.py` |
-| Tests, que no existían | `tests/test_ingredient_service.py` · **11 nuevos** |
-| Renombrar y borrar desde la pantalla | `admin/AdministrarIngredientes.tsx` (nuevo) |
-| Todo lo de ingredientes, junto | `admin/useIngredientesDelPanel.ts` (nuevo, R05) |
-
-**Verde:** back **224 OK** (eran 213) · front **88 OK** · lint limpio · build 381,81 KB.
-**Rojo medido** contra la base con la firma ya cambiada, para que las 8 fallas fueran por aserción y
-no por desempaque (harness.md §5). El error número 9 era el bug: un `name` que es dict llegaba a la
-base y reventaba.
-
-### Lo que FALTA de F20b, y no es menor
-
-**La verificación en navegador (D7 y la pantalla de renombrar/borrar) no se hizo.** El navegador
-estaba siendo usado por el humano al mismo tiempo —clicks `isTrusted` en Configuración— y seguir
-hubiera sido pelearle el control. **Nada de la pantalla nueva se vio correr.** Lo que está probado
-es el back, con sus 11 tests.
-
-## Verificación en navegador de F20b — hecha el 2026-10-19
-
-Panel cargado con la lista vieja ⇒ `Coco rallado` creado por fuera ⇒ se escribe `COCO RALLADO` en el
-panel ⇒ **una sola fila**, y el chip muestra el nombre real. Después: renombrar, borrar, cancelar un
-borrado, y 375/390px con `scrollWidth - clientWidth = 0`. La base quedó como estaba.
-
-Tres cosas salieron de ahí y están arregladas: el **servidor corriendo código viejo** (Flask no
-recarga solo; quedó como lección en `testing.md` §6), el **panel mostrando un nombre distinto del
-guardado**, y el aviso que decía **«sale de los 1 productos»**.
-
-## Tanda nueva planificada: T18 · Tortas a pedido
-
-Pedido del humano el 2026-10-19, por dictado. Las cuatro ambigüedades se preguntaron antes de
-escribir nada (R04) y quedaron en **ADR-031**. Tres tarjetas escritas, ninguna implementada:
-[`T18-F57`](../../cards/T18-F57-grupos-de-opciones.md),
-[`T18-F58`](../../cards/T18-F58-el-cliente-arma-su-torta.md),
-[`T18-F59`](../../cards/T18-F59-foto-de-referencia.md).
-
-**F58 depende de `T4-F19a`**, que es quien cambia la identidad del renglón del carrito.
-**F59 reclasifica N5** a escritura pública de archivos (`security.md` §1b).
+1. **Cloudinary nunca se vio andar**: no hay credenciales (B8). Lo que está probado es la firma, la
+   decisión de destino y la validación de la URL; la llamada HTTP real no se ejercita nunca, que es
+   la misma deuda que D20 tiene con Anthropic.
+2. **El barrido se dispara al subir**, no por reloj: si nadie sube nada por un mes, lo provisorio de
+   ese mes espera. Lo acota la cuota, no el tiempo.
+3. **Un anónimo puede guardar bytes arbitrarios** dentro de un PNG válido (hasta 2 MB). No es
+   ejecutable ni es XSS; es almacenamiento opaco. La salida real es reencodear los píxeles, que es
+   el precio de no tener `Pillow` (D16/D19). Queda anotado en `security.md`, sin maquillar.
+4. **`tag_service` compara el nombre exacto** y no el normalizado (**D28**): dos etiquetas que se
+   llaman igual y solo una habilita. El panel ahora nombra la parecida, pero el back no lo frena.
 
 ## PRÓXIMO PASO
 
-Reviewer de F20b (corriendo) ⇒ OK humano ⇒ commit ⇒ **`T4-F19a`**, el agujero de plata, que además
-deja el carrito listo para F58.
+OK humano ⇒ commit ⇒ **`T4-F19b`**, que cierra F19 y es la que necesita ADR-029 parte 3, ahora sí
+implementada.

@@ -6,12 +6,16 @@ recibe un mensaje que dice $2.000 por algo de $12.000, con la cara de un
 pedido legitimo. Es la misma razon por la que `validate_quantity` corre del
 lado del servidor (V4).
 
-El modulo no sabe de Flask ni de HTTP: entra un `Order`, sale un `str`.
+Entra un `Order` y sale un `str`. Lo unico que mira del entorno es
+`BACKEND_PUBLIC_URL`, para que el link de la foto de referencia se pueda
+abrir desde el celular de Andrea.
 """
 
 from __future__ import annotations
 
 from decimal import ROUND_HALF_UP, Decimal
+
+from flask import current_app
 
 from ..models import Order
 
@@ -43,12 +47,49 @@ def armar_mensaje(order: Order, *, tope: int = TOPE_CARACTERES) -> str:
     if delivery:
         pie.extend(_datos_de_contacto(delivery))
 
-    renglones = [
-        f"- {item.quantity} x {item.product.name}: {plata(Decimal(str(item.unit_price)) * item.quantity)}"
-        for item in order.items
-    ]
+    renglones = [_renglon_de(item) for item in order.items]
     gastado = len("\n".join(cabecera + pie)) + 1
     return "\n".join(cabecera + _recortar(renglones, max(tope - gastado, 0)) + pie)
+
+
+def _renglon_de(item) -> str:
+    """El producto con su tamano, lo que eligieron y la nota, en un bloque.
+
+    Un renglon puede ocupar varias lineas y se mide entero: `_recortar` corta
+    de a productos, asi que el tamano y el relleno de una torta nunca quedan
+    separados de su precio. Es lo que ella necesita para empezar a hacerla.
+    """
+    nombre = item.product.name
+    if item.variant_name:
+        nombre = f"{nombre} ({item.variant_name})"
+
+    importe = plata(Decimal(str(item.unit_price)) * item.quantity)
+    lineas = [f"- {item.quantity} x {nombre}: {importe}"]
+
+    if item.options:
+        elegidas = " · ".join(
+            f"{opcion.group_name}: {opcion.option_name}" for opcion in item.options
+        )
+        lineas.append(f"  {elegidas}")
+    if item.note:
+        lineas.append(f"  Nota: {item.note}")
+    if item.reference_image:
+        lineas.append(f"  Foto: {_url_absoluta(item.reference_image)}")
+    return "\n".join(lineas)
+
+
+def _url_absoluta(url: str) -> str:
+    """Una foto en disco se sirve desde el back, y el link tiene que abrirse.
+
+    Sin `BACKEND_PUBLIC_URL` queda la ruta relativa: no es un link clickeable,
+    pero decirle "/uploads/ab12.jpg" es mejor que decirle nada, porque la foto
+    tambien esta en el panel. Las de Cloudinary ya vienen absolutas.
+    """
+    if url.startswith("http://") or url.startswith("https://"):
+        return url
+
+    base = str(current_app.config.get("BACKEND_PUBLIC_URL") or "").rstrip("/") if current_app else ""
+    return f"{base}{url}" if base else url
 
 
 def plata(monto: Decimal) -> str:

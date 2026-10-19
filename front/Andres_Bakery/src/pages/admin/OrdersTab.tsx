@@ -1,3 +1,4 @@
+import { DetalleDelRenglon } from "../../components/DetalleDelRenglon";
 import { orderStatusOptions } from "../../lib/constants";
 import { formatCurrency, formatDate, labelForPaymentMethod } from "../../lib/format";
 import { quienPidio } from "../../lib/pedidos";
@@ -34,7 +35,29 @@ export function OrdersTab({
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               <div className="bg-superficie-alt/90 p-4 text-sm text-tinta-suave">
                 <p className="font-semibold text-tinta">Items</p>
-                <ul className="mt-3 space-y-2">{order.items.map((item) => <li key={`${order.id}-${item.product_id}`}>{item.quantity} x {item.product_name}</li>)}</ul>
+                <ul className="mt-3 space-y-3">
+                  {order.items.map((item, posicion) => (
+                    /* La clave lleva la posición: con tortas personalizadas,
+                       dos renglones pueden ser del mismo producto y antes
+                       compartían key. */
+                    <li key={item.id ?? `${order.id}-${item.product_id}-${posicion}`}>
+                      <span className="font-semibold text-tinta">
+                        {item.quantity} x {item.product_name}
+                      </span>
+                      {/* Lo que le pidieron: sin esto, una torta a pedido le
+                          llega al panel como "1 x Torta" y el relleno solo
+                          existe en el WhatsApp (F58). */}
+                      <DetalleDelRenglon
+                        tamano={item.variant_name}
+                        elegidas={(item.options ?? []).map(
+                          (elegida) => `${elegida.group_name}: ${elegida.option_name}`,
+                        )}
+                        nota={item.note}
+                        foto={item.reference_image}
+                      />
+                    </li>
+                  ))}
+                </ul>
               </div>
               <div className="bg-superficie-alt/90 p-4 text-sm text-tinta-suave">
                 <p className="font-semibold text-tinta">Contacto y entrega</p>

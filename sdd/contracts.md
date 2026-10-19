@@ -1,6 +1,6 @@
 # contracts.md · Andres Bakery
 
-**Versión:** 0.3.0 · **Última actualización:** 2026-10-17
+**Versión:** 0.4.0 · **Última actualización:** 2026-10-19
 
 Contrato de la API. Es lo que desacopla el panel (T5) de la carta pública (T6): aprobado esto, las dos pueden ir en paralelo.
 
@@ -65,7 +65,9 @@ Esto dejo de ser propuesta: esta construido y con tests. Tres diferencias respec
   "image_url": "https://…",
   "ingredients": [{"id": 3, "name": "Chocolate semiamargo", "unit": "g"}],
   "tags": [{"id": 1, "name": "sin TACC", "slug": "sin-tacc", "color_token": "acento"}],
-  "variants": [{"id": 5, "name": "Torta 8 porciones", "price": 14000.0}]
+  "variants": [{"id": 5, "name": "Torta 8 porciones", "price": 14000.0}],
+  "option_groups": [{"id": 1, "name": "Relleno", "required": true, "sort_order": 0,
+                     "options": [{"id": 3, "name": "Dulce de leche", "sort_order": 0}]}]
 }
 ```
 
@@ -235,3 +237,68 @@ Responde **201**:
 | `POST /api/contact` | 5/hora | `429` + `Retry-After` |
 
 El cuerpo del 429 es `{"error": "…"}` con el texto en castellano, como el resto de los errores del front.
+
+## 5 · Lo que entró el 2026-10-19 (T4-F19a, T18) — **implementado, con tests**
+
+| Método | Ruta | Auth | Devuelve |
+|---|---|---|---|
+| GET | `/api/option-groups` | — | `OptionGroup[]` — qué se puede elegir (F57). Público porque lo necesita la ficha |
+| POST | `/api/option-groups` | admin | el grupo · **201 si lo creó, 200 si ya existía** con ese nombre normalizado (ADR-030/031) |
+| PUT·DELETE | `/api/option-groups/<id>` | admin | `{status}` — renombrar, cambiar `required`, reordenar, borrar |
+| POST | `/api/option-groups/<id>/options` | admin | la opción · **201 / 200** con la misma regla |
+| PUT·DELETE | `/api/option-groups/<id>/options/<option_id>` | admin | `{status}` — la opción tiene que ser **de ese grupo**, si no 400 |
+| POST | `/api/uploads/referencia` | **—** | `{url, filename, content_type, bytes, width, height}` · 201 — la foto que sube quien compra (F59) |
+
+### `OptionGroup`
+
+```json
+{
+  "id": 1,
+  "name": "Relleno",
+  "required": true,
+  "sort_order": 0,
+  "options": [{"id": 3, "name": "Dulce de leche", "sort_order": 0}]
+}
+```
+
+No expone `normalized_name`: es cómo se decide la unicidad (ADR-030), no algo que la pantalla
+necesite. `GET /api/products[/<slug>]` suma `option_groups` con esta misma forma, y
+`POST·PUT /api/products` aceptan **`option_group_ids`** (qué grupos aplican a ese producto).
+
+### El renglón del pedido
+
+`POST /api/orders` y `POST /api/orders/whatsapp` aceptan por renglón, además de `product_id` y
+`quantity`:
+
+| Campo | Qué es | Qué valida el servidor |
+|---|---|---|
+| `variant_id` | el tamaño elegido (F19a) | que la variante **sea de ese producto**; si no, 400. **El precio nunca llega del request**: sale de la fila (ADR-029) |
+| `variant_name` | el nombre que la pantalla mostró, **como testigo** | si no coincide con el de la fila, 400 pidiendo elegir de nuevo: evita que un id viejo (SQLite reusa los rowid) cobre un tamaño por otro. Opcional: un carrito guardado antes de esto no lo manda |
+| `option_ids` | los sabores elegidos (F58) | que cada opción sea de un grupo **asignado a ese producto**, uno solo por grupo, y que estén todos los `required`; si no, 400 |
+| `note` | cómo quiere la torta | texto, tope 300, **una sola línea** (si no, "Pagado: SI" finge un campo del sistema) |
+| `reference_image` | la foto de referencia (F59) | que sea **una URL que emitimos nosotros** (ADR-031/032); cualquier otra cosa es 400 |
+
+**Los tres últimos solo se aceptan si el producto lleva la etiqueta `tortas-personalizadas`**
+(ADR-033). Para cualquier otro producto son un **400 explicado**, no un descarte en silencio.
+`variant_id` no depende de la etiqueta: vender por tamaños es de la carta (ADR-007).
+
+El pedido devuelve el renglón con `variant_name`, `note`, `reference_image` y `options`
+(`[{group_name, option_name}]`), **copiados por nombre**: si ella renombra un sabor el año que
+viene, el pedido de hoy sigue diciendo lo que vendió hoy (ADR-031).
+
+### `POST /api/uploads/referencia`
+
+Ruta **separada** de la de admin, con su propia política (ADR-032):
+
+| | `/api/uploads` (panel) | `/api/uploads/referencia` (cliente) |
+|---|---|---|
+| Auth | admin | — |
+| Tope por archivo | `UPLOAD_MAX_BYTES` (4 MB) | `REFERENCE_UPLOAD_MAX_BYTES` (2 MB), nunca más que el del panel |
+| Tope por IP | — | 4/min y 15/hora ⇒ `429` + `Retry-After` |
+| Al subirse | queda | nace **provisoria**: si no llega a un pedido, el barrido la borra (D17) |
+
+Las dos validan por contenido y reescriben sin metadatos (ADR-018), las dos cuentan contra
+`UPLOAD_QUOTA_BYTES` —y la pública además contra `REFERENCE_UPLOAD_QUOTA_BYTES`, para que no le
+llene el lugar a las fotos de la carta— con **507** explicado al llenarse, y con mensaje distinto
+según quién lo lee (D18) y las dos guardan donde diga el entorno:
+Cloudinary con credenciales, disco local sin ellas (ADR-032).

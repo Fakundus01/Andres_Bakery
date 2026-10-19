@@ -1,13 +1,13 @@
 # testing.md · Andres Bakery
 
-**Versión:** 0.3.0 · **Última actualización:** 2026-10-17
+**Versión:** 0.4.0 · **Última actualización:** 2026-10-19
 
 ## 1 · Cómo se corre (comandos reales, verificados el 2026-10-16)
 
 Los mismos que `harness.config.json`. **Siempre desde la raíz del repo**: los imports del back son `backend.*`.
 
 ```bash
-# Back: 151 tests, unittest (NO pytest: el venv no lo tiene)
+# Back: 328 tests, unittest (NO pytest: el venv no lo tiene)
 backend/.venv/Scripts/python.exe -m unittest discover -s backend/tests -t . -q
 
 # Front: 90 tests de logica pura, Vitest (ADR-023)
@@ -38,6 +38,11 @@ Estado medido el 2026-10-17 tras T16: **151 tests del back + 48 del front OK**, 
 | `test_bootstrap_service.py` | creación del admin, **que arrancar no le pise la contraseña** (D13) y la siembra inicial |
 | `test_profile_service.py` | el perfil y el CV: qué se guarda, qué se recorta y qué se descarta (ADR-017) |
 | `test_image_file.py` | el validador/limpiador de imágenes: EXIF, chunks, políglotas, HEIC, WEBP, archivos cortados (ADR-018) |
+| `test_option_service.py` | los grupos de sabores: unicidad normalizada del grupo y del sabor **dentro** del grupo, topes, que una opción de otro grupo no se toque por la ruta de este, y que borrar un grupo no rompa un pedido viejo (F57) |
+| `test_pedido_personalizado.py` | el renglón: que **el tamaño elegido se cobre** y que el `variant_id` ajeno sea 400, los sabores validados contra los grupos de ESE producto, los `required`, la nota acotada a una línea, y dos rellenos distintos como dos renglones (F19a, F58) |
+| `test_solo_las_tortas_se_personalizan.py` | la puerta de ADR-033: sin la etiqueta, `option_ids`, `note` y `reference_image` son 400, y un grupo obligatorio mal asignado **no** saca el producto de la venta |
+| `test_foto_de_referencia.py` | la subida pública: nace provisoria, el tope más chico que el del panel, la cuota (507) y **las diez URLs que no se aceptan** como foto de referencia (F59) |
+| `test_subida_publica.py` | el barrido de huérfanas (la provisoria vencida se va, la usada **nunca**), la firma de Cloudinary, la ruta pública por HTTP (429 con `Retry-After`, 413 con **su** tope, la del panel sigue admin-only) y **la cuota bajo concurrencia**: seis hilos con una barrera contra una cuota de una |
 | `test_upload_service.py` | la subida: nombre generado, tope de tamaño, lo que no toca el disco, path traversal |
 | `test_metrics_service.py` | normalización de rutas y dispositivos, contadores agregados y el resumen (ADR-019) |
 | `test_ai_service.py` | el asistente con `FakeRecipeClient`: apagado, techo diario, recorte de la salida, SSRF (ADR-020) |
@@ -80,6 +85,8 @@ Estado medido el 2026-10-17 tras T16: **151 tests del back + 48 del front OK**, 
 | `preferencias/sanear.test.ts` | lo que viene de `localStorage` no puede romper la pantalla |
 | `pages/admin/altaDeIngrediente.test.ts` | el alta con una API falsa: el nombre que manda, el rescate cuando el alta falla, y que se quede con el nombre que devuelve el servidor |
 | `lib/ingredientes.test.ts` | comparar nombres de ingredientes sin acentos ni mayúsculas, **conservando la ñ**, para no duplicar lo que ya existe (F20) |
+| `lib/carrito.test.ts` | la identidad del renglón: dos tamaños son dos renglones, el orden de los sabores no, una coma en la nota sí, y **el precio del renglón sale de la variante** (F19a, F58) |
+| `lib/personalizacion.test.ts` | la puerta de la etiqueta (ADR-033), qué falta elegir, el espejo de la nota con el back, el precio "desde" de la tarjeta y la etiqueta que se llama igual pero no habilita |
 
 **Entorno `node`, no `jsdom`:** nada de esto monta componentes. Lo visual se sigue verificando en el navegador (R07).
 
@@ -132,6 +139,27 @@ Estado medido el 2026-10-17 tras T16: **151 tests del back + 48 del front OK**, 
 5. Si el cambio toca precios, mínimos o totales ⇒ el rojo se vio primero (R29).
 
 ## 6 · Tests que estaban mal, y qué enseñaron
+
+**El test del arreglo encontró un bug más grande que el arreglo (2026-10-19).** Cerrando el 500 que
+daba un nombre cuyo normalizado quedaba vacío, un caso del test —dos marcas combinantes separadas
+por un espacio— no levantaba el error esperado: `normalizar_nombre` usaba `split(" ")` en vez de
+`split()`, así que no recortaba las puntas y devolvía `" "`, que es verdadero. O sea: **el back no
+espejaba al front**, que hace `trim()`, y el espejo es justo lo que ADR-030 dice sostener. El caso
+del test era de borde; la divergencia que destapó, no.
+
+**Un control nuevo se prueba rompiéndolo (2026-10-19).** El código de F19a/F58 se escribió antes de
+sus tests, al revés de lo que pide R29. El rojo se midió como pide la regla para un guard nuevo:
+apagando el control una vez. Lo que mostró no era lo esperado y es lo valioso: sin la verificación
+de que la variante sea del producto, el test **cobra de menos**; pero sin la de las opciones, el
+pedido con un sabor ajeno **no entra mal, revienta con un 500** (`KeyError` al armar el nombre del
+grupo). O sea: el control no estaba solo evitando un dato raro, estaba evitando una caída. Un test
+que solo mira el 400 no lo habría contado.
+
+**Una regla nueva se nota en los tests que ya estaban (2026-10-19).** Al poner la puerta de la
+etiqueta (ADR-033), 7 tests que pasaban se pusieron rojos: usaban productos sin etiquetar. Eso no
+era un problema de los tests, era la regla funcionando. Se actualizaron con una fábrica
+(`create_producto_personalizable`) en vez de parchear cada caso, para que el próximo test de
+personalización no tenga que acordarse de la etiqueta.
 
 **`DATABASE_URL` es la variable, y equivocarse apunta a la base real (2026-10-19).** Probando la migración `0005` se corrió un `downgrade` pasando `SQLALCHEMY_DATABASE_URI` —que `config.py` **no** lee— creyendo que iba contra una copia. Fue contra `instance/bakery.db`: la bajó a `0003` y escribió el mail placeholder en 3 pedidos que lo tenían en NULL. Se restauró hacia adelante y se verificó fila por fila. La regla: **un comando de migración que no nombra `DATABASE_URL` apunta a la base real.** Y antes de tocar migraciones, copiar la base.
 
