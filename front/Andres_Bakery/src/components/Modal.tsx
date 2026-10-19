@@ -10,9 +10,12 @@ import { X } from "lucide-react";
  *  que funciona con el mouse y deja afuera a quien usa teclado o lector de
  *  pantalla.
  *
- *  **Solo se usa en pantallas grandes** (ver `usePantallaGrande`): en un
- *  celular un formulario largo adentro de un pop-up es peor que en la página,
- *  porque el teclado virtual se come la mitad de la pantalla.
+ *  **Los formularios lo usan solo en pantallas grandes** (ver
+ *  `usePantallaGrande`): en un celular un formulario largo adentro de un
+ *  pop-up es peor que en la página, porque el teclado virtual se come la mitad
+ *  de la pantalla. **La confirmación de borrado es la excepción** y se usa en
+ *  todas las pantallas (ADR-035): ahí no se escribe nada, y lo que se gana es
+ *  que el foco queda atrapado adentro.
  */
 export function Modal({
   abierto,

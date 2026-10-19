@@ -10,7 +10,7 @@ export function accionesDeIngredientes(
     renombrar: (id: number, nombre: string) => Promise<void>;
     borrar: (id: number) => Promise<void>;
   },
-  conAviso: (trabajo: () => Promise<void>, mensaje: string) => Promise<void>,
+  conAviso: (trabajo: () => Promise<void>, mensaje: string) => Promise<boolean>,
   olvidarIngredienteDelFormulario: (id: number) => void,
 ) {
   return {

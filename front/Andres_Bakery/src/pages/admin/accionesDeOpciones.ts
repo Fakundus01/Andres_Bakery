@@ -19,7 +19,7 @@ export interface OperacionesDeOpciones {
 
 export function accionesDeOpciones(
   operaciones: OperacionesDeOpciones,
-  conAviso: (trabajo: () => Promise<void>, mensaje: string) => Promise<void>,
+  conAviso: (trabajo: () => Promise<void>, mensaje: string) => Promise<boolean>,
   olvidarGrupoDelFormulario: (id: number) => void,
 ) {
   return {

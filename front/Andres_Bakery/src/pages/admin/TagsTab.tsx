@@ -1,22 +1,26 @@
-import type { Dispatch, FormEvent, SetStateAction } from "react";
+import { useMemo, useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
+import { Plus } from "lucide-react";
 
-import { TagBadge } from "../../components/TagBadge";
-import { Field } from "../../components/ui";
-import type { Tag } from "../../lib/types";
+import { ConfirmarBorrado } from "../../components/ConfirmarBorrado";
+import { Modal } from "../../components/Modal";
+import { contarEtiquetas, textoDeBorrado } from "../../lib/borrados";
+import { usePantallaGrande } from "../../lib/usePantallaGrande";
+import type { Product, Tag } from "../../lib/types";
 import type { TagForm } from "../../lib/ui-types";
+import { FormularioDeEtiqueta, ID_DEL_FORMULARIO_DE_ETIQUETA } from "./FormularioDeEtiqueta";
+import { ListaDeEtiquetas } from "./ListaDeEtiquetas";
 
-// Los mismos nombres que valida el back (`tag_service.COLOR_TOKENS`).
-const COLORES: Array<{ id: string; label: string }> = [
-  { id: "acento", label: "Rosa / principal" },
-  { id: "acento-2", label: "Verde / secundario" },
-  { id: "exito", label: "Verde oscuro" },
-  { id: "alerta", label: "Mostaza" },
-  { id: "error", label: "Rojo" },
-  { id: "tinta", label: "Marrón oscuro" },
-];
-
+/** Las etiquetas en el panel: la lista, el pop-up que las edita y el que
+ *  pregunta antes de borrar (ADR-035).
+ *
+ *  Es la misma forma que `ProductsTab`, y eso es el punto: el humano pidió
+ *  que no quedara *"en este lugar sí, en este lugar no"*. En computadora se
+ *  edita en pop-up y la lista usa todo el ancho; en celular los dos van en la
+ *  página, por el teclado virtual (ADR-034).
+ */
 export function TagsTab({
   tags,
+  products,
   tagForm,
   setTagForm,
   editingTagId,
@@ -26,105 +30,140 @@ export function TagsTab({
   onDelete,
 }: {
   tags: Tag[];
+  products: Product[];
   tagForm: TagForm;
   setTagForm: Dispatch<SetStateAction<TagForm>>;
   editingTagId: number | null;
   setEditingTagId: Dispatch<SetStateAction<number | null>>;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  /** Devuelve si se guardó: el pop-up se cierra solo cuando el back dijo sí. */
+  onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<boolean>;
   onReset: () => void;
   onDelete: (tagId: number) => void;
 }) {
-  return (
-    <section className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
-      <form className="pixel-panel space-y-4 p-6" onSubmit={onSubmit}>
-        <h3 className="font-display text-3xl font-semibold text-tinta">
-          {editingTagId ? "Editar etiqueta" : "Nueva etiqueta"}
-        </h3>
+  const enPopUp = usePantallaGrande();
+  const [abierto, setAbierto] = useState(false);
+  const [aBorrar, setABorrar] = useState<Tag | null>(null);
+  const usos = useMemo(() => contarEtiquetas(products), [products]);
 
-        <p className="border-[3px] border-borde bg-alerta-suave p-3 text-xs leading-5 text-tinta">
-          Ojo con "sin TACC" y las etiquetas de alérgenos: lo que pongas acá es{" "}
-          <strong>tu declaración</strong>. La web la muestra tal cual, no la certifica.
-        </p>
+  const titulo = editingTagId ? "Editar etiqueta" : "Nueva etiqueta";
 
-        <Field label="Nombre">
-          <input
-            className="field"
-            value={tagForm.name}
-            onChange={(event) => setTagForm((current) => ({ ...current, name: event.target.value }))}
-            placeholder="sin TACC, vegano, frío..."
-            required
-          />
-        </Field>
+  const guardar = (evento: FormEvent<HTMLFormElement>) => {
+    // Cerrar solo si se guardó: un nombre repetido vuelve con 400 y lo tipeado
+    // tiene que seguir ahí (reviewer de T19).
+    void onSubmit(evento).then((guardado) => {
+      if (guardado) {
+        setAbierto(false);
+      }
+    });
+  };
 
-        <Field label="Color">
-          <select
-            className="field"
-            value={tagForm.color_token}
-            onChange={(event) => setTagForm((current) => ({ ...current, color_token: event.target.value }))}
-          >
-            {COLORES.map((color) => (
-              <option key={color.id} value={color.id}>{color.label}</option>
-            ))}
-          </select>
-        </Field>
+  const formulario = (
+    <FormularioDeEtiqueta tagForm={tagForm} setTagForm={setTagForm} onSubmit={guardar} />
+  );
 
-        <Field label="Orden">
-          <input
-            className="field"
-            type="number"
-            step="1"
-            value={tagForm.sort_order}
-            onChange={(event) => setTagForm((current) => ({ ...current, sort_order: event.target.value }))}
-          />
-        </Field>
-        <p className="text-xs leading-5 text-tinta-tenue">
-          El número más chico aparece primero en los filtros de la carta.
-        </p>
+  const botones = (
+    <div className="flex flex-wrap gap-3">
+      <button className="btn-primary" type="submit" form={ID_DEL_FORMULARIO_DE_ETIQUETA}>
+        {editingTagId ? "Guardar cambios" : "Crear etiqueta"}
+      </button>
+      <button
+        className="btn-secondary"
+        type="button"
+        onClick={() => {
+          onReset();
+          setAbierto(false);
+        }}
+      >
+        {enPopUp ? "Cancelar" : "Limpiar"}
+      </button>
+    </div>
+  );
 
-        <div className="flex flex-wrap gap-3">
-          <button className="btn-primary" type="submit">{editingTagId ? "Guardar cambios" : "Crear etiqueta"}</button>
-          <button className="btn-secondary" type="button" onClick={onReset}>Limpiar</button>
+  const abrirParaEditar = (tag: Tag) => {
+    setEditingTagId(tag.id);
+    setTagForm({ name: tag.name, color_token: tag.color_token, sort_order: String(tag.sort_order) });
+    setAbierto(true);
+  };
+
+  const confirmacion = (
+    <ConfirmarBorrado
+      abierto={aBorrar !== null}
+      titulo={aBorrar ? `¿Borrar «${aBorrar.name}»?` : ""}
+      texto={textoDeBorrado("etiqueta", aBorrar ? usos[aBorrar.id] ?? 0 : 0)}
+      onCerrar={() => setABorrar(null)}
+      onConfirmar={() => {
+        if (aBorrar) {
+          onDelete(aBorrar.id);
+        }
+        setABorrar(null);
+      }}
+    />
+  );
+
+  if (!enPopUp) {
+    return (
+      <section className="grid gap-6">
+        <div className="pixel-panel space-y-4 p-6">
+          <h3 className="font-display text-3xl font-semibold text-tinta">{titulo}</h3>
+          {formulario}
+          {botones}
         </div>
-      </form>
+        <ListaDeEtiquetas
+          tags={tags}
+          usos={usos}
+          conTitulo
+          onEditar={(tag) => {
+            setEditingTagId(tag.id);
+            setTagForm({
+              name: tag.name,
+              color_token: tag.color_token,
+              sort_order: String(tag.sort_order),
+            });
+          }}
+          onPedirBorrado={setABorrar}
+        />
+        {confirmacion}
+      </section>
+    );
+  }
 
-      <div className="pixel-panel p-6">
-        <h3 className="font-display text-2xl font-semibold text-tinta">Las que ya tenés</h3>
-        {tags.length === 0 ? (
-          <p className="mt-4 border-[3px] border-dashed border-borde p-5 text-sm leading-6 text-tinta-suave">
-            Todavía no hay ninguna. Las etiquetas no vienen puestas de fábrica a propósito: las que
-            importan en tu carta las sabés vos.
-          </p>
-        ) : (
-          <ul className="mt-5 space-y-3">
-            {tags.map((tag) => (
-              <li
-                key={tag.id}
-                className="flex flex-wrap items-center justify-between gap-3 border-[3px] border-borde bg-superficie-alt p-4"
-              >
-                <div className="flex items-center gap-3">
-                  <TagBadge tag={tag} torcido={false} />
-                  <code className="text-xs text-tinta-tenue">/{tag.slug}</code>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    className="btn-secondary px-3 py-1.5 text-xs"
-                    type="button"
-                    onClick={() => {
-                      setEditingTagId(tag.id);
-                      setTagForm({ name: tag.name, color_token: tag.color_token, sort_order: String(tag.sort_order) });
-                    }}
-                  >
-                    Editar
-                  </button>
-                  <button className="btn-secondary px-3 py-1.5 text-xs" type="button" onClick={() => onDelete(tag.id)}>
-                    Borrar
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+  return (
+    <section className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-tinta-suave">
+          {tags.length === 1 ? "1 etiqueta" : `${tags.length} etiquetas`} · las que importan en tu
+          carta las sabés vos
+        </p>
+        <button
+          className="btn-primary"
+          type="button"
+          onClick={() => {
+            onReset();
+            setAbierto(true);
+          }}
+        >
+          <Plus className="h-4 w-4" />
+          Nueva etiqueta
+        </button>
       </div>
+
+      <ListaDeEtiquetas
+        tags={tags}
+        usos={usos}
+        onEditar={abrirParaEditar}
+        onPedirBorrado={setABorrar}
+      />
+
+      <Modal
+        abierto={abierto}
+        titulo={titulo}
+        descripcion="Las etiquetas son los filtros de la carta: el cliente las ve como botones arriba de los productos."
+        onCerrar={() => setAbierto(false)}
+        pie={botones}
+      >
+        {formulario}
+      </Modal>
+      {confirmacion}
     </section>
   );
 }

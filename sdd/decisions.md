@@ -797,3 +797,82 @@ computadora se vayan separando.
 **Lo que queda para después, dicho para no prometerlo:** las otras pestañas del panel (etiquetas,
 gustos, perfil) siguen editando en la página. El `Modal` quedó hecho para reusarse —recibe título,
 descripción, contenido y pie— pero ponerlo en cada pestaña es trabajo de otro ciclo.
+
+---
+
+## ADR-035 · El pop-up es la forma de editar en todo el panel, y borrar pregunta
+
+**Fecha:** 2026-10-19 · **Estado:** Vigente · **Features:** F60, F49, F57 · **Reemplaza el
+"queda para después" de ADR-034**
+
+**Contexto:** ADR-034 puso el pop-up en una sola pestaña y lo dijo abiertamente: las otras seguían
+editando en la página. El humano lo señaló en cuanto lo vio: *"si vamos a usar un pop-up en algún
+lugar, creo que tendríamos que hacer eso mismo en otros lugares. Porque si no queda como en este
+lugar sí, en este lugar no, queda medio raro"*.
+
+Tiene razón por dos motivos distintos. El primero es el que dijo: un panel donde "editar" significa
+tres cosas según la pestaña se aprende tres veces. El segundo apareció al abrir el código para
+hacerlo: **en la carta y en las etiquetas, el botón de borrar borraba de una**, sin preguntar nada,
+y está al lado del de editar. Los grupos y los ingredientes sí preguntaban, cada uno con su texto
+escrito a mano. O sea que el panel tenía confirmación justo donde el daño era chico.
+
+**Decisión, en cuatro partes:**
+
+1. **Todo lo que se crea o se edita en el panel se edita en un pop-up en pantallas grandes**:
+   etiquetas, grupos de gustos, las tres secciones del perfil y el texto institucional, igual que
+   ya hacía la carta. En celular todo sigue en la página, por el teclado virtual (ADR-034 parte 1,
+   sin cambios).
+
+2. **Borrar algo que no se deshace pregunta primero**, con el nombre de lo que se borra y lo que se
+   pierde: productos, etiquetas y grupos. `ConfirmarBorrado` es un `Modal` con dos botones, y el que
+   queda a tiro del dedo es **"No, dejarlo como está"**.
+
+3. **Ese cartel sí se usa también en celular**, al revés que los formularios. La razón para dejar
+   los formularios en la página es el teclado virtual, y en un cartel de confirmación no se escribe
+   nada. Lo que se gana es grande: el `<dialog>` atrapa el foco, así que el Enter siguiente cae en
+   un botón del cartel y no en lo que había atrás.
+
+4. **El texto del cartel vive en `lib/borrados.ts`, con tests.** Estaba escrito dos veces a mano y
+   lo único difícil que tiene es el castellano: el plural y el género. "Si lo borrás sale de los 1
+   productos" es lo que sale de interpolar un número sin mirarlo, y es la clase de frase que hace
+   que ella no borre nada por no entender qué le están preguntando. Ahí también vive la cuenta de en
+   cuántos productos está cada etiqueta, que es lo que vuelve concreto el aviso.
+
+**Lo que esto obligó a mover (R05):** `GrupoDeOpciones.tsx` (272 líneas) mezclaba la tarjeta con la
+edición, así que se partió en `TarjetaDeGrupo` (muestra) y `EditorDeGrupo` (edita); `PerfilTab`
+(259) se partió en sus tres secciones; `TagsTab` y `OpcionesTab` quedaron como orquestadores con su
+formulario aparte. El mismo componente se renderiza en los dos lugares —pop-up y página—, que es lo
+que evita que la versión de celular y la de computadora se vayan separando.
+
+**Tres excepciones, a propósito y dichas:**
+
+- **Los ingredientes no abren pop-up.** Se editan adentro del formulario del producto, que en
+  computadora ya es un pop-up: uno adentro de otro es peor que lo que arregla. Ahí la confirmación
+  sigue siendo en la propia fila, pero el texto ya es el compartido.
+- **Un sabor se borra sin preguntar.** Es una palabra que se reescribe en dos segundos, y el cartel
+  caería adentro del pop-up del grupo.
+- **El perfil guarda entero.** Las tres secciones se editan por separado pero viajan en un PUT, así
+  que el pie de los tres pop-ups dice "Guardar mi perfil": prometer "guardar esta sección" sería
+  mentir sobre lo que hace el botón.
+
+**Lo que agregó la revisión independiente, y vale como parte de la decisión:**
+
+- **Un guardado en el `blur` es una trampa, no una comodidad.** El nombre del grupo se guardaba al
+  salir del campo, y cerrar el pop-up mueve el foco: el PUT salía igual, así que no había forma de
+  tipear un nombre y abandonarlo. Se guarda **con Enter o con el tilde**, y el pop-up lo dice.
+- **Escape adentro de un pop-up cancela lo que se está editando, no el pop-up.** Sin
+  `stopPropagation()`, el evento llega al `<dialog>` y cierra todo: la misma tecla hacía dos cosas
+  distintas según el ancho de la pantalla, justo en el teclado, que es la razón declarada de usar
+  `<dialog>` (ADR-034 parte 2).
+- **El pop-up se cierra solo si el guardado salió bien.** Cerrarlo siempre dejaba el error a la
+  vista pero se llevaba lo tipeado. `conAviso` devuelve si guardó.
+- **"Cerrar" cancela de verdad** en el perfil y en la historia: se guarda una copia al abrir y
+  cerrar la devuelve. Lo que no se deshace es una foto ya subida (deuda D17).
+- **Lo que se volvió más caro, dicho:** el "obligatorio" del grupo se tildaba antes desde la
+  tarjeta con un clic y ahora pide abrir el pop-up. Es consecuencia directa de "la tarjeta muestra,
+  el editor edita"; si molesta en el uso real, el checkbox puede volver a la tarjeta sin romper nada.
+
+**Lo que queda abierto:** el editor del grupo guarda **cada cosa cuando la hacés** (renombrar,
+marcar obligatorio y agregar un sabor son tres llamadas distintas), así que su pie dice "Listo" y no
+"Guardar cambios". Es honesto, pero es una tercera forma de guardar en el mismo panel. Unificarlo
+pide que el back acepte el grupo entero en un PUT, y eso es otra tarjeta.

@@ -97,6 +97,7 @@ export function AdminPage() {
       {pestana === "tags" ? (
         <TagsTab
           tags={panel.etiquetas}
+          products={panel.productos}
           tagForm={panel.formEtiqueta}
           setTagForm={panel.setFormEtiqueta}
           editingTagId={panel.etiquetaEditada}

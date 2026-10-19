@@ -1,165 +1,106 @@
-# T4-F19a + T18 + T4-F19b · Tortas a pedido, y F19 cerrada
+# T19-F60 · El pop-up en todas las pestañas del panel
 
-**Rama:** `dev` · **Features:** F19 (la mitad que importaba), F57, F58, F59
-**ADR:** 029, 030, 031, **032** y **033** (los dos últimos, nuevos de hoy) · **Versión:** 0.13.0
-**Estado:** las cuatro tarjetas **implementadas y verdes**, verificadas en el navegador, **sin
-commitear** (R01). Falta la **revisión independiente** (R30/R31), que es lo único que separa esto
-de un `done`.
+**Rama:** `dev` · **Feature:** F60 (nueva) · **ADR:** 035 · **Versión:** 0.15.0
+**Estado:** implementada, **verde en los cuatro comandos**, **vista en el navegador** (1920px y
+390px), **revisada** por un reviewer independiente que re-ejecutó y **con sus hallazgos
+corregidos**. Lo único que falta para el `done` es el OK y el commit (R01).
 
-> Si esta sesión se corta: el commit anterior (`ddaf6f0`) dejó T6-F20 cerrado. Todo lo de hoy está
-> en el árbol de trabajo, con los cuatro comandos en verde y la base de desarrollo migrada a `0008`
-> (respaldo en `instance/bakery.db.respaldo-pre-0006`).
+> Si esta sesión se corta: el último commit es `3859f33` (D27/D28, 0.14.1) y dejó el árbol limpio.
+> Todo lo de esta tarjeta está sin commitear, en `front/Andres_Bakery/src` y en `sdd/`. La base de
+> desarrollo **no se tocó**: no hubo cambios de Python ni de esquema.
 
 ---
 
-## Lo que pidió el humano, y lo que cambió a mitad de camino
+## Lo que pidió el humano
 
-El pedido fue "run de la app, commit, y terminemos la sección de tortas", con el detalle de qué
-tenía que tener: la chef edita los gustos predeterminados, el cliente elige bizcocho y relleno, y
-lo personalizado va por un textarea donde además puede subir imágenes de ejemplo.
+Textual, por voz: *"si vamos a usar un pop-up en algún lugar, creo que tendríamos que hacer eso
+mismo en otros lugares. Porque si no queda como en este lugar sí, en este lugar no, queda medio
+raro. Así que sí, vamos a tener que utilizarlo en otros sitios"*.
 
-Se preguntaron cuatro cosas antes de escribir código (R04) y las cuatro se respondieron:
+No hubo nada que preguntar (R04): el pedido es exactamente el "queda para después" que ADR-034 había
+dejado escrito.
 
-| Lo que no cerraba | Lo que se decidió |
-|---|---|
-| F58 depende de `T4-F19a` | **F19a primero**, y de paso cierra el agujero de plata |
-| ¿Qué fotos van a Cloudinary? | **Las dos**, con fallback a disco (ADR-032) |
-| ¿Cómo sube la foto? | **La valida el back y la sube él**, firmado. Nunca el navegador |
-| "el usuario puede elegir los que aparezcan" | **La chef elige por torta**, como ya decía ADR-031 |
+## Lo que apareció al abrirlo, y no estaba pedido
 
-**Y a mitad del ciclo entró un recorte que cambió el diseño:** *"solo es para el tag «tortas
-personalizadas», para lo otro no"*. Quedó en **ADR-033**, y es lo que hace que una docena de cookies
-no se personalice. La puerta es la etiqueta y **no** la presencia de grupos: si fuera por los grupos,
-asignarle "Relleno" por error a las cookies las sacaría de la venta.
+**"Eliminar" borraba un producto de una, y "Borrar" una etiqueta también.** Sin preguntar nada, con
+el botón pegado al de editar. Los grupos y los ingredientes sí preguntaban, cada uno con su texto
+escrito a mano, así que el panel confirmaba donde el daño era chico y no donde era grande.
 
-## Las cuatro tarjetas
-
-| # | Tarjeta | Estado |
-|---|---|---|
-| 1 | [`T4-F19a-la-variante-se-cobra`](../../cards/T4-F19a-la-variante-se-cobra.md) | ✅ implementada |
-| 2 | [`T18-F57-grupos-de-opciones`](../../cards/T18-F57-grupos-de-opciones.md) | ✅ implementada |
-| 3 | [`T18-F58-el-cliente-arma-su-torta`](../../cards/T18-F58-el-cliente-arma-su-torta.md) | ✅ implementada, con el recorte de ADR-033 |
-| 4 | [`T18-F59-foto-de-referencia`](../../cards/T18-F59-foto-de-referencia.md) | ✅ implementada, con Cloudinary de ADR-032 |
-
-`T4-F19b` (cargar variantes desde el panel) **sigue sin una línea escrita**.
+Entró en esta tarjeta porque el pop-up es la herramienta justa: un `<dialog>` atrapa el foco, así
+que el Enter siguiente cae en un botón del cartel y no en lo que había atrás. Quedó en **ADR-035**
+parte 2, y es lo más importante del ciclo.
 
 ## Base medida antes de empezar
 
-| Check | Base | Después |
+| Check | Base @ `3859f33` | Después |
 |---|---|---|
-| Tests del back | 228 OK | **307 OK** |
-| Tests del front | 90 OK | **124 OK** |
-| Migración | `0005` | **`0008`** |
-| Último ADR | 031 | **033** |
-| Build | 381,91 KB | **402,04 KB** |
+| Tests del front | 166 OK (15 archivos) | **176 OK** (16) |
+| Tests del back | 343 OK | **343 OK** (no se tocó Python) |
+| Build | 411,39 KB | **419,67 KB** |
+| Último ADR | 034 | **035** |
+| Archivos > 300 líneas | ninguno | **ninguno** |
 
-## El rojo, medido rompiendo los controles a propósito (R29)
+## El rojo, medido (R29)
 
-El código se escribió antes de los tests —y conviene decirlo, porque R29 pide al revés—, así que el
-rojo se midió como pide la regla para un guard nuevo: **rompiendo el control una vez**.
+La primera versión de `lib/borrados.ts` interpolaba el número sin mirarlo —lo mismo que ya estaba
+escrito a mano en los dos componentes— y los tests la rompieron en **6 casos**: "de los 1
+productos", "de los 0 productos", "de los -1 productos", la etiqueta tratada en masculino, el
+singular que no existía y `Está en 0 productos`. La salida literal está en
+[`handback_T19.md`](handback_T19.md).
 
-```
---- con los dos controles apagados ---
-FAIL: test_la_variante_de_otro_producto_no_compra_la_torta_barata
-      AssertionError: ValidationError not raised        <- cobra de menos
-ERROR: test_un_sabor_de_un_grupo_que_no_es_del_producto_no_entra
-      KeyError en grupos[group_id]                      <- 500, no 400
-Ran 17 tests · FAILED (failures=1, errors=1)
-```
+## El navegador, medido (R07)
 
-El segundo dice algo que conviene anotar: **sin la verificación, el sabor ajeno no entra "mal", hace
-reventar el endpoint con un 500** — la clase de bug con la que arranca `saneado.py`. Con los dos
-controles puestos: 17 OK.
+El humano habilitó levantar el front; se levantó para esto y **se apagó al terminar**. Y antes de
+levantarlo apareció algo que conviene anotar: **había tres servidores de Vite vivos** (5173 del
+turno de la mañana, que seguía respondiendo, y dos que se lanzaron ahora). Quedó uno, se usó, y al
+final ninguno.
 
-Y el de la etiqueta (ADR-033) se midió igual, al revés: al poner la puerta, **7 tests de los que ya
-estaban se pusieron rojos** porque usaban un producto sin etiquetar. Eso es la regla nueva
-funcionando; se actualizaron a la fábrica `create_producto_personalizable`.
-
-## Lo que apareció construyendo, y no estaba en ninguna tarjeta
-
-- **`models.py` pasó las 300 líneas** (R05) y se partió en paquete (`catalogo`, `pedidos`, `sitio`,
-  `usuarios`) con un `__init__` que mantiene la puerta: ningún import cambió. Igual `lib/types.ts`.
-- **El asistente de IA se iba a romper con Cloudinary prendido**: leía la foto del disco a mano, así
-  que una foto en Cloudinary le habría hecho decir "primero subí la foto" sobre una foto subida.
-  Ahora la lee el almacén.
-- **La tarjeta de un producto que se arma dice "Elegir y pedir"** y lleva a la ficha: agregarlo
-  desde la tarjeta mandaba un pedido que el servidor rechaza.
-- **`nombre_para_guardar` salió a `saneado`**: los grupos y los sabores tienen la misma unicidad
-  normalizada que los ingredientes, sin copiar la función.
-
-## Verificación en navegador — hecha el 2026-10-19
-
-Panel: grupo "Relleno" creado con dos sabores · `CHOCOLATE` sobre `chocolate` **no duplicó** · la
-etiqueta creada con el botón de la pestaña · puesta en la torta ⇒ la ficha ofrece tamaño, relleno,
-textarea y foto, y el **box no ofrece nada** · la foto subió **sin sesión** · el pedido llegó con
-`12 porciones` a **$19.800** (no $14.200), su relleno, su nota y su foto · el mensaje de WhatsApp los
-nombra · `stored_image` marcó la foto como usada (`provisional=0`) · 375px y 390px con
-`scrollWidth - clientWidth = 0` en la ficha, el carrito, la carta y el panel.
-
-La base de desarrollo quedó como estaba: los dos pedidos de prueba y la foto de prueba se borraron a
-mano (verificado: 7 pedidos, 0 renglones huérfanos, 0 opciones huérfanas). Quedan a propósito el
-grupo "Relleno", sus sabores y la etiqueta.
-
-## La revisión independiente, y qué rompió (R30/R31)
-
-Dos revisores que **re-ejecutaron**: el funcional ([`review_T18.md`](review_T18.md),
-`CHANGES_REQUESTED`, 14 hallazgos) y el de seguridad + pentester
-([`security_review_T18.md`](security_review_T18.md), `CHANGES_REQUESTED`, 9, **ninguno CRÍTICA ni
-ALTA**). Los dos confirmaron los cinco números del handback.
-
-**Lo que aguantó**, y conviene no volver a probarlo: 22 formas de `variant_id` y ninguna pagó de
-menos; el total nunca quedó por debajo de la suma de los renglones; 33 payloads contra la URL de la
-foto y entraron solo las que emitimos nosotros; el tope por IP no se saltea con 10 headers de proxy
-distintos; 30 combinaciones de credencial × ruta de admin dieron 401/403/422; y la puerta de la
-etiqueta rechazó en seis disfraces.
-
-**Lo que rompieron, corregido con su test:**
-
-| Qué | Cómo quedó |
+| Criterio | Medido |
 |---|---|
-| La cuota se pasaba **5,7×** con seis subidas simultáneas (el `check-then-insert` de ADR-030, en otro archivo) | se reserva la fila y después se verifica la suma, con candado; test con hilos y barrera |
-| **Los ids de variante se movían en cada guardado** — ADR-029 parte 3 estaba escrita como hecha sin estarlo. Con rowid reusado, un carrito de $14.000 salió como pedido de 12 porciones | `_build_variants` actualiza en lugar de reemplazar, y el carrito manda el **nombre como testigo** |
-| Una sola cuota para las dos puertas: el anónimo la llenaba y Andrea recibía 507 | `REFERENCE_UPLOAD_QUOTA_BYTES`, y un mensaje por puerta |
-| Dos **500 con HTML** en una API JSON (normalizado vacío; body que no es objeto) | 400 explicado, y el del body venía de antes de esta tanda |
-| El contador de la nota prometía 300 y el back recortaba hasta 198 | el front cuenta lo que el back mide |
-| Tres callejones sin salida del carrito | "Cambiar lo elegido" en el renglón |
-| La carta mostraba un precio que no se podía comprar | dice **"desde $X"** con tamaños |
+| C1 · pop-up en computadora (1920px) | abren con sus datos: etiqueta nueva, grupo nuevo, editor del grupo, las tres secciones del perfil y el texto institucional. Escape cierra. El botón del pie manda el formulario por `form="formulario-de-etiqueta"` / `"-de-grupo"` / `"-de-producto"` |
+| C2 · nada de formularios en pop-up a 390px | el de etiqueta y el de producto quedan en la página; el editor del grupo se abre **dentro** de la tarjeta (el botón pasa a "Cerrar"); el perfil muestra sus tres secciones con sus 14 campos. `dialog[open] = 0` en las cuatro pestañas |
+| C3 · borrar pregunta | *"¿Borrar «Por encargo»?"* y *"¿Borrar «Cheesecake de Frutos Rojos»?"*. Se cerró con Escape y con "No, dejarlo como está": **las 4 etiquetas y los 5 productos siguen ahí** |
+| C4 · la frase bien escrita | *"Si la borrás sale **del producto que la tiene** y de los filtros de la carta"* — singular y femenino, en vivo |
+| C5 · el cartel sí aparece a 390px | sí, 342 px de ancho, y `scrollWidth - clientWidth = 0` |
+| C7 · R05 | ningún archivo > 300 líneas |
 
-**Y una que salió del test del arreglo:** `normalizar_nombre` no recortaba las puntas, así que un
-nombre de dos marcas y un espacio normalizaba a `" "`. Era **otra divergencia con el front**, que
-hace `trim()` — el espejo que ADR-030 dice sostener.
+## Y de paso, lo que el humano vio que faltaba: el grupo del bizcochuelo
 
-## Lo que FALTA, y no es menor
+No era una falta del código: **era data**. La base de desarrollo tenía un solo grupo («Relleno»).
+Se cargó desde el panel nuevo, que es la mejor prueba de que funciona:
 
-1. **Cloudinary nunca se vio andar**: no hay credenciales (B8). Lo que está probado es la firma, la
-   decisión de destino y la validación de la URL; la llamada HTTP real no se ejercita nunca, que es
-   la misma deuda que D20 tiene con Anthropic.
-2. **El barrido se dispara al subir**, no por reloj: si nadie sube nada por un mes, lo provisorio de
-   ese mes espera. Lo acota la cuota, no el tiempo.
-3. **Un anónimo puede guardar bytes arbitrarios** dentro de un PNG válido (hasta 2 MB). No es
-   ejecutable ni es XSS; es almacenamiento opaco. La salida real es reencodear los píxeles, que es
-   el precio de no tener `Pillow` (D16/D19). Queda anotado en `security.md`, sin maquillar.
-4. **`tag_service` compara el nombre exacto** y no el normalizado (**D28**): dos etiquetas que se
-   llaman igual y solo una habilita. El panel ahora nombra la parecida, pero el back no lo frena.
+- **«Bizcocho»** (nuevo, obligatorio) con **Chocolate** y **Vainilla**.
+- **«Relleno»** ganó **Crema**, y el sabor que estaba escrito `chocolate` en minúscula pasó a
+  **Chocolate** probando el renombrado dentro del pop-up.
+- Los dos grupos quedaron marcados en «Cheesecake de Frutos Rojos».
+- **La ficha pública pide los dos**: "Falta elegir: Relleno, Bizcocho", y con *Crema* + *Vainilla*
+  elegidos el botón "Agregar 1" se habilita. Los tamaños siguen en $14.200 / $19.800.
 
-## T4-F19b · implementada el 2026-10-19, después del commit de T18
+Los sabores son de ejemplo y los define la chef; lo que importa es que la pantalla los soporta.
 
-Lo último que le faltaba a F19 desde T3: los tamaños se cargan **desde el panel**. El detalle está
-en [`handback_T4-F19b.md`](handback_T4-F19b.md), y lo que importa de ahí es lo que **salió del
-navegador y ningún test vio**:
+## La revisión independiente (R30), y lo que encontró
 
-- **El resumen del checkout cobraba el precio base**: una torta de 20 porciones de $28.000 mostrada
-  en $14.200 en su renglón, con el total correcto al lado. Era el agujero de F19a en el único
-  archivo que no se había tocado, y **las dos revisiones de T18 no lo vieron**.
-- **Dos renglones del mismo producto compartían la key de React**, con su error en consola. Recién
-  fue posible cuando el carrito pudo tener dos tamaños de la misma torta.
-- El editor quedaba cerrado al apretar "Editar", y la portada decía un precio que no se puede
-  comprar.
+`CHANGES_REQUESTED`, **16 hallazgos**: 1 ALTA, 7 MEDIA, 8 BAJA. El detalle está en
+[`review_T19.md`](review_T19.md) y la tabla de arreglos en [`handback_T19.md`](handback_T19.md).
+Lo que importa de la tanda aguantó —verificó 10 sospechas que estaban bien, entre ellas que no hay
+fuga de estado entre grupos y que confirmar dos veces no borra dos veces— y lo que rompió fue de
+teclado y de abandono:
 
-Verde: back **330 OK**, front **166 OK**, lint y build limpios. En el navegador: tamaño cargado, los
-ids sin moverse, comprado sin sesión a $28.000, borrado con su aviso, y 375/390px sin desborde.
+- **El ALTA no era de código:** este `current.md` decía en su encabezado "sin ver en el navegador"
+  mientras su cuerpo tenía la sección "El navegador, medido", y el handback lo decía tres veces.
+  Documentación que manda a repetir trabajo hecho. Corregido.
+- **Escape adentro del editor cerraba el pop-up entero** en vez de cancelar el renombre.
+- **No había forma de abandonar un nombre tipeado**: el `onBlur` lo guardaba al cerrar y la X de
+  cancelar se había perdido en el refactor.
+- **Si el guardado fallaba, el pop-up se cerraba igual** y lo tipeado se perdía.
+- **"Cerrar" no cancelaba** en perfil ni en historia.
+- `textoDeUso` decía "No **lo** usa ningún producto" **también para las etiquetas**.
 
-## PRÓXIMO PASO
+Los 7 MEDIA y 5 BAJA están corregidos, con **3 tests nuevos** (front: 176 → **179**).
 
-Revisión independiente de `T4-F19b` (R30) ⇒ OK humano ⇒ commit. Después, de la cola: **F41
-(deploy)**, que depende de las credenciales de Cloudinary (B8) y de `ProxyFix` (D25).
+## Lo que falta para el `done`
+
+**El OK y el commit** (R01).
+
+> Para entrar al panel se creó un admin temporal (`qa-popups@local.test`) y **se borró al
+> terminar**: la cuenta y la clave de Andrea no se tocaron. Quedan como admin solo `admin@local.test`.

@@ -4,6 +4,81 @@ Semver `MAJOR.MINOR.PATCH` (R13). No se borra nada: lo viejo queda.
 
 ---
 
+## [0.15.0] · 2026-10-19 · El pop-up deja de ser de una sola pestaña, y borrar pregunta
+
+El pedido fue de consistencia: *"si vamos a usar un pop-up en algún lugar, creo que tendríamos que
+hacer eso mismo en otros lugares. Porque si no queda como en este lugar sí, en este lugar no, queda
+medio raro"*. ADR-034 había dejado el pop-up en la carta y nada más, y lo había dicho. Ahora
+etiquetas, gustos, las tres secciones del perfil y el texto institucional editan igual (ADR-035).
+
+**Y abriendo el código para hacerlo apareció lo que más importa de esta versión: en la carta y en
+las etiquetas, el botón de borrar borraba de una.** Sin preguntar nada, con el botón al lado del de
+editar, y sin vuelta atrás. Los grupos y los ingredientes sí preguntaban —cada uno con su texto
+escrito a mano—, así que el panel tenía confirmación justo donde el daño era chico. No estaba en el
+criterio de ninguna tarjeta: salió de mirar el código que había que tocar.
+
+**Lo que cambió, pestaña por pestaña:**
+
+- **Etiquetas:** la lista usa todo el ancho y el formulario abre en pop-up. Cada etiqueta dice
+  ahora **en cuántos productos está**, que es lo que vuelve concreto el cartel de borrado.
+- **Gustos:** `GrupoDeOpciones` se partió en `TarjetaDeGrupo` (muestra el grupo y sus sabores) y
+  `EditorDeGrupo` (renombra, marca obligatorio, carga sabores). El alta tiene su pop-up; editar un
+  grupo, el suyo.
+- **Perfil:** las tres secciones (ficha, redes, CV) se editan por separado en vez de ser una página
+  larguísima donde para tocar una línea del CV había que scrollear por la foto y las redes. **El
+  guardado sigue siendo uno solo** y el botón lo dice: "Guardar mi perfil", en los tres.
+- **Historia:** el texto se edita en pop-up con la vista previa adentro, porque es una sola frase
+  que se lee grande en el home y escribirla sin verla es escribir a ciegas.
+- **Carta:** sin cambios de forma; ganó la confirmación de borrado.
+
+**`ConfirmarBorrado` es el primer pop-up que también aparece en celular**, y es a propósito: la
+razón para dejar los formularios en la página es el teclado virtual, y acá no se escribe nada. Lo
+que se gana es que el `<dialog>` atrapa el foco, así que el Enter siguiente cae en un botón del
+cartel y no en lo que había atrás.
+
+**El texto del cartel se mudó a `lib/borrados.ts`, con tests, y el rojo se midió de verdad:** la
+primera versión interpolaba el número sin mirarlo y los tests la rompieron en 6 casos —"sale de los
+1 productos", "de los 0 productos", "de los -1 productos" y la etiqueta en masculino—. Es la única
+parte difícil de esto, y es gramática, no código.
+
+- Tests: front **179 OK** (eran 166; 10 nuevos de `borrados` y 3 que pidió la revisión), back
+  **343 OK** (sin cambios: no se tocó una línea de Python). Lint y build limpios; el JS pasó de
+  411,39 KB a **420,71 KB**.
+- R05: `GrupoDeOpciones` (272) y `PerfilTab` (259) se partieron; **ningún archivo pasa las 300**.
+**La revisión independiente encontró 16 cosas y las que importan eran de teclado y de abandono.**
+`CHANGES_REQUESTED`: 1 ALTA (documentación que decía que esto no se había visto en el navegador
+cuando sí), 7 MEDIA y 8 BAJA; se corrigieron los 7 MEDIA y 5 BAJA. Las tres que más duelen:
+
+- **Escape adentro del editor del grupo cerraba el pop-up entero** en vez de cancelar el renombre.
+  La misma tecla hacía dos cosas distintas según el ancho de la pantalla, y el teclado es **la razón
+  declarada** de usar `<dialog>`.
+- **No había forma de abandonar un nombre tipeado.** El `onBlur` guardaba al salir del campo, y
+  cerrar el pop-up mueve el foco: el PUT salía igual. Encima, la X de cancelar se había perdido en
+  el refactor. Ahora el nombre se guarda **con Enter o con el tilde**, y volvió la X.
+- **"Cerrar" no cancelaba** en el perfil ni en la historia: lo editado quedaba en el estado, el
+  resumen de la tarjeta lo mostraba como guardado y el próximo "Guardar mi perfil" lo persistía.
+  Ahora se guarda una copia al abrir, cerrar la devuelve, y el botón dice "Cerrar sin guardar".
+
+Y una que es puro castellano, en el módulo que existe **por** el castellano: `textoDeUso` decía "No
+**lo** usa ningún producto" también para las etiquetas. Ahora dice "No **está** en ningún producto",
+sin género, con su test.
+
+- **Medido en el navegador** (1920px y 390px, servidor del front levantado para esto y apagado al
+  terminar): en computadora abren en pop-up la etiqueta nueva, el grupo nuevo, el editor del grupo,
+  las tres secciones del perfil y el texto institucional, cada uno con sus datos cargados y con el
+  botón del pie atado al formulario por `form="..."`. Escape cierra. **A 390px no abrió ningún
+  pop-up de formulario**: el formulario de etiqueta y el de producto quedan en la página, el editor
+  del grupo se abre **dentro** de la tarjeta (el botón pasa a decir "Cerrar") y las tres secciones
+  del perfil se muestran enteras. El **cartel de borrado sí aparece a 390px** (342 px de ancho) y
+  `scrollWidth - clientWidth = 0` en las dos medidas.
+- **El cartel de borrado, probado donde antes no preguntaba nada:** "¿Borrar «Por encargo»?" con
+  *"Si la borrás sale del producto que la tiene y de los filtros de la carta"* —singular y femenino,
+  que es justo lo que los tests fijan— y "¿Borrar «Cheesecake de Frutos Rojos»?" con *"Los pedidos
+  que ya lo tienen no cambian"*. Se cerró con Escape y con "No, dejarlo como está": **las 4
+  etiquetas y los 5 productos siguen ahí**.
+
+---
+
 ## [0.14.1] · 2026-10-19 · La etiqueta que habilita deja de ser un string copiado
 
 Dos deudas que dejaron las revisiones, las dos de la misma cosa: la etiqueta

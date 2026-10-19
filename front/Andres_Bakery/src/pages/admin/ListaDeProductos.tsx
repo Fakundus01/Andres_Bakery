@@ -16,11 +16,11 @@ import { formularioDesdeProducto } from "./valoresIniciales";
 export function ListaDeProductos({
   products,
   onEditar,
-  onDelete,
+  onPedirBorrado,
 }: {
   products: Product[];
   onEditar: (form: ProductForm, productId: number) => void;
-  onDelete: (productId: number) => void;
+  onPedirBorrado: (product: Product) => void;
 }) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
@@ -81,7 +81,7 @@ export function ListaDeProductos({
               >
                 Editar
               </button>
-              <button className="btn-secondary" type="button" onClick={() => onDelete(product.id)}>
+              <button className="btn-secondary" type="button" onClick={() => onPedirBorrado(product)}>
                 Eliminar
               </button>
             </div>

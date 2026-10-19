@@ -12,8 +12,7 @@ import {
   usersApi,
 } from "../../lib/api";
 import { getErrorMessage } from "../../lib/format";
-import { queFaltaEnLosTamanos } from "../../lib/variantes";
-import { payloadDeLaEtiqueta, payloadDelProducto } from "./payloadDelProducto";
+import { guardadosDelPanel } from "./guardadosDelPanel";
 import type { Order, PerfilAndrea, Product, ResumenMetricas, Tag, User } from "../../lib/types";
 import type { ProductForm, TagForm } from "../../lib/ui-types";
 import { accionesDeIngredientes } from "./accionesDeIngredientes";
@@ -156,14 +155,19 @@ export function usePanelDeAdmin() {
       void cargarMetricas(dias);
     });
 
-  const conAviso = async (trabajo: () => Promise<void>, mensaje: string) => {
+  /** Devuelve si salió bien: es lo que deja **cerrar el pop-up solo cuando se
+   *  guardó**. Cerrarlo siempre perdía lo tipeado si el back decía no (lo
+   *  marcó el reviewer de T19). */
+  const conAviso = async (trabajo: () => Promise<void>, mensaje: string): Promise<boolean> => {
     setAviso("");
     try {
       await trabajo();
       setAviso(mensaje);
       recargar();
+      return true;
     } catch (reason: unknown) {
       setError(getErrorMessage(reason));
+      return false;
     }
   };
 
@@ -205,38 +209,13 @@ export function usePanelDeAdmin() {
     setFormEtiqueta(formularioDeEtiquetaVacio);
   };
 
-  const guardarProducto = (evento: FormEvent<HTMLFormElement>) => {
-    evento.preventDefault();
-    // Lo de los tamaños se frena acá y no en el 400: es lo que define
-    // precios, y el formulario ya lo tiene medido (F19b).
-    const faltaUnTamano = queFaltaEnLosTamanos(formProducto.variants);
-    if (faltaUnTamano) {
-      setError(faltaUnTamano);
-      return;
-    }
-    void conAviso(async () => {
-      const payload = payloadDelProducto(formProducto);
-      if (productoEditado) {
-        await productsApi.update(productoEditado, payload, token);
-      } else {
-        await productsApi.create(payload, token);
-      }
-      resetProducto();
-    }, "Producto guardado correctamente.");
-  };
-
-  const guardarEtiqueta = (evento: FormEvent<HTMLFormElement>) => {
-    evento.preventDefault();
-    void conAviso(async () => {
-      const payload = payloadDeLaEtiqueta(formEtiqueta);
-      if (etiquetaEditada) {
-        await tagsApi.update(etiquetaEditada, payload, token);
-      } else {
-        await tagsApi.create(payload, token);
-      }
-      resetEtiqueta();
-    }, "Etiqueta guardada.");
-  };
+  const { guardarProducto, guardarEtiqueta } = guardadosDelPanel({
+    token,
+    conAviso,
+    setError,
+    producto: { editado: productoEditado, form: formProducto, reset: resetProducto },
+    etiqueta: { editada: etiquetaEditada, form: formEtiqueta, reset: resetEtiqueta },
+  });
 
   const metricasDeLaCarta = useMemo(
     () => ({ sinPrecio: productos.filter((producto) => producto.price === 0).length }),

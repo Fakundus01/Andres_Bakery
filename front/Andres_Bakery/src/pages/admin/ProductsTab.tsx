@@ -1,7 +1,9 @@
 import { useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
 import { Plus } from "lucide-react";
 
+import { ConfirmarBorrado } from "../../components/ConfirmarBorrado";
 import { Modal } from "../../components/Modal";
+import { textoDeBorrado } from "../../lib/borrados";
 import { FormularioDeProducto, ID_DEL_FORMULARIO } from "./FormularioDeProducto";
 import { ListaDeProductos } from "./ListaDeProductos";
 import { usePantallaGrande } from "../../lib/usePantallaGrande";
@@ -30,7 +32,8 @@ export function ProductsTab(props: {
   setProductForm: Dispatch<SetStateAction<ProductForm>>;
   editingProductId: number | null;
   setEditingProductId: Dispatch<SetStateAction<number | null>>;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  /** Devuelve si se guardó: el pop-up se cierra solo cuando el back dijo sí. */
+  onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<boolean>;
   onReset: () => void;
   onDelete: (productId: number) => void;
 }) {
@@ -38,13 +41,18 @@ export function ProductsTab(props: {
     props;
   const enPopUp = usePantallaGrande();
   const [abierto, setAbierto] = useState(false);
+  const [aBorrar, setABorrar] = useState<Product | null>(null);
 
   const titulo = editingProductId ? "Editar producto" : "Nuevo producto";
   const guardar = (evento: FormEvent<HTMLFormElement>) => {
-    props.onSubmit(evento);
-    // El pop-up se cierra al guardar: si el guardado falla, el aviso de error
-    // del panel queda a la vista, que es donde ella está mirando.
-    setAbierto(false);
+    // Se cierra **solo si se guardó**. Cerrarlo siempre dejaba el error a la
+    // vista pero se llevaba lo tipeado: el próximo "Nuevo producto" limpia el
+    // formulario, así que un 400 del back costaba volver a escribir todo.
+    void props.onSubmit(evento).then((guardado) => {
+      if (guardado) {
+        setAbierto(false);
+      }
+    });
   };
 
   const formulario = <FormularioDeProducto {...props} onSubmit={guardar} />;
@@ -65,6 +73,23 @@ export function ProductsTab(props: {
         {enPopUp ? "Cancelar" : "Limpiar"}
       </button>
     </div>
+  );
+
+  /** Antes no preguntaba nada: "Eliminar" borraba el producto de una, y el
+   *  botón está al lado del de editar (ADR-035). */
+  const confirmacion = (
+    <ConfirmarBorrado
+      abierto={aBorrar !== null}
+      titulo={aBorrar ? `¿Borrar «${aBorrar.name}»?` : ""}
+      texto={textoDeBorrado("producto")}
+      onCerrar={() => setABorrar(null)}
+      onConfirmar={() => {
+        if (aBorrar) {
+          onDelete(aBorrar.id);
+        }
+        setABorrar(null);
+      }}
+    />
   );
 
   const abrirNuevo = () => {
@@ -92,8 +117,9 @@ export function ProductsTab(props: {
             setEditingProductId(id);
             setProductForm(form);
           }}
-          onDelete={onDelete}
+          onPedirBorrado={setABorrar}
         />
+        {confirmacion}
       </section>
     );
   }
@@ -110,7 +136,7 @@ export function ProductsTab(props: {
         </button>
       </div>
 
-      <ListaDeProductos products={products} onEditar={abrirParaEditar} onDelete={onDelete} />
+      <ListaDeProductos products={products} onEditar={abrirParaEditar} onPedirBorrado={setABorrar} />
 
       <Modal
         abierto={abierto}
@@ -125,6 +151,7 @@ export function ProductsTab(props: {
       >
         {formulario}
       </Modal>
+      {confirmacion}
     </section>
   );
 }

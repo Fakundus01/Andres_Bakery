@@ -64,6 +64,21 @@ Todavía **sin tarea asignada**: entran al backlog, no al código, hasta decidir
 
 **Lo que se midió del soporte actual (F35), no opinión:** ocupa el alto completo del viewport y tapa el header; la fila de respuestas rápidas está debajo del historial, así que **cada mensaje la empuja y terminás tocando otro botón** (pasó en la prueba: clic en "Medios de pago", respondió "Pedidos personalizados"); hay dos barras de scroll anidadas; y es un FAQ de 3 botones más un formulario de contacto disfrazado de conversación.
 
+## B4 · Pedido del humano el 2026-10-19 (que el panel se edite igual en todas partes)
+
+Dicho por voz, y es un pedido de consistencia: *"si vamos a usar un pop-up en algún lugar, creo que
+tendríamos que hacer eso mismo en otros lugares. Porque si no queda como en este lugar sí, en este
+lugar no, queda medio raro"*. ADR-034 había puesto el pop-up en una sola pestaña **y lo había dicho**.
+
+| ID | Feature | Estado | Tarea | ADR |
+|---|---|---|---|---|
+| F60 | **El panel edita en pop-up en todas sus pestañas**, y borrar algo que no se deshace pregunta antes | **Complete** (2026-10-19) · medida en navegador; falta el reviewer | T19 | ADR-035 |
+
+**Lo que no se pidió y entró igual, porque apareció al abrir el código:** en la carta y en las
+etiquetas, **borrar borraba de una**, sin preguntar, con el botón al lado del de editar. Los grupos
+y los ingredientes sí preguntaban. Un panel que confirma donde el daño es chico y no confirma donde
+es grande no es un detalle de forma.
+
 ## B3 · Pedido del humano el 2026-10-17 (tercera tanda, por dictado)
 
 Todo esto entró con su ADR y su tarea en el mismo ciclo (R08). **F33 ya estaba hecho**: lo que faltaba era el hover, que es F42.

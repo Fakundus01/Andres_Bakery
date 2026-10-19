@@ -188,3 +188,36 @@ Dos del 2026-10-17 (T7). Ninguno era un bug del código: eran tests que medían 
 **Un tope de prueba demasiado chico prueba otra cosa.** El test del recorte del mensaje usaba un tope de 60 caracteres esperando "entra el primer producto y el resto se resume". Con 60 no entraba ni el primero —el aviso del resto ocupa 57— así que el mensaje salía resumiendo los cuatro y la cuenta no daba. Con 100 el test mide lo que dice. Lección: cuando el caso de borde depende de dos largos, hay que calcular el número, no elegirlo a ojo.
 
 **Un test con una fecha fija adentro es una bomba de tiempo.** Los dos tests del resumen de métricas fijaban `hoy = date(2026, 10, 17)` y creaban el pedido con el default `utcnow()`. Pasaron todo el día y se pusieron rojos solos **a las 00:01 UTC**, sin que nadie tocara ese código. El arreglo no es mover la fecha: es que el dato del test traiga su propia fecha (`create_order(..., created_at=...)`), así el test no depende de cuándo se corre.
+
+**Un texto que la usuaria lee es lógica, y se testea (2026-10-19).** El cartel de "¿borrar esto?"
+parecía presentación: se escribió dos veces a mano en dos componentes y nadie lo probó. Pero lo que
+tiene adentro es gramática con ramas —singular, plural, cero, género— y la primera versión del
+módulo compartido (`lib/borrados.ts`) falló **6 de 10 tests**: decía "sale de los 1 productos",
+"de los 0 productos", "de los -1 productos" y trataba la etiqueta en masculino. Ninguna de esas
+cuatro cosas rompe la app; las cuatro hacen que ella no borre nada por no entender qué le están
+preguntando. La regla: si un texto cambia según un número, es una función, y las funciones se
+testean. El test que lo cazó no compara strings enteros —eso se rompe con cada ajuste de redacción—
+sino que **prohíbe lo que no se puede decir**: `expect(texto).not.toMatch(/l[oa]s 1 /)`.
+
+**Y un número que no debería llegar tiene que seguir siendo legible.** El mismo módulo recibe un
+conteo que podría venir `NaN` si una cuenta falla. Un cartel que dice "sale de los NaN productos" es
+peor que uno impreciso: `enteroPositivo` lo trata como cero y el test lo fija.
+
+**Lo que un test de lógica pura no puede ver: la tecla y el abandono (2026-10-19).** La revisión de
+T19 encontró seis cosas en una tanda con las dos suites verdes, el navegador mirado y 10 sospechas
+verificadas como correctas. Ninguna de las seis la podía cazar un test de este proyecto, porque
+ADR-023 deja el front en lógica pura (no hay jsdom, deuda D7), y **ninguna la cazó mirar la pantalla
+tampoco**, porque todas son sobre *abandonar* una edición:
+
+- Escape adentro de un pop-up cerraba el pop-up entero en vez de cancelar el renombre.
+- El `onBlur` guardaba el nombre al cerrar: no había forma de tipear y abandonar.
+- El formulario de alta se reabría con lo tipeado y cancelado.
+- El pop-up se cerraba aunque el guardado fallara, y lo tipeado se perdía.
+- "Cerrar" no cancelaba: lo editado quedaba en el estado y el guardado siguiente lo persistía.
+
+La regla que queda: **al revisar una pantalla nueva, probar primero los caminos de abandono** —
+Escape, cerrar, cancelar, reabrir, y el guardado que falla—. Son los que nadie prueba porque no son
+el camino feliz, y son la mitad de lo que hace una persona apurada. Y si el reviewer compara contra
+`git show <base>:<archivo>`, encuentra además lo que el refactor se llevó sin que nadie lo diga: acá
+fueron una X de cancelar, dos frases del cartel de borrado y un encabezado.
+

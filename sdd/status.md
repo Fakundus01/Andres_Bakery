@@ -1,6 +1,6 @@
 # status.md · Andres Bakery
 
-**Versión:** 0.14.1 · **Última actualización:** 2026-10-19
+**Versión:** 0.15.0 · **Última actualización:** 2026-10-19
 
 ## 1 · Dónde estamos
 
@@ -11,9 +11,9 @@ El repo tiene 4 meses de código y **estuvo 7 meses quieto** hasta el 2026-10-16
 | Check | Resultado |
 |---|---|
 | Tests del back | **343 OK** (eran 307 al cerrar T18; 32 salieron de las tres revisiones) · eran 228 al abrir el día |
-| Tests del front | **166 OK** — Vitest, lógica pura (ADR-023). Eran 90 al abrir el día |
+| Tests del front | **179 OK** — Vitest, lógica pura (ADR-023). Eran 166 antes de `lib/borrados`; eran 90 al abrir el día |
 | Lint del front (eslint + tsc) | limpio |
-| Build del front | verde — 411,39 KB JS · 34,97 KB CSS (eran 381,91 · 33,99: +20 KB por la pestaña de gustos, la personalización de la ficha y el detalle del renglón) |
+| Build del front | verde — **420,71 KB JS · 36,15 KB CSS**. La historia: 381,91 al abrir el día → 411,39 con la pestaña de gustos, la personalización de la ficha y el detalle del renglón → 420,71 con los pop-ups del panel (+9,3 KB) |
 | Migraciones | **`0006`, `0007` y `0008` aplicadas** (el tamaño vendido en el renglón, los grupos de opciones, y la personalización + el registro de fotos), probadas para arriba y para abajo sobre una copia de la base real **con datos sembrados a propósito**, otra vez para arriba, y desde base vacía. Antes, **`0005`** (el ingrediente gana su nombre normalizado con índice único, ADR-030), probada en los dos sentidos sobre una copia con un choque sembrado. Antes, **`0004`** (el mail del cliente pasó a opcional), probada para abajo y para arriba sobre la base real. Antes, **`0003`**. Probada sobre una copia antes que sobre la real, en los dos sentidos y desde base vacía |
 | App corriendo | back en `127.0.0.1:5000`, front en `127.0.0.1:5173`. Probado en navegador: giro por hover, subida de una foto real de punta a punta, panel con gráficos, perfil y `/cv` |
 | Responsive 390px | `/cv`, `/historia`, `/tienda` y `/admin`: cero desbordes, medido con `scrollWidth` vs `clientWidth` |
@@ -28,6 +28,10 @@ El repo tiene 4 meses de código y **estuvo 7 meses quieto** hasta el 2026-10-16
 | Revisión independiente (T4-F19a + T18) | **hecha, y encontró cosas de fondo.** Dos revisores que **re-ejecutaron**: el funcional (`CHANGES_REQUESTED`, 14 hallazgos) y el de seguridad + pentester (`CHANGES_REQUESTED`, 9, **ninguno CRÍTICA ni ALTA**). Lo central de la tanda aguantó: 22 formas de `variant_id` y ninguna pagó de menos, 33 payloads contra la URL de la foto y solo entraron las nuestras, el tope por IP no se saltea con 10 headers de proxy distintos, y 30 combinaciones de credencial × ruta de admin dieron 401/403/422. **Lo que rompieron: la cuota se pasaba 5,7× con seis subidas simultáneas** (el mismo `check-then-insert` de ADR-030, en otro archivo), **los ids de variante se movían en cada guardado** —ADR-029 parte 3 estaba escrita como hecha sin estarlo— y dos 500 con HTML en una API JSON. **Todo corregido con su test**; ver `review_T18.md` y `security_review_T18.md` |
 | Revisión independiente (T4-F19b) | **hecha**: `CHANGES_REQUESTED`, 14 hallazgos, **3 ALTA** y las tres de lo mismo — lo que el panel avisa, el back no lo validaba. La peor: un precio de `1e400` dejaba `GET /api/products` con **JSON inválido** y la web en blanco para todos los visitantes. Corregidas con su test |
 | Pop-up de edición (ADR-034) | **medido en 1920px**: el panel usa 1905 y el sitio 1664 (eran 1280); el pop-up abre con los datos, cierra con Escape, guarda desde el pie y no mueve los ids. A 390px no hay pop-up, como se pidió |
+| Pop-up en todo el panel (ADR-035) | **medido en 1920px y 390px**: en computadora abren en pop-up la etiqueta, el grupo, el editor del grupo, las tres secciones del perfil y el texto institucional; **a 390px ninguno de formulario** (el editor del grupo se abre dentro de la tarjeta) y el **cartel de borrado sí aparece** (342 px). Desborde 0 en las dos medidas |
+| Borrar sin preguntar | **era real y está cerrado**: "Eliminar" en un producto y "Borrar" en una etiqueta borraban de una, con el botón al lado del de editar. Ahora preguntan, nombrando lo que se pierde |
+| Revisión independiente (T19-F60) | **hecha**: `CHANGES_REQUESTED`, 16 hallazgos (1 ALTA, 7 MEDIA, 8 BAJA). El ALTA **no era de código**: los MDs decían que esto no se había visto en el navegador cuando sí, o sea documentación que manda a repetir trabajo hecho. Lo de fondo: **Escape adentro del editor cerraba el pop-up entero**, **no había forma de abandonar un nombre tipeado** (el `onBlur` lo guardaba al cerrar y la X de cancelar se había perdido en el refactor), **el pop-up se cerraba aunque el guardado fallara**, y **"Cerrar" no cancelaba** en perfil ni historia. Los 7 MEDIA y 5 BAJA corregidos, con 3 tests nuevos. Verificó además 10 sospechas que **estaban bien** |
+| Gustos cargados en la base de desarrollo | **dos grupos, no uno**: «Relleno» (Dulce de leche, Chocolate, **Crema**) y **«Bizcocho» (Chocolate, Vainilla)**, nuevo. Los dos están marcados en «Cheesecake de Frutos Rojos» y la ficha pública pide los dos antes de agregar al carrito. Lo pidió el humano al ver que faltaba el del bizcochuelo; los sabores reales los define la chef |
 | Rama | `dev`, adelantada respecto de `main` |
 
 ## 2 · Avance por feature
@@ -114,11 +118,13 @@ Lo de 0.5.0 sigue igual salvo lo tachado. **D3 se cerró** y entraron tres deuda
 
 ## 5 · Próximo paso propuesto
 
-**Cerró el 2026-10-19:** `T4-F19a` (el tamaño se cobra) y la tanda **T18** entera (F57, F58, F59).
-La cola, en orden:
+**Cerró el 2026-10-19:** `T4-F19a` (el tamaño se cobra), la tanda **T18** entera (F57, F58, F59),
+`T4-F19b` + ADR-034, D27/D28 y ahora **T19-F60** (el pop-up en todas las pestañas + la confirmación
+de borrado, ADR-035). La cola, en orden:
 
-1. **El OK humano y el commit.** La revisión independiente ya está hecha y corregida; lo único que
-   falta para el `done` de R16 es su OK.
+1. **Mirar T19-F60 en el navegador y revisarla.** Hace falta que el humano levante el servidor del
+   front; después van las dos cosas que R30 pide y que todavía no están: el navegador (1920px y
+   390px) y el reviewer independiente.
 2. **F41 · Deploy** (ADR-014). Lo que cambió hoy: las fotos ya no son un problema sin resolver —van
    a Cloudinary con cargar cuatro variables (B8)—, pero **el tope por IP sigue necesitando
    `ProxyFix`** (D25) y ahora importa más, porque la ruta pública de archivos depende de él.

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Check, Trash2, X } from "lucide-react";
 
+import { textoDeBorrado, textoDeUso } from "../../lib/borrados";
 import type { Ingredient } from "../../lib/types";
 
 /** Corregir un tipeo y sacar lo que sobra (F20, T6-F20b).
@@ -8,6 +9,11 @@ import type { Ingredient } from "../../lib/types";
  *  Sin esto, el panel sabía **crear** ingredientes globales y nada más: un
  *  "Chocolte" quedaba publicado en la ficha y en el dorso de la tarjeta para
  *  siempre. El PUT y el DELETE existían en el back desde T3, sin usar.
+ *
+ *  **La excepción a ADR-035:** acá la confirmación de borrado sigue siendo en
+ *  la propia fila y no un pop-up, porque esto se edita **adentro** del
+ *  formulario del producto, que en computadora ya es un pop-up. Uno adentro
+ *  de otro es peor que lo que arregla. El texto, eso sí, ya es el compartido.
  */
 export function AdministrarIngredientes({
   ingredientes,
@@ -36,27 +42,6 @@ export function AdministrarIngredientes({
       onRenombrar(ingrediente.id, limpio);
     }
     setEditando(null);
-  };
-
-  /** El renglón que lee justo antes de algo que no se deshace, así que se
-   *  escribe bien: "de los 1 productos" no lo escribiría ella. */
-  const textoDeBorrado = (id: number) => {
-    const cuantos = usos[id] ?? 0;
-    if (cuantos === 0) {
-      return "¿Borrar este ingrediente? No se deshace.";
-    }
-    if (cuantos === 1) {
-      return "Si lo borrás sale del producto que lo tiene. No se deshace.";
-    }
-    return `Si lo borrás sale de los ${cuantos} productos que lo tienen. No se deshace.`;
-  };
-
-  const textoDeUso = (id: number) => {
-    const cuantos = usos[id] ?? 0;
-    if (cuantos === 0) {
-      return "No lo usa ningún producto";
-    }
-    return cuantos === 1 ? "Está en 1 producto" : `Está en ${cuantos} productos`;
   };
 
   return (
@@ -93,7 +78,7 @@ export function AdministrarIngredientes({
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="break-words text-sm font-bold text-tinta">{ingrediente.name}</p>
-                <p className="text-xs text-tinta-tenue">{textoDeUso(ingrediente.id)}</p>
+                <p className="text-xs text-tinta-tenue">{textoDeUso(usos[ingrediente.id] ?? 0)}</p>
               </div>
               <div className="flex shrink-0 gap-2">
                 <button
@@ -117,7 +102,7 @@ export function AdministrarIngredientes({
 
           {confirmando === ingrediente.id ? (
             <div className="mt-2 border-t-[3px] border-borde pt-2">
-              <p className="text-xs leading-5 text-tinta">{textoDeBorrado(ingrediente.id)}</p>
+              <p className="text-xs leading-5 text-tinta">{textoDeBorrado("ingrediente", usos[ingrediente.id] ?? 0)}</p>
               <div className="mt-2 flex gap-2">
                 <button
                   className="btn-primary px-3 py-1 text-xs"
