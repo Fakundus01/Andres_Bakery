@@ -20,8 +20,9 @@ Errores: `{"error": "<mensaje>"}` con el status de la excepción (`services/exce
 | DELETE | `/api/products/<id>` | admin | `{status}` |
 | GET | `/api/recipes` | — | `Recipe[]` — **se jubila (ADR-001)** |
 | POST·PUT·DELETE | `/api/recipes[/<id>]` | admin | **se jubilan** |
-| GET | `/api/ingredients` | — | `Ingredient[]` — existe, el front no lo usa |
-| POST·PUT·DELETE | `/api/ingredients[/<id>]` | admin | existen, el front no los usa |
+| GET | `/api/ingredients` | — | `Ingredient[]` — lo usa el panel desde T6 (F20) |
+| POST | `/api/ingredients` | admin | `{id, name}` · **201 si lo creó, 200 si ya existía** con ese nombre normalizado (ADR-030). El `name` que vuelve es el **guardado**, que puede estar escrito distinto del que se mandó |
+| PUT·DELETE | `/api/ingredients/<id>` | admin | `{status}` — los usa el panel desde T6-F20b para corregir un tipeo y borrar lo que sobra |
 | GET | `/api/orders` | token | `Order[]` (del usuario; todas si es admin) |
 | POST | `/api/orders` | token | `{order_id, total, emails}` |
 | POST | `/api/orders/whatsapp` | **— (token opcional)** | `{order_id, total, phone, message}` · 201 — el pedido del invitado (F23, F31, ADR-025) |

@@ -17,7 +17,12 @@ def list_ingredients():
 @admin_required
 @json_endpoint
 def create_ingredient():
-    return ingredient_service.create(request.get_json(silent=True) or {}), 201
+    """201 si se creo, 200 si ya existia con ese nombre (ADR-030).
+
+    Pedir desde el panel uno que ya esta es la misma intencion que marcarlo.
+    """
+    payload, creado = ingredient_service.create(request.get_json(silent=True) or {})
+    return payload, (201 if creado else 200)
 
 
 @bp.put("/<int:ingredient_id>")

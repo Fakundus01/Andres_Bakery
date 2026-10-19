@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from sqlalchemy.orm import validates
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from .extensions import db
@@ -119,6 +120,11 @@ class ProductVariant(db.Model):
 class Ingredient(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False, unique=True)
+    # La unicidad que importa es esta, no la de `name` (ADR-030): el nombre
+    # exacto deja entrar "Coco rallado" y "coco rallado" como dos filas. Sin
+    # una restriccion que lo respalde, el chequeo del servicio es un
+    # `check-then-insert` y dos requests casi simultaneos pasan las dos.
+    normalized_name = db.Column(db.String(120), nullable=False, unique=True, index=True)
     unit = db.Column(db.String(40))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -128,6 +134,21 @@ class Ingredient(db.Model):
         back_populates="ingredients",
         lazy=True,
     )
+
+    @validates("name")
+    def _derivar_normalizado(self, _clave: str, valor: str) -> str:
+        """El normalizado sale del nombre, siempre, sin que nadie se acuerde.
+
+        Podria setearlo el servicio y listo, pero entonces cualquier camino
+        que cree un `Ingredient` sin pasar por ahi —un test, una migracion, un
+        arreglo a mano— deja una fila con el normalizado inconsistente, y la
+        restriccion unica que la sostiene (ADR-030) pasa a mentir. Derivarlo
+        aca hace que eso no se pueda.
+        """
+        from .services.saneado import normalizar_nombre
+
+        self.normalized_name = normalizar_nombre(valor, "nombre", tope=120)
+        return valor
 
 
 class Order(db.Model):

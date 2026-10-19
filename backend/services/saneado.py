@@ -60,21 +60,29 @@ def texto(
     un error honesto de quien llama—, pero un dict o una lista no: eso no es
     alguien tipeando mal, y terminaba reventando al grabar.
     """
-    if valor is None:
-        limpio = ""
-    elif isinstance(valor, bool) or isinstance(valor, (dict, list, tuple, set)):
-        raise ValidationError(f"El campo «{campo}» tiene que venir como texto.")
-    elif isinstance(valor, (int, float)):
-        limpio = str(valor)
-    elif isinstance(valor, str):
-        limpio = valor
-    else:
-        raise ValidationError(f"El campo «{campo}» tiene que venir como texto.")
-
+    limpio = _a_texto(valor, campo)
     limpio = _sin_caracteres_de_control(limpio, una_linea=una_linea).strip()
     if obligatorio and not limpio:
         raise ValidationError(f"Falta «{campo}».")
     return limpio[:tope]
+
+
+def _a_texto(valor: object, campo: str) -> str:
+    """Lo que llega convertido a str, o 400.
+
+    Un numero se acepta y se pasa a texto —un telefono escrito como numero es
+    un error honesto de quien llama—, pero un dict o una lista no: eso no es
+    alguien tipeando mal, y terminaba reventando al grabar.
+    """
+    if valor is None:
+        return ""
+    if isinstance(valor, bool) or isinstance(valor, (dict, list, tuple, set)):
+        raise ValidationError(f"El campo «{campo}» tiene que venir como texto.")
+    if isinstance(valor, (int, float)):
+        return str(valor)
+    if isinstance(valor, str):
+        return valor
+    raise ValidationError(f"El campo «{campo}» tiene que venir como texto.")
 
 
 def mail(valor: object) -> str:
@@ -106,6 +114,71 @@ def _sin_caracteres_de_control(valor: str, *, una_linea: bool) -> str:
     # Dos saltos seguidos quedan en uno: en un mail, una pared de lineas
     # vacias esconde lo que importa.
     return re.sub(r"\n{2,}", "\n", re.sub(r"( · )+", " · ", unido))
+
+
+# Lo que no se ve pero ocupa lugar: espacio de ancho cero, guion suave y la
+# marca de orden de bytes. Con uno adentro, "Azucar" se ve identico a "Azucar"
+# y seria un duplicado que nadie puede distinguir mirando la lista.
+_INVISIBLES = dict.fromkeys(map(ord, "­​‌‍﻿"))
+
+
+def sin_invisibles(valor: str) -> str:
+    """Saca lo que no se ve pero cuenta como caracter.
+
+    Hace falta en dos lugares distintos: antes de **comparar** (si no, el
+    duplicado invisible entra) y antes de **guardar** (si no, un nombre hecho
+    solo de espacios de ancho cero pasa el control de "no vacio").
+    """
+    return valor.translate(_INVISIBLES)
+
+
+def normalizar_nombre(valor: object, campo: str, *, tope: int) -> str:
+    """La forma de un nombre **para comparar**, no para guardar.
+
+    Sin acentos, sin mayusculas, sin espacios de mas. La n con virgulilla se
+    conserva: es otra letra, no una n con acento, y barrerla haria que "Pina"
+    y "Pin~a" fueran el mismo ingrediente y uno de los dos nombres
+    desapareciera de la lista de Andrea sin que nadie lo haya decidido.
+
+    **Espeja a `front/src/lib/ingredientes.ts::normalizar`.** Las dos existen
+    porque la comparacion tiene que valer igual de los dos lados: cuando vivia
+    solo en el front, el back aceptaba "coco rallado" sobre "Coco rallado" y
+    el duplicado entraba igual (T6-F20b).
+
+    El espejo se mantiene con **categorias Unicode** y no con rangos escritos
+    a mano. Una primera version barria `[̀-ͯ]` en el front y
+    `unicodedata.combining` aca, y divergian en arabe, hebreo y devanagari; y
+    pasaba por `texto(una_linea=True)`, que convierte el salto de linea en
+    " · " y hacia que "coco
+rallado" normalizara distinto. Lo midio el
+    reviewer: 11 divergencias de 56 casos.
+    """
+    crudo = _a_texto(valor, campo)[:tope]
+    limpio = _limpiar_para_comparar(crudo)
+    descompuesto = unicodedata.normalize("NFD", limpio)
+    # NFD parte la n con virgulilla en "n" + tilde suelta, y el barrido de la
+    # linea siguiente la dejaria en "n". Se recompone antes de barrer.
+    con_enie = descompuesto.replace("ñ", "ñ").replace("Ñ", "Ñ")
+    sin_marcas = "".join(c for c in con_enie if unicodedata.category(c)[0] != "M")
+    return " ".join(sin_marcas.lower().split(" "))
+
+
+def _limpiar_para_comparar(valor: str) -> str:
+    """Los invisibles se van; todo lo que es espacio o control pasa a espacio.
+
+    La diferencia importa: un espacio de ancho cero adentro de "Azucar" no
+    puede partir la palabra en dos, pero un tabulador si tiene que separar.
+    """
+    salida = []
+    for caracter in valor:
+        categoria = unicodedata.category(caracter)
+        if categoria == "Cf":
+            continue
+        if caracter.isspace() or categoria in {"Cc", "Zs", "Zl", "Zp"}:
+            salida.append(" ")
+            continue
+        salida.append(caracter)
+    return "".join(salida)
 
 
 def entero(valor: object, campo: str, *, minimo: int, maximo: int) -> int:

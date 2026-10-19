@@ -1,6 +1,6 @@
 # security.md · Andres Bakery
 
-**Versión:** 0.3.0 · **Clasificado el:** 2026-10-16 · **Reclasificado el:** 2026-10-17 (R27: F45 prendió N5, F46 prendió N4, y **F23 abrió la primera escritura pública**) · **Reclasificar:** con cada feature nueva
+**Versión:** 0.4.0 · **Clasificado el:** 2026-10-16 · **Reclasificado el:** 2026-10-19 (R27: **F59 va a convertir N5 en escritura pública de archivos**; antes, el 2026-10-17, F45 prendió N5, F46 prendió N4 y F23 abrió la primera escritura pública) · **Reclasificar:** con cada feature nueva
 
 ## 1 · Superficie (R27)
 
@@ -11,8 +11,37 @@
 | **N2 · Datos** | Sí | nombre, email, teléfono y dirección de entrega de personas. **Desde el 2026-10-17 también de gente sin cuenta** (pedido de invitado, F23): esos datos entran por una ruta pública |
 | **N3 · Plata** | Sí (latente) | Mercado Pago está implementado, apagado hasta tener credenciales (ADR-002) |
 | **N4 · IA** | **Sí** desde el 2026-10-17 | el asistente de recetas manda una foto a un modelo (F46, ADR-020). El panel de Ayuda sigue siendo un árbol fijo |
-| **N5 · Archivos** | **Sí** desde el 2026-10-17 | el panel pasó a subir fotos de verdad (F45, ADR-018). Era el gatillo que esta fila anticipaba |
+| **N5 · Archivos** | **Sí** desde el 2026-10-17, y **sube de grado con F59** | el panel sube fotos de verdad (F45, ADR-018), **solo admin**. F59 (planificada, ADR-031) abre una ruta donde **sube cualquier anónimo**: es la superficie más grande del proyecto. Ver §1b |
 | **N6 · Superficie pública** | Sí | la API Flask queda expuesta |
+
+## 1b · Lo que F59 cambia, escrito antes de construirlo (2026-10-19)
+
+F59 deja que una persona sin cuenta escriba un archivo en el disco del servidor. Hasta hoy, lo único
+que un anónimo podía escribir era **filas** (un pedido, una visita). Esto es otra categoría.
+
+**Se decidió con la alternativa sobre la mesa.** La recomendación era pedir la foto por WhatsApp,
+donde la conversación ya sucede (ADR-025): cero endpoint, cero disco, cero retención. El humano
+eligió la subida. Entonces el costo se paga entero, y son cuatro controles **de los cuales ninguno
+es opcional** (tarjeta `T18-F59`):
+
+| Control | Por qué |
+|---|---|
+| Ruta pública **separada** de la de admin | Dos políticas distintas. Sacarle el `@admin_required` a la de ella sería bajarle el nivel a lo que ya funciona |
+| Tope por IP (`rate_limit`, ADR-026/028) | Sin esto, el disco es de quien tenga más ancho de banda |
+| Tamaño menor a 4 MB **y cuota de disco total** | Cierra **D18**. El tope por archivo sin tope total no acota nada |
+| Barrido de huérfanas | Cierra **D17** para estas fotos. El cliente sube **antes** de que el pedido exista: si abandona el carrito —lo más común en una tienda— la foto queda para siempre |
+
+**Y el control que no es de archivos sino de datos:** el pedido no acepta cualquier URL de foto.
+Tiene que ser una que emitimos nosotros (`/uploads/<32 hex>.<jpg|png>` y existiendo en disco). Si
+no, el renglón del pedido es un lugar donde meter un link a cualquier cosa, y el panel de Andrea y
+el mensaje de WhatsApp lo muestran **con su firma**. Mismo agujero que ADR-020 cerró en la IA y
+ADR-025 en el envío.
+
+**Lo que ya está y no hay que rehacer:** el validador por contenido, la reescritura sin metadatos,
+el nombre elegido por el servidor y el `GET /uploads/<nombre>` inerte con `nosniff` (ADR-018). El
+riesgo nuevo no es el archivo que entra: es **quién** puede hacerlo entrar, y cuántas veces.
+
+**Estado: planificado, no implementado.** Esta sección se reescribe con lo medido cuando F59 salga.
 
 ## 2 · Estado medido el 2026-10-16
 

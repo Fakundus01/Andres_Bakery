@@ -10,7 +10,7 @@ Los mismos que `harness.config.json`. **Siempre desde la raíz del repo**: los i
 # Back: 151 tests, unittest (NO pytest: el venv no lo tiene)
 backend/.venv/Scripts/python.exe -m unittest discover -s backend/tests -t . -q
 
-# Front: 48 tests de logica pura, Vitest (ADR-023)
+# Front: 90 tests de logica pura, Vitest (ADR-023)
 npm --prefix front/Andres_Bakery run test
 
 # Front: eslint + tsc (los dos proyectos de TS)
@@ -28,6 +28,7 @@ Estado medido el 2026-10-17 tras T16: **151 tests del back + 48 del front OK**, 
 |---|---|
 | `test_api.py` | endpoints de punta a punta sobre una app de test con SQLite temporal |
 | `test_product_service.py` | alta/edición/borrado de productos, slug, unidades, etiquetas y variantes |
+| `test_ingredient_service.py` | unicidad normalizada (acentos, mayúsculas, espacios; la ñ **no** se conflacta), topes de largo, tipos raros y el `PUT` (ADR-030) |
 | `test_tag_service.py` | etiquetas: slug, color válido, orden y borrado sin tocar los productos |
 | `test_quantity.py` | la regla de `min_qty`/`qty_step` ("se venden de a 6") |
 | `test_slug.py` | `slugify` y el desempate cuando el slug ya existe |
@@ -54,6 +55,8 @@ Estado medido el 2026-10-17 tras T16: **151 tests del back + 48 del front OK**, 
 
 **Las migraciones también se prueban**: `0002` se corrió sobre una **copia** de la base real antes que sobre la real, en los dos sentidos (`upgrade` y `downgrade`) y desde una base vacía. Una migración que nunca se ejecutó no está probada.
 
+**Lo que se verificó en navegador el 2026-10-18** (R07), para F20: que el selector liste y marque; que crear un ingrediente no borre lo escrito en el formulario; que escribir `azucar` **reuse** «Azúcar» (medido: 1 solo `POST /api/ingredients` en toda la sesión); que editar y guardar sin tocar ingredientes no se los lleve; que **Enter en el campo de ingrediente no guarde el producto** (medido: `0 POST /api/products`); y 375px y 390px con `scrollWidth - clientWidth = 0`.
+
 **Lo que se verificó en navegador el 2026-10-17** (R07), no con tests: el giro por hover y que el dorso tenga su "Agregar"; la subida de una foto real de punta a punta (archivo elegido → guardado → servido → mostrado en el formulario y en la carta); el panel con sus gráficos; `/historia` con las redes; `/cv`; y 390px sin desbordes en cuatro rutas.
 
 **Lo que enseñó la revisión del 2026-10-17 sobre estos mismos tests** (R30: el reviewer no solo corre la suite, la audita):
@@ -75,6 +78,8 @@ Estado medido el 2026-10-17 tras T16: **151 tests del back + 48 del front OK**, 
 | `lib/sesionGuardada.test.ts` | leer, guardar y **borrar** la sesión, con el almacenamiento bloqueado y con un JSON roto |
 | `components/charts/piezas.test.ts` | las marcas del eje (todas enteras) y el formato corto |
 | `preferencias/sanear.test.ts` | lo que viene de `localStorage` no puede romper la pantalla |
+| `pages/admin/altaDeIngrediente.test.ts` | el alta con una API falsa: el nombre que manda, el rescate cuando el alta falla, y que se quede con el nombre que devuelve el servidor |
+| `lib/ingredientes.test.ts` | comparar nombres de ingredientes sin acentos ni mayúsculas, **conservando la ñ**, para no duplicar lo que ya existe (F20) |
 
 **Entorno `node`, no `jsdom`:** nada de esto monta componentes. Lo visual se sigue verificando en el navegador (R07).
 
@@ -127,6 +132,12 @@ Estado medido el 2026-10-17 tras T16: **151 tests del back + 48 del front OK**, 
 5. Si el cambio toca precios, mínimos o totales ⇒ el rojo se vio primero (R29).
 
 ## 6 · Tests que estaban mal, y qué enseñaron
+
+**`DATABASE_URL` es la variable, y equivocarse apunta a la base real (2026-10-19).** Probando la migración `0005` se corrió un `downgrade` pasando `SQLALCHEMY_DATABASE_URI` —que `config.py` **no** lee— creyendo que iba contra una copia. Fue contra `instance/bakery.db`: la bajó a `0003` y escribió el mail placeholder en 3 pedidos que lo tenían en NULL. Se restauró hacia adelante y se verificó fila por fila. La regla: **un comando de migración que no nombra `DATABASE_URL` apunta a la base real.** Y antes de tocar migraciones, copiar la base.
+
+
+**Una prueba en el navegador contra un servidor viejo no prueba nada (2026-10-19).** El arreglo de la unicidad del ingrediente "falló" en el navegador y el duplicado entró igual. El código estaba bien: el proceso de Flask venía de antes del cambio, y **no recarga solo** desde que `debug=True` se apagó en la review de T7. La regla que queda: después de tocar el back, se reinicia **antes** de creerle a una prueba en el navegador — y si el resultado contradice a un test unitario que pasa, el sospechoso número uno es el proceso, no el código.
+
 
 Dos del 2026-10-17 (T7). Ninguno era un bug del código: eran tests que medían otra cosa de la que decían.
 

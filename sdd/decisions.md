@@ -497,3 +497,163 @@ Contesta **429** con `Retry-After`: sin ese header, un cliente bien portado no t
 **En el login es al revés y queda como estaba:** ahí el intento fallido es exactamente lo que hay que contar.
 
 **Lo que esto no arregla, y conviene no olvidar:** el tope sigue siendo por IP, y una IP distinta es un presupuesto nuevo. Con un /64 de IPv6 —lo que da cualquier VPS o conexión residencial— se pasan tantos pedidos como se quiera. Está escrito en el módulo y en `security.md`: esto frena al que abusa desde una IP, no al que sabe lo que hace.
+
+---
+
+## ADR-029 · La variante se cobra, y el pedido guarda su nombre, no su id
+
+**Fecha:** 2026-10-18 · **Estado:** Vigente · **Completa:** ADR-007
+
+**Contexto:** ADR-007 agregó `ProductVariant` para lo que se vende entero con tamaños, y T3 dejó el
+modelo, la API y el selector de la ficha. Lo que nunca se construyó es el camino del precio: el
+selector de `ProductPage` cambia el número en pantalla y nada más. `addItem` manda el producto
+pelado, `CartItem extends Product` no tiene variante, y `order_service._agregar_renglon` cobra
+`product.price`. Apareció al planificar T4/T6, leyendo el código y no la spec: F19 figuraba al 80%
+*"falta cargarlas desde el panel"*, y cargarlas desde el panel sin esto habría significado que el
+cliente ve $14.000, Andrea cobra $6.000 y la diferencia la paga ella.
+
+**Decisión, en tres partes:**
+
+1. **El `variant_id` viaja en el renglón del pedido; el precio no.** El servidor busca la fila y
+   verifica que `variant.product_id == product.id` antes de usar su precio. Es el mismo agujero que
+   ADR-025 ya cerró para el envío, en el mismo endpoint público: sin esa verificación, el
+   `variant_id` barato de otro producto compra la torta grande al precio del alfajor.
+
+2. **`OrderItem` guarda `variant_name`, no una FK.** Un pedido es historia: si ella renombra "Torta 8
+   porciones" el año que viene, el pedido de hoy tiene que seguir diciendo lo que vendió hoy — la
+   misma razón por la que `unit_price` ya se copia en vez de leerse. Y hay una razón dura además:
+   `Product.variants` tiene `cascade="all, delete-orphan"`, así que guardar el producto desde el
+   panel **borra las filas viejas**. Una FK desde `order_item` hacia algo que el panel borra de
+   rutina revienta el día en que Andrea edite una torta que ya vendió.
+
+3. **Los ids de las variantes dejan de cambiar en cada guardado.** `_build_variants` pasa a aceptar un
+   `id` opcional y actualizar en lugar de reemplazar. Si no, cada edición del panel invalida el
+   `variant_id` que alguien tiene en su carrito de `localStorage`, y el 400 le cae en el checkout.
+
+**Lo que esto cuesta, dicho de frente:** no se puede contar "cuántas tortas de 8 porciones vendí" con
+un `JOIN`; hay que agrupar por texto. Para el volumen de Andrea no cambia ninguna decisión, y el día
+que importe se arregla con una tabla de reporte y no ensuciando el renglón del pedido.
+
+**Lo que no se hizo:** sacar el selector hasta poder cobrarlo (opción C del drift) era más barato y
+dejaba F19 en 60%. Se descartó porque el flujo de compra recién se completó en T7 y volver a
+recortarlo para no arreglarlo es deuda disfrazada de prudencia.
+
+---
+
+## ADR-030 · La unicidad del ingrediente vive en el back, y pedir uno que ya existe no es un error
+
+**Fecha:** 2026-10-19 · **Estado:** Vigente · **Nace de:** la revisión de T6-F20
+
+**Contexto:** F20 puso el selector de ingredientes en el panel. El front compara nombres
+**normalizados** (sin acentos, sin mayúsculas, sin espacios de más) para no duplicar lo que ya está;
+el back comparaba **exacto** (`filter_by(name=name)`). Mientras la lista del panel esté al día no se
+nota. Con la lista vieja —otra pestaña, otro día, la API— entra igual: probándolo en el navegador
+quedaron **«Coco rallado» y «coco rallado»** en la misma lista. El front solo puede evitar los
+duplicados que ve.
+
+En el mismo módulo, la revisión de seguridad encontró que `create` y `update` no limitaban el largo
+de nada. SQLite no hace cumplir el `String(120)` del modelo: entraron **4.000.000 de caracteres** en
+un `name`.
+
+> **Corrección (2026-10-19).** Esta ADR decía que `GET /api/ingredients` «le devuelve esos MB a cada
+> visitante». **Es falso y no estaba verificado**: el endpoint no pide auth, pero la única pantalla
+> que lo llama es el panel (`usePanelDeAdmin.ts`). Lo midió el reviewer de T6-F20b; se había
+> repetido del informe de seguridad sin comprobarlo. Lo que sí es cierto es que una fila de 4 MB es
+> una fila de 4 MB, y que cualquiera que conozca la URL puede pedirla.
+
+**Decisión, en tres partes:**
+
+1. **La unicidad se decide en el servicio, normalizada.** `saneado.normalizar_nombre` espeja a
+   `front/src/lib/ingredientes.ts`, con la misma regla de la ñ: se conserva, porque es otra letra y
+   no una n con acento — si la barriéramos, «Piña» y «Pina» serían el mismo ingrediente y uno de los
+   dos nombres desaparecería de la lista de Andrea sin que nadie lo haya decidido.
+
+2. **`POST` de uno que ya existe devuelve 200 con la fila existente, no 400.** Desde el panel,
+   "agregar un ingrediente que ya está" es la misma intención que "marcarlo": hacerle leer un error
+   a Andrea por eso es ruido. El 201 queda para el alta de verdad. **El nombre que gana es el que ya
+   estaba**, porque lo escribió ella y un alta posterior con otra grafía no se lo pisa.
+
+3. **Topes de largo con 400 explicado, no recorte silencioso.** El resto del proyecto recorta
+   (`saneado.texto`), y acá no alcanza: el nombre es lo que ella va a leer en la lista, así que
+   cortarlo en 120 sin avisar sería renombrarle el ingrediente a sus espaldas.
+
+   > **Primera versión, corregida el 2026-10-19:** el código *sí* recortaba en silencio. `_nombre`
+   > le pasaba a `saneado.texto` un tope de 121, y `texto` **recorta antes** de que midiéramos: un
+   > nombre de 5.000 caracteres con invisibles entraba como una fila de 61 y con un 201. Lo midió el
+   > reviewer. Ahora el tope que se le pasa es holgado y la medición se hace sobre lo limpio.
+
+4. **La unicidad la sostiene la base, no el chequeo.** `Ingredient.normalized_name` con índice
+   único, y el servicio atrapa el `IntegrityError` y devuelve la fila que ya estaba.
+
+   > **También de la segunda vuelta.** La primera versión era un `check-then-insert` sin nada que lo
+   > respaldara: el reviewer lo rompió con 8 hilos y una barrera y metió **3 filas**
+   > (`COCO rallado`, `Coco rallado`, `Coco Rallado`), y con grafía idéntica sacó un **500 con HTML**
+   > en una API JSON, porque `json_endpoint` solo atrapa `ServiceError`. El título de la tarjeta
+   > decía que la unicidad vivía en el back y era mentira: vivía en una mirada.
+
+5. **Las dos normalizaciones espejan con categorías Unicode, no con rangos a mano.** La primera
+   versión afirmaba que espejaban y **no era cierto**: 11 divergencias de 56 casos medidos
+   (saltos de línea, ``, ``, ``, ``, y las marcas combinantes del árabe, el hebreo y el
+   devanagari). Ahora las dos usan propiedades Unicode —`\p{Cf}` se saca, `\p{White_Space}` y
+   `\p{Cc}` pasan a espacio, `\p{M}` se barre— y la ñ se recompone antes del barrido en las dos.
+
+**La comparación queda escrita dos veces, en dos lenguajes, a propósito.** El front la necesita para
+no mandar un pedido que ya sabe redundante; el back, porque es donde está la restricción. Las dos
+tienen sus tests y el comentario de cada una nombra a la otra. Es duplicación consciente: la
+alternativa —confiar en que el front filtre— es exactamente el bug que esta ADR cierra.
+
+**Lo que esto no arregla:** `tag_service` tiene la misma comparación exacta para el nombre de las
+etiquetas. Ahí el daño es menor porque `unique_slug` desempata la URL, pero «Vegano» y «vegano»
+pueden convivir. Queda anotado, no tocado: no es de esta tarjeta.
+
+---
+
+## ADR-031 · La chef define los sabores; el cliente arma su torta con esa lista
+
+**Fecha:** 2026-10-19 · **Estado:** Vigente · **Features:** F57, F58, F59
+
+**Contexto:** el pedido llegó por dictado y tenía cuatro cosas que no cerraban. Se preguntaron antes
+de escribir una línea (R04), y las respuestas son parte de esta decisión:
+
+| Lo que no cerraba | Lo que se decidió |
+|---|---|
+| *"una mini cartita o descripción"* — ¿una cosa o dos? | **Una sola**: un texto libre donde describe cómo quiere la torta. **No** hay campo de dedicatoria |
+| ¿Los sabores cambian el precio? | **No.** El precio sale del tamaño (F19). El relleno y la cobertura no lo mueven |
+| ¿La foto se sube a la web o llega por WhatsApp? | **Se sube a la web**, con topes. Ver abajo |
+| ¿El SMTP entra en esta tanda? | **No.** La personalización viaja por WhatsApp y se ve en el panel, como todo hoy |
+
+**Decisión, en cuatro partes:**
+
+1. **Los grupos de opciones son globales, como las etiquetas y los ingredientes.** "Relleno" se
+   define una vez con sus sabores y se engancha a las tortas que lo usen. Definirlos por producto
+   obligaría a la chef a recargar la misma lista en cada torta, que es exactamente el trabajo que
+   el panel existe para ahorrarle.
+
+2. **La frontera es la feature.** La lista de sabores la arma **solo** ella; quien compra elige de
+   esa lista y describe el diseño en texto libre. Si el cliente pudiera escribir el sabor, el pedido
+   sería una carta de deseos y ella no podría cumplirlo. Por eso las opciones se validan **en el
+   servidor** contra los grupos que ese producto tiene asignados: un `option_id` que no es de ese
+   producto es un 400, no un renglón raro en el pedido.
+
+3. **El pedido guarda los nombres, no las FK.** Igual que `variant_name` (ADR-029) y por la misma
+   razón: si ella renombra "Dulce de leche" a "DDL" el año que viene, el pedido de hoy tiene que
+   seguir diciendo lo que vendió hoy.
+
+4. **La foto de referencia se sube a la web, y eso mueve N5.** La alternativa recomendada era
+   pedirla por WhatsApp, donde la conversación ya sucede (ADR-025): cero endpoint público de
+   archivos, cero disco, cero retención. **El humano eligió la subida con el costo sobre la mesa.**
+   Entonces el costo se paga completo, y es la tarjeta F59: ruta pública **separada** de la de
+   admin, tope por IP, tamaño menor a los 4 MB del panel, cuota de disco (cierra D18), y barrido de
+   huérfanas (cierra D17 para estas fotos). Sin esas cuatro cosas, F59 no sale.
+
+**El agujero que esto abre si se hace mal, dicho antes de hacerlo:** el renglón del pedido va a
+llevar una URL de foto que mandó el cliente. Si se acepta cualquier URL, el pedido se vuelve un
+lugar donde meter un link a cualquier cosa, y el panel de Andrea —y el mensaje de WhatsApp— lo
+muestran con su firma. La URL tiene que ser **una que emitimos nosotros**: el formato de nuestros
+nombres (`/uploads/<32 hex>.<jpg|png>`) y el archivo existiendo en disco. Es el mismo agujero que
+ADR-020 cerró en la IA y ADR-025 en el envío.
+
+**Lo que esto le cuesta al mensaje de WhatsApp:** `TOPE_CARACTERES` son 1500 y ya se recorta. Con
+relleno, cobertura y una descripción libre, los productos empiezan a caerse del mensaje. La nota va
+con tope corto (300) y `_recortar` tiene que contemplar lo nuevo, porque hoy solo mide renglones de
+producto.

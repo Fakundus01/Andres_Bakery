@@ -5,7 +5,8 @@ import { SubirFoto } from "../../components/SubirFoto";
 import { Field } from "../../components/ui";
 import { aiApi } from "../../lib/api";
 import { getErrorMessage } from "../../lib/format";
-import type { BorradorReceta } from "../../lib/types";
+import { estadoDelSugerido, normalizar } from "../../lib/ingredientes";
+import type { BorradorReceta, Ingredient } from "../../lib/types";
 
 /** La foto del producto y, si está prendida, la ayuda de la IA (F45, F46, F49).
  *
@@ -20,6 +21,10 @@ export function FotoDelProducto({
   iaPrendida,
   onImagen,
   onBorrador,
+  ingredientes,
+  elegidos,
+  onAlternarIngrediente,
+  onCrearIngrediente,
 }: {
   imagenUrl: string;
   nombre: string;
@@ -27,21 +32,52 @@ export function FotoDelProducto({
   iaPrendida: boolean;
   onImagen: (url: string) => void;
   onBorrador: (borrador: BorradorReceta) => void;
+  ingredientes: Ingredient[];
+  elegidos: number[];
+  onAlternarIngrediente: (id: number) => void;
+  onCrearIngrediente: (nombre: string) => Promise<Ingredient | null>;
 }) {
   const [pidiendo, setPidiendo] = useState(false);
   const [error, setError] = useState("");
   const [ingredientesSugeridos, setIngredientesSugeridos] = useState<string[]>([]);
 
+  const [agregando, setAgregando] = useState("");
+
   const esSubida = imagenUrl.startsWith("/uploads/");
+
+  /** Un sugerido que ya existe se marca; uno nuevo se crea y se marca. El que
+   *  ya estaba elegido no hace nada: el botón está deshabilitado.
+   *
+   *  El guard de "en vuelo" compara el nombre **normalizado**, no el string
+   *  crudo: la IA puede proponer "manteca" y "Manteca" en la misma lista, y
+   *  como la unicidad del back es por nombre exacto, clickearlos a los dos en
+   *  la ventana de la carrera creaba las dos filas — justo el duplicado que
+   *  esta feature existe para evitar (lo marcó el reviewer). */
+  const agregarSugerido = async (sugerido: string) => {
+    const { estado, ingrediente } = estadoDelSugerido(ingredientes, elegidos, sugerido);
+    if (estado === "elegido") {
+      return;
+    }
+    if (ingrediente) {
+      onAlternarIngrediente(ingrediente.id);
+      return;
+    }
+
+    setAgregando(normalizar(sugerido));
+    const creado = await onCrearIngrediente(sugerido);
+    setAgregando("");
+    if (creado && !elegidos.includes(creado.id)) {
+      onAlternarIngrediente(creado.id);
+    }
+  };
 
   const pedirBorrador = async () => {
     setError("");
     setPidiendo(true);
     try {
       const borrador = await aiApi.borradorDeReceta(imagenUrl, nombre, token);
-      // Los ingredientes se muestran acá y no se guardan solos: elegirlos desde
-      // el panel es F20, que todavía está a mitad de camino. Mejor a la vista
-      // que descartados en silencio.
+      // Siguen sin guardarse solos: cada uno entra con un clic de ella. Lo
+      // que escribe una IA se revisa antes de que quede en la carta (ADR-020).
       setIngredientesSugeridos(borrador.ingredients);
       onBorrador(borrador);
     } catch (reason: unknown) {
@@ -94,18 +130,28 @@ export function FotoDelProducto({
                 Ingredientes que propuso
               </p>
               <ul className="mt-2 flex flex-wrap gap-2">
-                {ingredientesSugeridos.map((ingrediente) => (
-                  <li
-                    key={ingrediente}
-                    className="border-[3px] border-borde bg-superficie px-2 py-1 text-xs font-bold text-tinta"
-                  >
-                    {ingrediente}
-                  </li>
-                ))}
+                {ingredientesSugeridos.map((sugerido) => {
+                  const { estado, ingrediente } = estadoDelSugerido(ingredientes, elegidos, sugerido);
+                  return (
+                    <li key={sugerido}>
+                      <button
+                        type="button"
+                        disabled={estado === "elegido" || agregando === normalizar(sugerido)}
+                        onClick={() => void agregarSugerido(sugerido)}
+                        className={`max-w-full break-words border-[3px] border-borde px-2 py-1 text-left text-xs font-bold ${
+                          estado === "elegido" ? "bg-acento text-crema" : "bg-superficie text-tinta"
+                        }`}
+                      >
+                        {estado === "elegido" ? "✓ " : "+ "}
+                        {ingrediente ? ingrediente.name : sugerido}
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
               <p className="mt-2 text-xs leading-5 text-tinta-suave">
-                Quedan a la vista para que los copies: cargar ingredientes desde el panel todavía no está
-                terminado, así que estos no se guardan solos.
+                Tocá los que quieras y se agregan al producto. El que ya existe en tu lista se reusa
+                aunque la IA lo haya escrito distinto; el que no, se crea.
               </p>
             </div>
           ) : null}

@@ -32,7 +32,7 @@ Estados (§5 del master): Specified 20% → Planned 40% → Tasked 60% → In Pr
 | F17 | Precio por unidad: `unit_label`, `min_qty`, `qty_step` | **Complete** | T3 | validado **del lado del servidor**, no solo en el carrito (V4) |
 | F18 | Selector de cantidad con total en vivo ("5 brownies = $X") | **Complete** | T3 | `QuantityPicker`: salta de a `qty_step` en ficha, carrito y panel rapido |
 | F19 | Variantes de tamaño para lo que se vende entero | **In Progress** | T3 | modelo, API y selector en la ficha listos; **falta cargarlas desde el panel** |
-| F20 | Ingredientes relacionales visibles en la carta | **In Progress** | T4 | se ven en el dorso y en la ficha; **falta elegirlos desde el panel** |
+| F20 | Ingredientes relacionales visibles en la carta | **Complete** | T6 | se ven en el dorso y en la ficha, se **eligen, corrigen y borran** desde el panel, y la unicidad —sin acentos ni mayúsculas, conservando la ñ— la decide el back (ADR-030) |
 | F21 | Etiquetas que crea ella (sin TACC, vegano…) + filtro | **Complete** | T3 | CRUD en el panel + filtro `?tag=` resuelto por el back |
 | F22 | Retiro / envío por producto + zona y costo de una sola fuente | **In Progress** | T9 | `allows_pickup`/`allows_delivery` y `/api/site/delivery` listos (mata el 2500 hardcodeado, C4); falta que el checkout respete el flag por producto |
 | F23 | Pedido por WhatsApp (`wa.me` con mensaje armado por el back) | **Complete** | T7 | ADR-025. Probado de punta a punta en el navegador, sin cuenta |
@@ -92,6 +92,34 @@ Todo sobre diseño, mirando lo que había quedado de las tandas anteriores.
 | F54 | **Su logo de verdad** en el header y de favicon, y sus datos de contacto reales | **Complete** | T17 | ADR-024 |
 | F55 | **Tope de requests por IP** en el pedido público, el login, el registro y el contacto | **Complete** | T7 | ADR-026, cierra D2 |
 | F56 | **El panel muestra el pedido de invitado**: nombre, teléfono y notas | **Complete** | T7 | salió de mirar el panel: decía «undefined» |
+
+## B3 · Pedido del humano el 2026-10-19 (tortas a pedido, por dictado)
+
+Lo pidió el cliente de Facundo (la chef). El pedido, en sus términos: *"una sección en la cual las
+personas puedan en una mini cartita o descripción escribir cómo quieren una torta"*, eligiendo
+**por sección** (el relleno, la cobertura) de listas que **arma solo ella**, más una foto de
+ejemplo. Las cuatro ambigüedades del dictado se preguntaron antes de escribir nada (R04) y están
+resueltas en ADR-031.
+
+| ID | Feature | Estado | Tarea | ADR |
+|---|---|---|---|---|
+| F57 | **Grupos de opciones y sus sabores**, que define la chef desde el dashboard | **Planned** | T18 | ADR-031 |
+| F58 | **El cliente arma su torta**: elige una opción por grupo, escribe cómo la quiere, y eso viaja con el pedido | **Planned** | T18 | ADR-031 |
+| F59 | **Foto de referencia** subida por el cliente, con topes y con limpieza de huérfanas | **Planned** | T18 | ADR-031 |
+
+**Lo que el cliente NO elige, y es la mitad del pedido:** los sabores. La lista la arma la chef; la
+persona que compra elige de esa lista y describe el diseño. Esa frontera es la feature, no un
+detalle de implementación: sin ella el pedido sería texto libre y ella no podría cumplirlo.
+
+**F58 depende de `T4-F19a`.** Con personalización, dos tortas iguales con distinto relleno son dos
+renglones del carrito, y hoy el carrito indexa por `product.id`. F19a ya tiene que tocar esa misma
+identidad para las variantes de tamaño: hacerlo dos veces es hacerlo mal una vez.
+
+**F59 mueve la clasificación de seguridad.** N5 deja de ser "solo admin sube archivos" y pasa a
+**escritura pública de archivos**, la superficie más grande abierta hasta ahora. Se registra en
+`security.md` con fecha (R27). El humano eligió esta opción con el costo sobre la mesa: la
+alternativa era pedir la foto por WhatsApp, donde la conversación ya sucede.
+
 
 **F53 revierte parte de F42.** El hover se construyó, se probó con el humano y se cayó en la prueba: con la tarjeta girando al acercar el puntero, el botón "Agregar" se escapa justo cuando alguien va a apretarlo. Quedó el "Agregar" del dorso, que había entrado para tapar ese problema y resultó útil igual.
 

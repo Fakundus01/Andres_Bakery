@@ -4,6 +4,91 @@ Semver `MAJOR.MINOR.PATCH` (R13). No se borra nada: lo viejo queda.
 
 ---
 
+## [0.11.2] · 2026-10-19 · Lo que el reviewer rompió, y lo que me hizo corregir
+
+La revisión de `T6-F20b` volvió **CHANGES_REQUESTED** con nueve hallazgos. Tres eran de fondo.
+
+**La unicidad no vivía en el back: vivía en una mirada.** El título de la tarjeta anterior era mentira. Era un `check-then-insert` sin ninguna restricción que lo respaldara, porque el `unique` de la base es por nombre **exacto** — la que justamente no alcanza. El reviewer lo rompió con 8 hilos y una barrera: **3 filas** (`COCO rallado`, `Coco rallado`, `Coco Rallado`). Y con la grafía idéntica, un **500 con HTML** en una API JSON, porque `json_endpoint` solo atrapa `ServiceError`. Ahora hay una columna `normalized_name` con índice único (migración `0005`) y el servicio traduce el `IntegrityError` a la misma respuesta que si lo hubiera visto venir. **El modelo deriva el normalizado solo**, al asignar el nombre: así ningún camino —un test, una migración, un arreglo a mano— puede dejar una fila inconsistente.
+
+**El tope sí recortaba en silencio**, contra lo que la ADR prometía. `saneado.texto` recorta **antes** de que midiéramos: 5.000 caracteres con invisibles entraban como una fila de 61, con un 201 y sin aviso.
+
+**Las dos normalizaciones no espejaban:** 11 divergencias de 56 casos medidos (saltos de línea, ``, ``, ``, y las marcas combinantes del árabe, el hebreo y el devanagari). Decía que espejaban en tres lugares distintos. Ahora las dos usan **propiedades Unicode** en vez de rangos escritos a mano, y el espejo se sostiene.
+
+### Y una corrección a algo que habíamos escrito mal
+
+La ADR, la tarjeta y esta changelog decían que una fila de 4 MB **"se la descarga cada visitante"**. **No es cierto**: el endpoint no pide auth, pero la única pantalla que lo llama es el panel. Se había repetido del informe de seguridad sin comprobarlo.
+
+### Lo demás
+
+- Borrar un ingrediente mientras se editaba un producto dejaba su id muerto en el formulario: al guardar salía `one or more ingredients do not exist`, en inglés.
+- `contracts.md` seguía describiendo la versión anterior del endpoint.
+- **`lib/api.ts` pasó las 300 líneas** (R05) y se partió en `api/{cliente,catalogo,pedidos,sitio}.ts` con un `index.ts` que mantiene la puerta: ningún import cambió.
+
+- Tests: back **228 OK** (eran 213 al abrir la tanda), front **90 OK**. Lint y build limpios.
+- Migración `0005` probada para arriba y para abajo sobre una copia de la base real, **con dos filas que normalizan igual sembradas a propósito**: ninguna se pierde, la segunda queda con sufijo y avisa por log.
+
+---
+
+## [0.11.1] · 2026-10-19 · La unicidad se muda a donde está la restricción
+
+**El duplicado ya no entra.** El panel comparaba nombres normalizados y el back, exactos: con la lista del panel vieja, "coco rallado" sobre "Coco rallado" creaba la segunda fila. Ahora lo decide `ingredient_service`, y **pedir uno que ya existe devuelve 200 con el que estaba**, no un error: desde el panel, agregar uno que ya está es la misma intención que marcarlo (ADR-030). El nombre que gana es el que ella escribió primero.
+
+**`ingredient_service` tiene tests por primera vez: 11.** No tenía ninguno desde T3.
+
+**Se puede corregir un tipeo y borrar lo que sobra.** Antes el panel sabía crear ingredientes globales y nada más: un "Chocolte" quedaba publicado en la ficha y en el dorso de la tarjeta para siempre. El `PUT` y el `DELETE` existían en el back desde T3, sin usar. Antes de borrar, la pantalla dice en cuántos productos está, porque borrarlo lo saca de todos.
+
+**Y los 4 MB.** `create` y `update` no limitaban el largo de nada, y SQLite no hace cumplir el `String(120)` del modelo: entraron 4.000.000 de caracteres en un `name`. Ahora es un **400 explicado**, no un recorte en silencio: el nombre es lo que ella lee en la lista, y cortarlo sin avisar sería renombrarle el ingrediente a sus espaldas.
+
+### Lo que apareció probando en el navegador, y los tests no habrían visto
+
+- **El panel mostraba un nombre que no era el guardado.** Con el 200, el front se quedaba con lo tipeado ("coco rallado") mientras la base decía "Coco rallado", hasta que alguien recargara. El `POST` ahora devuelve `{id, name}`.
+- **«Si lo borrás sale de los 1 productos».** El renglón que se lee justo antes de algo que no se deshace, mal escrito.
+- **El servidor estaba corriendo código viejo** y la primera prueba no medía lo que decía medir: Flask no recarga solo desde que `debug` se apagó en la review de T7. Queda anotado en `testing.md`.
+
+- Tests: back **224 OK** (eran 213), front **90 OK**. Lint y typecheck limpios.
+- Build: 381,91 KB JS · 33,99 KB CSS.
+- Sin migración.
+
+---
+
+## [0.11.0] · 2026-10-18 · Los ingredientes dejan de ser para copiar
+
+> **F20 cierra con `T6-F20b`** (abajo, 2026-10-19). Esta entrada llegó a decir que cerraba sola: las dos revisiones y una prueba en el navegador mostraron que la promesa central —que no entren duplicados— no se cumplía con la lista del panel vieja.
+
+**La pantalla que faltaba desde T3.** El m2m `Product.ingredients` y el CRUD de `/api/ingredients` existían **desde T3 y nadie los usaba**: el back aceptaba `ingredient_ids` desde el primer día y lo único que faltaba era la pantalla. Ahora el panel lista los ingredientes, los marca por producto y crea el que falta sin salir del formulario.
+
+**Los que propone la IA pasan de "copiá esto" a un clic.** La frase que decía *"cargar ingredientes desde el panel todavía no está terminado"* se borró. Con una salvedad que conviene no tapar: **ese clic no se vio correr**, porque F46 está apagada por B7 (falta la llave). Lo que está probado es la decisión que toma, no el clic.
+
+**Escribir `azucar` no crea un duplicado de «Azúcar».** La comparación ignora acentos y mayúsculas, **pero conserva la ñ**: barrerla junto con los acentos haría que "Piña" y "Pina" fueran el mismo ingrediente y uno de los dos nombres desaparecería de su lista sin que nadie lo haya decidido. Medido en el navegador: un solo `POST /api/ingredients` en toda la sesión de prueba.
+
+### Lo que encontraron las dos revisiones
+
+**El duplicado entra igual, y la culpa es del reparto.** El panel compara nombres **normalizados**; el back, **exactos**. Con la lista local al día no se nota; con la lista vieja, "coco rallado" sobre "Coco rallado" crea la segunda fila. Reproducido en el navegador, no deducido. El front solo puede evitar los duplicados que **ve**: la unicidad tiene que estar donde está la restricción. Queda en `T6-F20b` junto con lo de abajo.
+
+**`ingredient_service` no limita el largo de nada.** SQLite no hace cumplir el `String(120)` del modelo: el security-reviewer metió **4.000.000 de caracteres** en un `name` y el `GET /api/ingredients` —público— se los devolvió enteros. Necesita credencial de admin, pero el costo lo pagan los anónimos. Es la misma clase de bug que parió `saneado.py` en T7, en un módulo al que ese arreglo nunca llegó. Y ese servicio **nunca tuvo tests**.
+
+**Tres caminos de falla que el panel no manejaba**, los tres arreglados con su test:
+
+- Un alta fallida no refrescaba la lista local, así que el reintento fallaba igual **para siempre**: la única salida era recargar el panel y perder lo escrito. Ahora relee del servidor antes de rendirse, y si el ingrediente ya estaba, lo rescata en vez de mostrar un error.
+- El único aviso era un banner arriba de todo y **en inglés**: a 375px el alta fallaba en silencio justo donde ella está mirando. Ahora el aviso va pegado al campo y en castellano.
+- El candado de "en vuelo" comparaba el texto crudo, no el normalizado: dos sugerencias de la IA con distinta grafía, clickeadas juntas, creaban las dos filas — justo el duplicado que la feature existe para evitar.
+
+**Y dos invisibles:** un espacio de ancho cero o un guión suave esquivaban la comparación y creaban un duplicado que **nadie puede distinguir mirando**. Ahora se barren antes de comparar y antes de guardar, y el nombre se guarda sin el espacio de más (`limpiarNombre`), porque "Harina   0000" quedaba escrito así para siempre.
+
+### Lo que apareció mientras tanto
+
+**Enter guardaba el producto a medio cargar.** Un `<input>` dentro de un `<form>` manda el formulario al apretar Enter, y el que lo contiene es el del producto: escribir "Manteca", apretar Enter, y quedaba un producto sin precio en la carta. Verificado después del arreglo: `0 POST /api/products` hasta apretar el botón de verdad.
+
+### Y lo que se encontró planificando, que todavía no se arregló
+
+**El selector de tamaño de la ficha es decorativo.** Cambia el precio en pantalla y el pedido se cobra al **precio base**: el cliente ve $14.000, Andrea cobra $6.000, y la diferencia la paga ella. Apareció leyendo el código y no la spec, que daba F19 al 80% *"falta cargarlas desde el panel"*. Queda en **ADR-029** con el plan de las tres partes, y en dos tarjetas aprobadas. **No está arreglado todavía**: es lo primero del próximo ciclo, y va antes que el editor del panel para que no exista una ventana en la que ella cargue tamaños que se cobran de menos.
+
+- Tests: front **88 OK** (eran 72), back **213 OK** (sin cambios: el back no se tocó). Lint y typecheck limpios.
+- Build: 377,83 KB JS · 33,99 KB CSS (eran 366,59 · 33,92).
+- Sin migración: F20 no tocó el esquema.
+
+---
+
 ## [0.10.1] · 2026-10-18 · Lo que encontraron las dos revisiones
 
 Dos revisores independientes re-ejecutaron T7: uno funcional y uno de seguridad (R30, R31). Entre los dos encontraron **doce cosas reales**. Esto es lo que se arregló.

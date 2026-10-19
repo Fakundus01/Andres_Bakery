@@ -28,6 +28,7 @@ export type ProductForm = {
   allows_pickup: boolean;
   allows_delivery: boolean;
   tag_ids: number[];
+  ingredient_ids: number[];
 };
 
 export type TagForm = {

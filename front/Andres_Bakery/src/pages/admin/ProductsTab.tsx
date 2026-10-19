@@ -2,17 +2,23 @@ import type { Dispatch, FormEvent, SetStateAction } from "react";
 
 import { TagBadge } from "../../components/TagBadge";
 import { FotoDelProducto } from "./FotoDelProducto";
+import { SelectorDeIngredientes } from "./SelectorDeIngredientes";
 import { Field } from "../../components/ui";
 import { textoRegla } from "../../lib/cantidades";
 import { heroFallback } from "../../lib/constants";
 import { urlDeImagen } from "../../lib/imagenes";
 import { formatCurrency } from "../../lib/format";
-import type { BorradorReceta, Product, Tag } from "../../lib/types";
+import type { BorradorReceta, Ingredient, Product, Tag } from "../../lib/types";
 import type { ProductForm } from "../../lib/ui-types";
 
 export function ProductsTab({
   products,
   tags,
+  ingredientes,
+  usosDeIngredientes,
+  onCrearIngrediente,
+  onRenombrarIngrediente,
+  onBorrarIngrediente,
   productForm,
   setProductForm,
   editingProductId,
@@ -25,6 +31,11 @@ export function ProductsTab({
 }: {
   products: Product[];
   tags: Tag[];
+  ingredientes: Ingredient[];
+  usosDeIngredientes: Record<number, number>;
+  onCrearIngrediente: (nombre: string) => Promise<Ingredient | null>;
+  onRenombrarIngrediente: (id: number, nombre: string) => void;
+  onBorrarIngrediente: (id: number) => void;
   token: string;
   iaPrendida: boolean;
   productForm: ProductForm;
@@ -58,6 +69,14 @@ export function ProductsTab({
       tag_ids: current.tag_ids.includes(tagId)
         ? current.tag_ids.filter((id) => id !== tagId)
         : [...current.tag_ids, tagId],
+    }));
+
+  const alternarIngrediente = (ingredienteId: number) =>
+    setProductForm((current) => ({
+      ...current,
+      ingredient_ids: current.ingredient_ids.includes(ingredienteId)
+        ? current.ingredient_ids.filter((id) => id !== ingredienteId)
+        : [...current.ingredient_ids, ingredienteId],
     }));
 
   return (
@@ -107,6 +126,10 @@ export function ProductsTab({
           iaPrendida={iaPrendida}
           onImagen={(url) => cambiar("image_url", url)}
           onBorrador={aplicarBorrador}
+          ingredientes={ingredientes}
+          elegidos={productForm.ingredient_ids}
+          onAlternarIngrediente={alternarIngrediente}
+          onCrearIngrediente={onCrearIngrediente}
         />
 
         <Field label="Aviso de preparación">
@@ -124,6 +147,16 @@ export function ProductsTab({
         <p className="text-xs leading-5 text-tinta-tenue">
           Si lo dejás vacío, la ficha del producto no muestra la sección de receta. Un paso por línea.
         </p>
+
+        <SelectorDeIngredientes
+          ingredientes={ingredientes}
+          elegidos={productForm.ingredient_ids}
+          usos={usosDeIngredientes}
+          onAlternar={alternarIngrediente}
+          onCrear={onCrearIngrediente}
+          onRenombrar={onRenombrarIngrediente}
+          onBorrar={onBorrarIngrediente}
+        />
 
         {tags.length > 0 ? (
           <div>
@@ -223,6 +256,7 @@ export function ProductsTab({
                       allows_pickup: product.allows_pickup,
                       allows_delivery: product.allows_delivery,
                       tag_ids: (product.tags ?? []).map((tag) => tag.id),
+                      ingredient_ids: (product.ingredients ?? []).map((ingrediente) => ingrediente.id),
                     });
                   }}
                 >

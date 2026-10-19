@@ -74,6 +74,11 @@ export function AdminPage() {
         <ProductsTab
           products={panel.productos}
           tags={panel.etiquetas}
+          ingredientes={panel.ingredientes}
+          usosDeIngredientes={panel.usosDeIngredientes}
+          onCrearIngrediente={panel.crearIngrediente}
+          onRenombrarIngrediente={panel.renombrarIngrediente}
+          onBorrarIngrediente={panel.borrarIngrediente}
           productForm={panel.formProducto}
           setProductForm={panel.setFormProducto}
           editingProductId={panel.productoEditado}
