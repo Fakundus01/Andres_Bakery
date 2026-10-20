@@ -35,7 +35,7 @@ export function OpcionesTab({
   onObligatoriedad,
   onBorrarGrupo,
   onCrearOpcion,
-  onRenombrarOpcion,
+  onEditarOpcion,
   onBorrarOpcion,
 }: {
   grupos: OptionGroup[];
@@ -48,8 +48,8 @@ export function OpcionesTab({
   onRenombrarGrupo: (id: number, nombre: string) => void;
   onObligatoriedad: (id: number, obligatorio: boolean) => void;
   onBorrarGrupo: (id: number) => void;
-  onCrearOpcion: (grupoId: number, nombre: string) => void;
-  onRenombrarOpcion: (grupoId: number, opcionId: number, nombre: string) => void;
+  onCrearOpcion: (grupoId: number, nombre: string, recargo: number) => void;
+  onEditarOpcion: (grupoId: number, opcionId: number, nombre: string, recargo: number) => void;
   onBorrarOpcion: (grupoId: number, opcionId: number) => void;
 }) {
   const enPopUp = usePantallaGrande();
@@ -86,7 +86,7 @@ export function OpcionesTab({
       onRenombrar={onRenombrarGrupo}
       onObligatoriedad={onObligatoriedad}
       onCrearOpcion={onCrearOpcion}
-      onRenombrarOpcion={onRenombrarOpcion}
+      onEditarOpcion={onEditarOpcion}
       onBorrarOpcion={onBorrarOpcion}
     />
   );

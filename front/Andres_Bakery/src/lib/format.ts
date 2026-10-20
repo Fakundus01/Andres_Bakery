@@ -1,5 +1,15 @@
-export function formatCurrency(value: number) {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(value);
+/** Pesos como se muestran en toda la web: sin centavos.
+ *
+ *  `conCentavos` existe para un caso puntual (el recargo de un sabor, F61):
+ *  la columna guarda dos decimales y el mensaje de WhatsApp los dice, asi que
+ *  redondear "500,50" a "501" en la pantalla donde se elige seria la unica
+ *  parte del flujo que miente sobre lo que se cobra. */
+export function formatCurrency(value: number, { conCentavos = false } = {}) {
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    maximumFractionDigits: conCentavos ? 2 : 0,
+  }).format(value);
 }
 
 export function formatDate(value: string) {

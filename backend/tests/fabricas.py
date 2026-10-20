@@ -119,14 +119,18 @@ class FabricasDeDatos:
         self,
         *,
         name: str = "Relleno",
-        options: list[str] | None = None,
+        options: list[str | tuple[str, str]] | None = None,
         required: bool = True,
         products: list[Product] | None = None,
         sort_order: int = 0,
     ) -> OptionGroup:
+        """Un sabor es un nombre, o `(nombre, recargo)` si cuesta mas (F61)."""
         group = OptionGroup(name=name, required=required, sort_order=sort_order)
-        for posicion, nombre in enumerate(options or ["Dulce de leche", "Chocolate"]):
-            group.options.append(Option(name=nombre, sort_order=posicion))
+        for posicion, crudo in enumerate(options or ["Dulce de leche", "Chocolate"]):
+            nombre, recargo = crudo if isinstance(crudo, tuple) else (crudo, "0")
+            group.options.append(
+                Option(name=nombre, price_delta=Decimal(recargo), sort_order=posicion)
+            )
         if products is not None:
             group.products = list(products)
         db.session.add(group)

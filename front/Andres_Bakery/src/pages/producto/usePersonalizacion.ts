@@ -89,7 +89,12 @@ export function usePersonalizacion(product: Product | null) {
     /** Lo que falta para poder agregar, o "". Espeja al back, que es quien
      *  decide de verdad. */
     falta: queFaltaElegir(grupos, elegidas),
-    precio: product ? precioDelRenglon({ ...product, variante: varianteElegida }) : 0,
+    /** El precio de una unidad con lo elegido puesto: el tamaño **y** los
+     *  recargos de los sabores (F61). Va `...personalizacion` entero y no
+     *  `variante` sola para que no se pueda volver a olvidar un campo que
+     *  mueve el precio: cuando la ficha mostraba el tamaño sin los recargos,
+     *  decía $14.200 y el back cobraba $16.500. */
+    precio: product ? precioDelRenglon({ ...product, ...personalizacion }) : 0,
     personalizacion,
   };
 }

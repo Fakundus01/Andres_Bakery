@@ -49,9 +49,12 @@ class ServiceBase:
         if not numero.is_finite():
             raise ValidationError(f"{field_name} must be a valid number")
         if abs(numero) > MAX_IMPORTE:
-            raise ValidationError(
-                f"{field_name} no puede pasar de {MAX_IMPORTE:,.0f}".replace(",", ".")
-            )
+            # El tope se escribe como se escribe la plata aca: miles con
+            # punto y decimales con coma. Antes salia redondeado a
+            # "100.000.000", que **no es el tope** y manda a probar un numero
+            # que tampoco entra (lo midio el reviewer de T20).
+            tope = f"{MAX_IMPORTE:,.2f}".translate(str.maketrans(",.", ".,"))
+            raise ValidationError(f"{field_name} no puede pasar de {tope}")
         return numero
 
     @staticmethod

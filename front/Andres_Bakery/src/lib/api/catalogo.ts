@@ -137,17 +137,27 @@ export const optionGroupsApi = {
       token,
     });
   },
-  crearOpcion(groupId: number, opcion: { name: string; sort_order?: number }, token: string) {
+  crearOpcion(
+    groupId: number,
+    opcion: { name: string; price_delta?: number; sort_order?: number },
+    token: string,
+  ) {
     return apiRequest<OptionChoice>(`/api/option-groups/${groupId}/options`, {
       method: "POST",
       body: opcion,
       token,
     });
   },
-  renombrarOpcion(groupId: number, optionId: number, name: string, token: string) {
+  /** El nombre y el recargo van juntos: son la misma fila (F61). */
+  editarOpcion(
+    groupId: number,
+    optionId: number,
+    cambios: { name?: string; price_delta?: number },
+    token: string,
+  ) {
     return apiRequest<{ status: string }>(
       `/api/option-groups/${groupId}/options/${optionId}`,
-      { method: "PUT", body: { name }, token },
+      { method: "PUT", body: cambios, token },
     );
   },
   borrarOpcion(groupId: number, optionId: number, token: string) {

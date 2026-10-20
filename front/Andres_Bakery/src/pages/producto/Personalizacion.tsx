@@ -3,6 +3,7 @@ import { ImageUp, LoaderCircle, Trash2 } from "lucide-react";
 
 import { uploadsApi } from "../../lib/api";
 import { TOPE_NOTA, notaParaElPedido } from "../../lib/carrito";
+import { textoDelRecargo } from "../../lib/recargos";
 import { getErrorMessage } from "../../lib/format";
 import { urlDeImagen } from "../../lib/imagenes";
 import type { OptionGroup } from "../../lib/types";
@@ -76,6 +77,12 @@ export function Personalizacion({
                 }`}
               >
                 {opcion.name}
+                {/* El recargo va en el mismo botón y no en una lista aparte:
+                    el precio tiene que estar donde se decide, no dos párrafos
+                    más abajo. Un sabor sin recargo no dice nada (ADR-036). */}
+                {textoDelRecargo(opcion) ? (
+                  <span className="ml-2 font-normal opacity-80">{textoDelRecargo(opcion)}</span>
+                ) : null}
               </button>
             ))}
           </div>

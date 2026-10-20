@@ -28,6 +28,13 @@ export interface OptionChoice {
   id: number;
   name: string;
   sort_order: number;
+  /** Lo que este sabor le suma al precio (F61, ADR-036). Siempre ≥ 0: es un
+   *  recargo, no un descuento, y el servidor lo exige.
+   *
+   *  Opcional **a propósito**: los sabores de un carrito guardado en
+   *  `localStorage` antes de esta feature no lo tienen, y ese carrito no se
+   *  vacía. Sin valor se lee como cero. */
+  price_delta?: number;
 }
 
 /** Lo que la chef define para que el cliente elija (ADR-031).

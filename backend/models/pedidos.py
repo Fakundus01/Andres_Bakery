@@ -62,7 +62,9 @@ class OrderItemOption(db.Model):
 
     Sin FK a `Option` por lo mismo que `variant_name`: si ella renombra
     "Dulce de leche" a "DDL" el anio que viene, el pedido de hoy tiene que
-    seguir diciendo lo que vendio hoy.
+    seguir diciendo lo que vendio hoy. Y por la misma razon el recargo se
+    copia (F61, ADR-036): subir el chocolate de $500 a $800 en marzo no puede
+    cambiar lo que dice el pedido de enero.
     """
 
     id = db.Column(db.Integer, primary_key=True)
@@ -71,6 +73,9 @@ class OrderItemOption(db.Model):
     )
     group_name = db.Column(db.String(120), nullable=False)
     option_name = db.Column(db.String(120), nullable=False)
+    price_delta = db.Column(
+        db.Numeric(10, 2), nullable=False, default=0, server_default="0"
+    )
 
     item = db.relationship("OrderItem", back_populates="options")
 

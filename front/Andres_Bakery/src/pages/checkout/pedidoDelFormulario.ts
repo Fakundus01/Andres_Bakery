@@ -1,5 +1,6 @@
 import type { CartItem } from "../../contexts/CartContext";
 import { TOPE_NOTA, notaParaElPedido } from "../../lib/carrito";
+import { recargoDeLasOpciones } from "../../lib/recargos";
 import type {
   DeliveryMethod,
   OrderCreationPayload,
@@ -90,7 +91,9 @@ export function armarPayload({
  *
  *  **El precio no viaja**: va `variant_id` y el servidor busca la fila, que
  *  es lo que cierra el agujero de ADR-029. Lo mismo con los sabores: van los
- *  ids y el servidor verifica que sean de ese producto.
+ *  ids y el servidor verifica que sean de ese producto. Lo que sí viaja es el
+ *  **testigo** —nombre y recargo, como se mostraron—, que el servidor compara
+ *  contra la base para no cobrar un sabor por otro.
  *
  *  Los campos vacíos no se mandan: un `note: ""` o un `option_ids: []` son
  *  ruido en el pedido de quien compró una docena de cookies. */
@@ -105,6 +108,14 @@ export function renglonDelPedido(item: CartItem): OrderItemPayload {
   }
   if (item.opciones?.length) {
     renglon.option_ids = item.opciones.map((opcion) => opcion.id);
+    // Y el testigo, por lo mismo que el tamaño: el id puede caer sobre otro
+    // sabor si ella borró uno, y con recargos eso cambia el precio. El
+    // servidor compara y pide volver a elegir en vez de cobrar otra cosa.
+    renglon.options_seen = item.opciones.map((opcion) => ({
+      id: opcion.id,
+      name: opcion.name,
+      price_delta: recargoDeLasOpciones([opcion]),
+    }));
   }
   // Se manda ya en una línea, con la misma regla del back: así el recorte
   // (si hace falta) lo decide la pantalla que mostró el contador, y no el

@@ -196,7 +196,11 @@ class OptionGroup(db.Model):
 
 
 class Option(db.Model):
-    """Un sabor de un grupo. El pedido guarda su nombre, no su id (ADR-031)."""
+    """Un sabor de un grupo. El pedido guarda su nombre, no su id (ADR-031).
+
+    Y puede costar mas que los otros (F61, ADR-036): `price_delta` es lo que
+    se le suma al precio del tamano cuando el cliente lo elige.
+    """
 
     __table_args__ = (
         db.UniqueConstraint(
@@ -211,6 +215,13 @@ class Option(db.Model):
     name = db.Column(db.String(120), nullable=False)
     normalized_name = db.Column(db.String(120), nullable=False)
     sort_order = db.Column(db.Integer, nullable=False, default=0)
+    # Un recargo, nunca un descuento (ADR-036): el servicio exige >= 0. Con
+    # negativos, el "desde $X" de la carta dejaria de ser el minimo real y un
+    # pedido podria salir con total negativo, que ya paso una vez con las
+    # variantes (review de T4-F19b).
+    price_delta = db.Column(
+        db.Numeric(10, 2), nullable=False, default=0, server_default="0"
+    )
 
     group = db.relationship("OptionGroup", back_populates="options")
 

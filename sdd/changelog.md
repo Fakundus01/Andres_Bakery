@@ -4,6 +4,71 @@ Semver `MAJOR.MINOR.PATCH` (R13). No se borra nada: lo viejo queda.
 
 ---
 
+## [0.16.0] · 2026-10-19 · El sabor puede costar más
+
+**Lo que se pidió:** *"eso le da un poco más de libertad al chef de decir, ah, bueno, la de
+chocolate la vamos a hacer un poco más carita"*. Hasta hoy un sabor era un nombre y nada más:
+ADR-031 había contestado que el precio salía del tamaño, y eso dejaba a la chef sin forma de cobrar
+un relleno que lleva más trabajo. **ADR-036** revisa esa respuesta, y nada más que esa.
+
+- **Cada sabor puede tener un recargo** (`option.price_delta`), que ella carga en el mismo renglón
+  donde lo renombra. Vacío es sin recargo, que es el caso normal: un sabor sin recargo **no** dice
+  "+$0" en ninguna pantalla.
+- **Es un recargo, nunca un descuento.** El back rechaza los negativos en castellano. Con eso, el
+  *"desde $14.200"* de la carta sigue siendo verdad sin tocar `precioDesde`, y no hay forma de armar
+  un pedido con total negativo (que ya pasó una vez con los tamaños, review de T4-F19b).
+- **Lo cobra el servidor.** `unit_price` del renglón es el precio del tamaño más los recargos de los
+  sabores elegidos, leídos de la base: un `price_delta` que venga en el pedido se ignora, igual que
+  el precio del producto (V4). Es la tercera vez que el proyecto escribe esta regla —el tamaño, el
+  envío y ahora el sabor— y por eso el cobro vive todo en `renglon_del_pedido.py`.
+- **El pedido guarda lo que cobró** (`order_item_option.price_delta`), al lado del nombre y por la
+  misma razón: si el chocolate pasa de $500 a $800 en marzo, el pedido de enero sigue diciendo lo
+  que se vendió en enero. El mensaje de WhatsApp lo muestra: *"Relleno: Chocolate (+$800)"*.
+- **Migración `0009`**, con `batch_alter_table` porque SQLite recrea la tabla. Se corrió el
+  `downgrade` y el `upgrade` sobre una copia de la base de desarrollo con datos: las filas y las
+  restricciones quedan iguales.
+
+**Lo que el navegador encontró, con las dos suites en verde:** la ficha mostraba **$14.200** con los
+dos sabores caros elegidos, donde el back iba a cobrar **$16.500**. El hook de la ficha calculaba el
+precio pasándole el tamaño y no los sabores. Es exactamente lo que R07 existe para encontrar, y lo
+que ningún test de lógica pura podía ver, porque la función estaba bien: lo que estaba mal era lo
+que se le pasaba.
+
+- Tests: front **207 OK** (eran 179; 28 nuevos de recargo), back **365 OK** (eran 343; 22
+  nuevos). Lint limpio; el JS pasó de 420,71 KB a **423,58 KB**.
+- Medido en el navegador a 1920px y 390px, **manejando un Chrome de verdad por CDP**: el MCP de
+  Playwright no conectaba en esta sesión y los Chromium que había instalado estaban en disco, así
+  que se habló el protocolo a mano (`scratchpad/cdp.py`) en vez de dar por buena una pantalla sin
+  mirarla.
+
+**La revisión independiente encontró 10 cosas, y la primera es la que importa.** `CHANGES_REQUESTED`:
+1 ALTA, 4 MEDIA y 5 BAJA, **las diez corregidas**. Lo de fondo:
+
+- **El sabor no tenía testigo.** ADR-029 le había puesto uno al tamaño porque SQLite reusa los
+  rowid; F61 hizo que el sabor también decidiera plata y no movió esa protección. El reviewer lo
+  midió: borró un sabor, el id quedó libre, se lo quedó otro de +$9.000 y **la torta de $14.200 se
+  cobró $23.200 sin un solo error**. Ahora el carrito manda nombre y recargo como los mostró, y si
+  no coinciden el pedido se corta pidiendo elegir de nuevo.
+- **El "desde $14.200" de la carta podía ser mentira**, y el ADR afirmaba por escrito que no: si un
+  grupo obligatorio no tiene ningún sabor sin recargo, el mínimo real es más alto. `precioDesde`
+  ahora suma el recargo más barato de cada grupo obligatorio, y el ADR quedó corregido.
+- **Escribir "1.500" guardaba $1,50.** Acá los miles se escriben con punto, y el campo lo leía como
+  decimal: el aviso decía "+$ 2", el chip "+$ 1,50" y la base guardaba 1.50. Tres números distintos
+  para un dato, y el que se cobraba era mil veces menor. Ahora se lee bien y el campo **avisa lo que
+  va a cobrar mientras se tipea**, como el precio del tamaño.
+- **Agregar un sabor que ya existía descartaba el recargo** y el panel igual avisaba que lo había
+  guardado. Ahora se lo aplica.
+- **El recargo que el pedido guarda no se veía en ninguna pantalla**: solo en el mensaje de
+  WhatsApp, que no se guarda. Ahora el renglón lo dice en el panel y en el pedido del cliente.
+
+Y cinco BAJA, todas corregidas: un recargo de `0.001` entraba como cero en silencio, el guard de
+`Number.isFinite` no tenía test que lo sostuviera (el reviewer lo mató con un mutante), el mensaje
+del tope decía un número que no era el tope, el `downgrade` de `0009` borra los recargos sin
+advertirlo, y dos recargos en el tope hacían un `unit_price` de nueve dígitos en una columna de
+ocho.
+
+---
+
 ## [0.15.0] · 2026-10-19 · El pop-up deja de ser de una sola pestaña, y borrar pregunta
 
 El pedido fue de consistencia: *"si vamos a usar un pop-up en algún lugar, creo que tendríamos que

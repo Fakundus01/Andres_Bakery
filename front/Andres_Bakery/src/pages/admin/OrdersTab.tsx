@@ -1,7 +1,7 @@
 import { DetalleDelRenglon } from "../../components/DetalleDelRenglon";
 import { orderStatusOptions } from "../../lib/constants";
 import { formatCurrency, formatDate, labelForPaymentMethod } from "../../lib/format";
-import { quienPidio } from "../../lib/pedidos";
+import { quienPidio, textoDeLaElegida } from "../../lib/pedidos";
 import type { Order } from "../../lib/types";
 
 export function OrdersTab({
@@ -49,9 +49,7 @@ export function OrdersTab({
                           existe en el WhatsApp (F58). */}
                       <DetalleDelRenglon
                         tamano={item.variant_name}
-                        elegidas={(item.options ?? []).map(
-                          (elegida) => `${elegida.group_name}: ${elegida.option_name}`,
-                        )}
+                        elegidas={(item.options ?? []).map(textoDeLaElegida)}
                         nota={item.note}
                         foto={item.reference_image}
                       />

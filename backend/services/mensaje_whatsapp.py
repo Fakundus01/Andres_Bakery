@@ -67,15 +67,25 @@ def _renglon_de(item) -> str:
     lineas = [f"- {item.quantity} x {nombre}: {importe}"]
 
     if item.options:
-        elegidas = " · ".join(
-            f"{opcion.group_name}: {opcion.option_name}" for opcion in item.options
-        )
+        elegidas = " · ".join(_sabor(opcion) for opcion in item.options)
         lineas.append(f"  {elegidas}")
     if item.note:
         lineas.append(f"  Nota: {item.note}")
     if item.reference_image:
         lineas.append(f"  Foto: {_url_absoluta(item.reference_image)}")
     return "\n".join(lineas)
+
+
+def _sabor(opcion) -> str:
+    """El sabor, y lo que sumo si sumo algo (F61).
+
+    Sin esto el mensaje diria "8 porciones: $14.500" con el relleno al lado y
+    el numero no cerraria con la carta: ella tiene que poder explicarle el
+    total a quien le pregunte.
+    """
+    recargo = Decimal(str(opcion.price_delta or 0))
+    sufijo = f" (+{plata(recargo)})" if recargo > 0 else ""
+    return f"{opcion.group_name}: {opcion.option_name}{sufijo}"
 
 
 def _url_absoluta(url: str) -> str:

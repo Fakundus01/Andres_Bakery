@@ -120,7 +120,7 @@ export function AdminPage() {
           onObligatoriedad={panel.cambiarObligatoriedadDelGrupo}
           onBorrarGrupo={panel.borrarGrupoDeOpciones}
           onCrearOpcion={panel.crearOpcionDelGrupo}
-          onRenombrarOpcion={panel.renombrarOpcionDelGrupo}
+          onEditarOpcion={panel.editarOpcionDelGrupo}
           onBorrarOpcion={panel.borrarOpcionDelGrupo}
         />
       ) : null}

@@ -72,7 +72,7 @@ lugar no, queda medio raro"*. ADR-034 había puesto el pop-up en una sola pesta�
 
 | ID | Feature | Estado | Tarea | ADR |
 |---|---|---|---|---|
-| F60 | **El panel edita en pop-up en todas sus pestañas**, y borrar algo que no se deshace pregunta antes | **Complete** (2026-10-19) · medida en navegador; falta el reviewer | T19 | ADR-035 |
+| F60 | **El panel edita en pop-up en todas sus pestañas**, y borrar algo que no se deshace pregunta antes | **Complete** (2026-10-19) · medida en navegador, **revisada** (16 hallazgos, los que importaban corregidos) y commiteada en `4146ea3` | T19 | ADR-035 |
 
 **Lo que no se pidió y entró igual, porque apareció al abrir el código:** en la carta y en las
 etiquetas, **borrar borraba de una**, sin preguntar, con el botón al lado del de editar. Los grupos
@@ -107,6 +107,24 @@ Todo sobre diseño, mirando lo que había quedado de las tandas anteriores.
 | F54 | **Su logo de verdad** en el header y de favicon, y sus datos de contacto reales | **Complete** | T17 | ADR-024 |
 | F55 | **Tope de requests por IP** en el pedido público, el login, el registro y el contacto | **Complete** | T7 | ADR-026, cierra D2 |
 | F56 | **El panel muestra el pedido de invitado**: nombre, teléfono y notas | **Complete** | T7 | salió de mirar el panel: decía «undefined» |
+
+## B5 · Pedido del humano el 2026-10-19 (que el sabor pueda costar más)
+
+Textual: *"el precio por sabor… creo que eso le da un poco más de libertad al chef de decir, ah,
+bueno, la de chocolate la vamos a hacer un poco más carita"*. Salió de la pregunta que quedó abierta
+en la tanda anterior: los sabores se podían cargar, pero ninguno podía costar distinto.
+
+| ID | Feature | Estado | Tarea | ADR |
+|---|---|---|---|---|
+| F61 | **Un sabor puede tener recargo**, que el servidor cobra y el pedido guarda | **Complete** (2026-10-19) · medida en navegador a 1920px y 390px | T20 | ADR-036 (revisa a ADR-031) |
+
+**Lo que revierte, dicho:** ADR-031 había contestado que no, que el precio salía del tamaño. Esto
+cambia esa respuesta y **solo esa**: los grupos siguen siendo globales, la lista la sigue armando
+ella, y el pedido sigue guardando nombres y no ids.
+
+**Lo que el navegador encontró y los tests no podían ver:** la ficha mostraba el precio **sin** los
+recargos —$14.200 donde el back iba a cobrar $16.500— porque el hook que arma el precio recibía el
+tamaño pero no los sabores. Las dos suites estaban verdes.
 
 ## B3 · Pedido del humano el 2026-10-19 (tortas a pedido, por dictado)
 

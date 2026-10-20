@@ -8,10 +8,12 @@ export interface User {
   is_admin: boolean;
 }
 
-/** Lo elegido, copiado por nombre en el momento del pedido (ADR-031). */
+/** Lo elegido, copiado por nombre en el momento del pedido (ADR-031), con
+ *  el recargo que se cobró por ese sabor (F61, ADR-036). */
 export interface OrderItemOption {
   group_name: string;
   option_name: string;
+  price_delta?: number;
 }
 
 export interface OrderItem {
@@ -74,6 +76,10 @@ export interface OrderItemPayload {
    *  verifique que el id no quedó apuntando a otro (ADR-029). */
   variant_name?: string;
   option_ids?: number[];
+  /** Los sabores como la pantalla los mostró —nombre y recargo—, para que el
+   *  servidor verifique que los ids no quedaron apuntando a otra cosa. Mismo
+   *  testigo que `variant_name`, y por el mismo caso medido (review de T20). */
+  options_seen?: Array<{ id: number; name: string; price_delta: number }>;
   note?: string;
   reference_image?: string;
 }

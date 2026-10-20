@@ -50,7 +50,12 @@ class Serializer:
 
     @staticmethod
     def option(option: Option) -> dict:
-        return {"id": option.id, "name": option.name, "sort_order": option.sort_order}
+        return {
+            "id": option.id,
+            "name": option.name,
+            "sort_order": option.sort_order,
+            "price_delta": float(option.price_delta or 0),
+        }
 
     @staticmethod
     def option_group(group: OptionGroup) -> dict:
@@ -151,7 +156,11 @@ class Serializer:
             "note": item.note,
             "reference_image": item.reference_image,
             "options": [
-                {"group_name": elegida.group_name, "option_name": elegida.option_name}
+                {
+                    "group_name": elegida.group_name,
+                    "option_name": elegida.option_name,
+                    "price_delta": float(elegida.price_delta or 0),
+                }
                 for elegida in item.options
             ],
         }

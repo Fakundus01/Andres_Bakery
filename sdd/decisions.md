@@ -618,7 +618,7 @@ de escribir una línea (R04), y las respuestas son parte de esta decisión:
 | Lo que no cerraba | Lo que se decidió |
 |---|---|
 | *"una mini cartita o descripción"* — ¿una cosa o dos? | **Una sola**: un texto libre donde describe cómo quiere la torta. **No** hay campo de dedicatoria |
-| ¿Los sabores cambian el precio? | **No.** El precio sale del tamaño (F19). El relleno y la cobertura no lo mueven |
+| ¿Los sabores cambian el precio? | **No.** El precio sale del tamaño (F19). El relleno y la cobertura no lo mueven. **Revisado el 2026-10-19 por ADR-036**: ahora un sabor puede tener un recargo |
 | ¿La foto se sube a la web o llega por WhatsApp? | **Se sube a la web**, con topes. Ver abajo |
 | ¿El SMTP entra en esta tanda? | **No.** La personalización viaja por WhatsApp y se ve en el panel, como todo hoy |
 
@@ -876,3 +876,84 @@ que evita que la versión de celular y la de computadora se vayan separando.
 marcar obligatorio y agregar un sabor son tres llamadas distintas), así que su pie dice "Listo" y no
 "Guardar cambios". Es honesto, pero es una tercera forma de guardar en el mismo panel. Unificarlo
 pide que el back acepte el grupo entero en un PUT, y eso es otra tarjeta.
+
+---
+
+## ADR-036 · El sabor puede costar más, y el recargo lo cobra el servidor
+
+**Fecha:** 2026-10-19 · **Estado:** Vigente · **Features:** F61 · **Revisa en parte a:** ADR-031
+
+**Contexto:** ADR-031 preguntó "¿los sabores cambian el precio?" y la respuesta fue **no**: el
+precio sale del tamaño. Era verdad mientras los sabores fueran dulce de leche o chocolate, que
+cuestan lo mismo. El humano volvió sobre eso con un caso que no entraba: *"eso le da un poco más de
+libertad al chef de decir, ah, bueno, la de chocolate la vamos a hacer un poco más carita"*. Un
+relleno que lleva más trabajo o un ingrediente caro no se puede cobrar hoy, y la única salida que le
+quedaba era subir el precio de toda la torta.
+
+No se arregla en silencio (R25): ADR-031 queda vigente en todo lo demás —los grupos globales, la
+frontera de que ella arma la lista, los nombres y no las FK en el pedido— y esta decisión le cambia
+**una** respuesta, la del precio.
+
+**Decisión, en cinco partes:**
+
+1. **El recargo es del sabor, es un monto fijo y es global.** Vive en `Option.price_delta`, no en
+   una tabla por producto: los grupos son globales (ADR-031 parte 1), así que el recargo también.
+   "Chocolate +$500" vale en las tres tortas que lleven ese grupo. Un recargo por torta pide que los
+   grupos dejen de ser globales, que es el trabajo que el panel le ahorra.
+
+2. **Es un recargo, nunca un descuento: `price_delta >= 0`.** Lo midió el review de T4-F19b: un
+   negativo se cobra, y aceptando precios de variante menores o iguales a cero salió un pedido con
+   **total negativo**. Lo mismo vale para un recargo. Además, un recargo que no puede restar hace
+   que el *"desde $X"* de la tarjeta se pueda calcular sumando y nunca restando.
+
+   **Corregido después de la revisión:** la primera versión de este ADR decía que con recargos
+   no-negativos el "desde" seguía siendo verdad **sin tocar `precioDesde`**, y era falso. Vale solo
+   si cada grupo obligatorio tiene algún sabor en cero, y nada lo garantiza: con «Bizcocho»
+   obligatorio y sus dos sabores con recargo, el mínimo comprable sube y la tarjeta seguía diciendo
+   el viejo. Ahora `precioDesde` **suma el recargo más barato de cada grupo obligatorio**, que es lo
+   que de verdad no se puede esquivar.
+
+3. **El recargo lo cobra el servidor, leyéndolo de la base.** `unit_price` del renglón es
+   `precio del tamaño (o el base) + suma de los recargos de los sabores elegidos`, y los sabores ya
+   se validan contra los grupos de **ese** producto. Un `price_delta` que venga en el request se
+   ignora, como el `price` del producto: el control de la pantalla es comodidad, no seguridad (V4).
+   Esto es la tercera vez que el proyecto escribe la misma regla —el tamaño (ADR-029), el envío, y
+   ahora el sabor—, y es la razón de que `renglon_del_pedido.py` sea un archivo aparte.
+
+4. **El pedido guarda el recargo que cobró.** `OrderItemOption.price_delta`, al lado del nombre y
+   por la misma razón que el nombre (ADR-031 parte 3): si ella pasa el chocolate de $500 a $800 en
+   marzo, el pedido de enero tiene que seguir diciendo lo que cobró en enero. Sin esa columna, el
+   renglón del pedido no se puede explicar: el total diría $14.500 y los sabores no dirían de dónde
+   salieron los $500.
+
+5. **Un sabor sin recargo no muestra nada.** Ni en la ficha ni en el panel aparece "+$0": el cero es
+   el caso normal —casi todos los sabores van a estar en cero— y escribirlo convierte una lista
+   limpia en una lista de precios.
+
+**Lo que agregó la revisión independiente, y vale como parte de la decisión:**
+
+- **El testigo crece con la superficie.** ADR-029 puso un testigo en el tamaño porque los rowid se
+  reusan y el id del carrito puede caer sobre otra fila. F61 hizo que el **sabor** también decida
+  plata y no movió esa protección: el reviewer compró una torta de $14.200 y se le cobró $23.200
+  borrando un sabor y dejando que SQLite reusara su id. Ahora el carrito manda también **nombre y
+  recargo como los mostró**, y si no coinciden el pedido se corta con *"abrí el producto y elegilo
+  de nuevo"*, igual que el tamaño. El precio sigue saliendo de la base: el testigo no se cobra, se
+  compara.
+- **Lo que el pedido guarda tiene que verse en alguna pantalla.** La columna
+  `order_item_option.price_delta` existe para que el pedido de enero diga lo de enero, y el único
+  lugar que lo contaba era el mensaje de WhatsApp, que no se guarda. Ahora el renglón lo dice en el
+  panel de pedidos y en el pedido de quien compró.
+- **El alta de un sabor que ya existe aplica el recargo.** Era idempotente y descartaba el número,
+  mientras el panel avisaba *"«Chocolate» agregado con +$7.777"*: afirmar un precio que no se
+  guardó, en la única pantalla donde ella maneja plata.
+- **El campo de plata avisa lo que va a cobrar mientras se tipea.** Acá los miles se escriben con
+  punto: "1.500" se guardaba como $1,50. Ahora se interpreta como mil quinientos y el campo lo
+  confirma debajo, igual que el precio del tamaño.
+
+**Lo que esto NO decide:**
+
+- **Nada por porcentaje.** Se dijo antes de empezar: el monto es fijo, así que "Chocolate +$500" es
+  lo mismo en la de 8 porciones que en la de 20. Si algún día el recargo tiene que escalar con el
+  tamaño, es otra tarjeta y otro ADR, y probablemente otra columna.
+- **Nada sobre el mínimo, el salto ni el envío.** El recargo entra en el precio de **una** unidad y
+  se multiplica por la cantidad, como el precio de siempre.

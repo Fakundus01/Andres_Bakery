@@ -17,11 +17,12 @@ from decimal import Decimal
 from flask import current_app
 
 from ..extensions import db
-from ..models import Option, Order, OrderItem, OrderItemOption, Product, ProductVariant
+from ..models import Order, OrderItem, OrderItemOption, Product, ProductVariant
 from .almacen_de_imagenes import almacen_de_imagenes
-from .base import ServiceBase
+from .base import MAX_IMPORTE, ServiceBase
 from .exceptions import ValidationError
 from .quantity import validate_quantity
+from .sabores_del_renglon import SaborElegido, sabores_del_renglon
 from . import saneado
 
 
@@ -37,11 +38,6 @@ CAMPOS_DE_PERSONALIZACION = ("option_ids", "note", "reference_image")
 # sola linea: con saltos, alguien escribe "Pagado: SI, transferencia hecha" y
 # en el panel parece un campo del sistema (hallazgo real de la review de T7).
 TOPE_NOTA = 300
-# Un renglon no puede traer mas opciones que grupos existentes; el tope corta
-# la lista de 500 ids antes de mirar la base.
-MAX_OPCIONES_POR_RENGLON = 20
-
-
 class ArmadorDeRenglon(ServiceBase):
     def armar(self, order: Order, raw_item: object) -> Decimal:
         """Agrega el renglon al pedido y devuelve lo que suma al total."""
@@ -68,7 +64,7 @@ class ArmadorDeRenglon(ServiceBase):
         variante = self._variante(
             product, raw_item.get("variant_id"), nombre_visto=raw_item.get("variant_name")
         )
-        unit_price = Decimal(str(variante.price if variante else product.price))
+        precio_base = Decimal(str(variante.price if variante else product.price))
 
         # El tamano lo tiene cualquier producto que se venda por tamanos
         # (ADR-007); lo que la etiqueta habilita es la personalizacion.
@@ -81,7 +77,31 @@ class ArmadorDeRenglon(ServiceBase):
         # el `product.option_groups` de abajo disparaba un autoflush con su
         # `SAWarning` en cada pedido (lo marcó el reviewer de T18). No rompía
         # nada; es la clase de ruido que un día esconde un flush parcial.
-        elegidas = self._opciones(product, raw_item.get("option_ids")) if personalizable else []
+        elegidas: list[SaborElegido] = (
+            sabores_del_renglon.elegidos(product, raw_item.get("option_ids"))
+            if personalizable
+            else []
+        )
+        sabores_del_renglon.exigir_que_sean_los_que_vio(
+            elegidas, raw_item.get("options_seen")
+        )
+        # El recargo del sabor sale de la base como el precio del tamano
+        # (ADR-036): un `price_delta` que venga en el request se ignora, igual
+        # que el `price` del producto. Es la tercera vez que esta regla se
+        # escribe en este archivo, y por eso el archivo existe.
+        unit_price = precio_base + sum(
+            (sabor.recargo for sabor in elegidas), Decimal("0")
+        )
+        # El precio de UNA unidad tiene que entrar en `Numeric(10, 2)`. Antes
+        # de F61 no hacia falta mirarlo —era un solo precio ya topeado—, pero
+        # dos recargos en el tope suman nueve digitos enteros en una columna
+        # de ocho: en SQLite entra torcido y en Postgres es un 500 en la ruta
+        # publica del pedido (lo midio el reviewer de T20).
+        if unit_price > MAX_IMPORTE:
+            raise ValidationError(
+                f"«{product.name}» con esos sabores da un precio imposible. "
+                "Avisanos y lo revisamos."
+            )
 
         item = OrderItem(
             order=order,
@@ -92,9 +112,13 @@ class ArmadorDeRenglon(ServiceBase):
             note=self._nota(raw_item.get("note")) or None,
             reference_image=self._foto(raw_item.get("reference_image")) or None,
         )
-        for group_name, option_name in elegidas:
+        for sabor in elegidas:
             item.options.append(
-                OrderItemOption(group_name=group_name, option_name=option_name)
+                OrderItemOption(
+                    group_name=sabor.grupo,
+                    option_name=sabor.sabor,
+                    price_delta=sabor.recargo,
+                )
             )
         db.session.add(item)
         return unit_price * quantity
@@ -173,59 +197,6 @@ class ArmadorDeRenglon(ServiceBase):
                 f"El tamaño «{visto}» cambió de precio o de nombre. "
                 "Abrí el producto y elegilo de nuevo, así no te cobramos otra cosa."
             )
-
-    def _opciones(self, product: Product, crudo: object) -> list[tuple[str, str]]:
-        """Lo elegido, validado contra los grupos de ESTE producto (ADR-031).
-
-        Es la frontera de la feature: la lista de sabores la arma solo ella, y
-        quien compra elige de esa lista. Sin esta validacion, el cliente manda
-        el `option_id` de cualquier grupo y el pedido le llega con un relleno
-        que esa torta no tiene.
-        """
-        grupos = {grupo.id: grupo for grupo in product.option_groups}
-        elegidas: dict[int, Option] = {}
-
-        for crudo_id in self._lista_de_ids(crudo):
-            option_id = saneado.entero(crudo_id, "option_id", minimo=1, maximo=MAX_ID)
-            opcion = db.session.get(Option, option_id)
-            if opcion is None or opcion.option_group_id not in grupos:
-                raise ValidationError(
-                    f"Una de las opciones elegidas no es de «{product.name}»."
-                )
-            if opcion.option_group_id in elegidas:
-                nombre = grupos[opcion.option_group_id].name
-                raise ValidationError(f"Elegí una sola opción de «{nombre}».")
-            elegidas[opcion.option_group_id] = opcion
-
-        self._exigir_los_obligatorios(product, elegidas)
-        return [
-            (grupos[group_id].name, opcion.name)
-            for group_id, opcion in sorted(
-                elegidas.items(), key=lambda par: grupos[par[0]].sort_order
-            )
-        ]
-
-    @staticmethod
-    def _exigir_los_obligatorios(product: Product, elegidas: dict[int, Option]) -> None:
-        """Una torta sin relleno elegido no es un pedido que ella pueda cumplir."""
-        faltan = [
-            grupo.name
-            for grupo in product.option_groups
-            if grupo.required and grupo.id not in elegidas
-        ]
-        if faltan:
-            detalle = ", ".join(faltan)
-            raise ValidationError(f"Falta elegir: {detalle}.")
-
-    @staticmethod
-    def _lista_de_ids(crudo: object) -> list[object]:
-        if crudo is None:
-            return []
-        if not isinstance(crudo, list):
-            raise ValidationError("Las opciones elegidas tienen que venir como lista.")
-        if len(crudo) > MAX_OPCIONES_POR_RENGLON:
-            raise ValidationError("Hay demasiadas opciones elegidas en un producto.")
-        return crudo
 
     @staticmethod
     def _nota(crudo: object) -> str:

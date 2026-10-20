@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from decimal import Decimal
+
 from sqlalchemy.exc import IntegrityError
 
 from ..extensions import db
@@ -55,8 +57,12 @@ class OptionService(ServiceBase):
             required=self._bandera(data.get("required"), por_default=True),
             sort_order=self._orden(data.get("sort_order")),
         )
-        for posicion, nombre in enumerate(self._nombres_de_opciones(data.get("options"))):
-            grupo.options.append(Option(name=nombre, sort_order=posicion))
+        for posicion, (nombre, recargo) in enumerate(
+            self._opciones_del_alta(data.get("options"))
+        ):
+            grupo.options.append(
+                Option(name=nombre, price_delta=recargo, sort_order=posicion)
+            )
 
         db.session.add(grupo)
         try:
@@ -115,6 +121,16 @@ class OptionService(ServiceBase):
 
         existente = self._buscar_opcion(grupo, name)
         if existente:
+            # Pedir uno que ya esta es la misma intencion que usarlo, pero si
+            # vino con recargo hay que ponerselo: el panel avisaba "«X»
+            # agregado con +$7.777" y el recargo se descartaba en silencio
+            # (review de T20). Afirmar un precio que no se guardo es lo peor
+            # que puede hacer la unica pantalla donde ella maneja plata.
+            if "price_delta" in data:
+                existente.price_delta = self._recargo(
+                    data.get("price_delta"), por_default=existente.price_delta
+                )
+                db.session.commit()
             return Serializer.option(existente), False
         if len(grupo.options) >= MAX_OPCIONES:
             raise ValidationError(f"Un grupo admite hasta {MAX_OPCIONES} opciones.")
@@ -122,6 +138,7 @@ class OptionService(ServiceBase):
         opcion = Option(
             group=grupo,
             name=name,
+            price_delta=self._recargo(data.get("price_delta"), por_default=Decimal("0")),
             sort_order=self._orden(data.get("sort_order"), por_default=len(grupo.options)),
         )
         db.session.add(opcion)
@@ -146,6 +163,10 @@ class OptionService(ServiceBase):
             if choque and choque.id != opcion.id:
                 raise ValidationError(f"«{choque.name}» ya está en este grupo.")
             opcion.name = name
+        if "price_delta" in data:
+            opcion.price_delta = self._recargo(
+                data.get("price_delta"), por_default=opcion.price_delta
+            )
         if "sort_order" in data:
             opcion.sort_order = self._orden(data.get("sort_order"))
 
@@ -188,12 +209,16 @@ class OptionService(ServiceBase):
             option_group_id=grupo.id, normalized_name=buscado
         ).first()
 
-    def _nombres_de_opciones(self, crudas: object) -> list[str]:
-        """Los sabores del alta, limpios y sin repetidos.
+    def _opciones_del_alta(self, crudas: object) -> list[tuple[str, Decimal]]:
+        """Los sabores del alta con su recargo, limpios y sin repetidos.
 
         El duplicado se saca aca y no en la base: mandar la lista con
         "Chocolate" dos veces es un error de tipeo del panel, y hacerlo
         fallar entero obligaria a Andrea a buscar cual era.
+
+        Un sabor puede venir como texto —"Chocolate"— o como objeto con su
+        recargo (F61). Las dos formas siguen entrando: la lista de nombres
+        sueltos es la que usa el alta rapida del panel.
         """
         if crudas is None:
             return []
@@ -202,16 +227,45 @@ class OptionService(ServiceBase):
         if len(crudas) > MAX_OPCIONES:
             raise ValidationError(f"Un grupo admite hasta {MAX_OPCIONES} opciones.")
 
-        nombres: list[str] = []
+        sabores: list[tuple[str, Decimal]] = []
         vistos: set[str] = set()
         for cruda in crudas:
-            nombre = self._nombre(cruda.get("name") if isinstance(cruda, dict) else cruda)
+            es_objeto = isinstance(cruda, dict)
+            nombre = self._nombre(cruda.get("name") if es_objeto else cruda)
             normalizado = self._normalizado(nombre)
             if normalizado in vistos:
                 continue
             vistos.add(normalizado)
-            nombres.append(nombre)
-        return nombres
+            recargo = self._recargo(
+                cruda.get("price_delta") if es_objeto else None, por_default=Decimal("0")
+            )
+            sabores.append((nombre, recargo))
+        return sabores
+
+    def _recargo(self, valor: object, *, por_default: Decimal) -> Decimal:
+        """Lo que el sabor suma al precio. Recargo, nunca descuento (ADR-036).
+
+        Vacio vale cero y no "dejalo como estaba": el campo del panel esta
+        siempre a la vista, asi que borrarlo es la forma de sacar el recargo.
+        """
+        if valor is None:
+            return Decimal(str(por_default or 0))
+        if isinstance(valor, str) and not valor.strip():
+            return Decimal("0")
+
+        recargo = self.parse_decimal(valor, "recargo")
+        if recargo < 0:
+            raise ValidationError(
+                "El sabor puede tener un recargo, no un descuento: poné 0 o más."
+            )
+        # `0.001` entraba y se guardaba como 0.00: ella pone un numero
+        # positivo y el sistema guarda cero sin decir nada. Es el mismo caso
+        # que `_precio_de_variante` ya rechazaba para el precio del tamano.
+        if recargo > 0 and recargo.quantize(Decimal("0.01")) <= 0:
+            raise ValidationError(
+                "Ese recargo es tan chico que queda en cero. Poné al menos un centavo, o 0."
+            )
+        return recargo
 
     @staticmethod
     def _normalizado(name: str) -> str:

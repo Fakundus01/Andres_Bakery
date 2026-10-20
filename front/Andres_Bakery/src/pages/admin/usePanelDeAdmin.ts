@@ -73,7 +73,7 @@ export function usePanelDeAdmin() {
     cambiarObligatoriedad,
     borrarGrupo,
     crearOpcion,
-    renombrarOpcion,
+    editarOpcion,
     borrarOpcion,
     ...opciones
   } = useOpcionesDelPanel({ token, productos, etiquetas });
@@ -192,7 +192,7 @@ export function usePanelDeAdmin() {
       cambiarObligatoriedad,
       borrarGrupo,
       crearOpcion,
-      renombrarOpcion,
+      editarOpcion,
       borrarOpcion,
     },
     conAviso,

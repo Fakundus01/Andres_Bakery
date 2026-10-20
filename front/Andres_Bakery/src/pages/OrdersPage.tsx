@@ -6,6 +6,7 @@ import { EmptyState, ErrorBanner, LoadingPanel, PaymentBanner, SectionHeading, S
 import { useAuth } from "../contexts/AuthContext";
 import { ordersApi } from "../lib/api";
 import { formatCurrency, formatDate, getErrorMessage, labelForPaymentMethod } from "../lib/format";
+import { textoDeLaElegida } from "../lib/pedidos";
 import type { Order } from "../lib/types";
 
 export function OrdersPage() {
@@ -78,9 +79,7 @@ export function OrdersPage() {
                     {/* Lo que pidió, en su propio pedido: sin esto, quien
                         encargó una torta con relleno leía "1 x Torta". */}
                     <DetalleDelRenglon
-                      elegidas={(item.options ?? []).map(
-                        (elegida) => `${elegida.group_name}: ${elegida.option_name}`,
-                      )}
+                      elegidas={(item.options ?? []).map(textoDeLaElegida)}
                       nota={item.note}
                       foto={item.reference_image}
                     />

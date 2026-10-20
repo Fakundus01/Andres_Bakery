@@ -78,10 +78,14 @@ export function useOpcionesDelPanel({
     cambiarObligatoriedad: (id: number, obligatorio: boolean) =>
       optionGroupsApi.update(id, { required: obligatorio }, token).then(() => undefined),
     borrarGrupo: (id: number) => optionGroupsApi.remove(id, token).then(() => undefined),
-    crearOpcion: (grupoId: number, nombre: string) =>
-      optionGroupsApi.crearOpcion(grupoId, { name: nombre }, token).then(() => undefined),
-    renombrarOpcion: (grupoId: number, opcionId: number, nombre: string) =>
-      optionGroupsApi.renombrarOpcion(grupoId, opcionId, nombre, token).then(() => undefined),
+    crearOpcion: (grupoId: number, nombre: string, recargo: number) =>
+      optionGroupsApi
+        .crearOpcion(grupoId, { name: nombre, price_delta: recargo }, token)
+        .then(() => undefined),
+    editarOpcion: (grupoId: number, opcionId: number, nombre: string, recargo: number) =>
+      optionGroupsApi
+        .editarOpcion(grupoId, opcionId, { name: nombre, price_delta: recargo }, token)
+        .then(() => undefined),
     borrarOpcion: (grupoId: number, opcionId: number) =>
       optionGroupsApi.borrarOpcion(grupoId, opcionId, token).then(() => undefined),
   };

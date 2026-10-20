@@ -221,3 +221,42 @@ el camino feliz, y son la mitad de lo que hace una persona apurada. Y si el revi
 `git show <base>:<archivo>`, encuentra además lo que el refactor se llevó sin que nadie lo diga: acá
 fueron una X de cancelar, dos frases del cartel de borrado y un encabezado.
 
+
+**Lo que una función correcta no garantiza: quién la llama (2026-10-19, F61).** `precioDelRenglon`
+suma los recargos de los sabores y tiene seis tests que lo prueban. La ficha igual mostraba
+**$14.200** donde el back iba a cobrar **$16.500**, porque el hook la llamaba con el tamaño y sin
+los sabores: `precioDelRenglon({ ...product, variante })`. Ni el rojo medido ni las dos suites en
+verde podían verlo —la función hacía exactamente lo que decía— y lo encontró **el navegador, en el
+primer clic**.
+
+Dos cosas quedan de ahí. La primera: **cuando una función nueva calcula plata, el test de la
+función no alcanza; hay que mirar cada lugar que la llama**, y los que arman su argumento con
+`{...objeto, unoDeLosCampos}` son los sospechosos, porque agregar un campo a ese cálculo no rompe a
+nadie, solo lo ignora. El arreglo fue pasar la personalización entera (`{ ...product,
+...personalizacion }`) justamente para que no se pueda volver a olvidar un campo. La segunda:
+**R07 no es un trámite al final.** Esta tanda tenía 29 tests nuevos en rojo medido, dos suites
+verdes, lint y build limpios, y lo que la hacía estar mal se veía en pantalla en diez segundos.
+
+**Y el navegador se maneja aunque el MCP no conecte.** Playwright no conectaba en esa sesión, pero
+los Chromium que había instalado estaban en disco: `scratchpad/cdp.py` habla el protocolo de
+depuración de Chrome por WebSocket crudo (60 líneas, sin instalar nada) y alcanza para navegar,
+clickear, leer `document.body.innerText`, medir el desborde y sacar la foto. Antes de declarar que
+una pantalla no se puede verificar, conviene mirar si el navegador está ahí.
+
+**El testigo tiene que crecer con lo que decide plata (2026-10-19, review de T20).** ADR-029 le
+había puesto un testigo al tamaño: el carrito manda también el nombre que mostró, y si el `id` cayó
+sobre otra fila —SQLite reusa los rowid de lo borrado— el pedido se corta con un 400 en vez de
+cobrar otra cosa. F61 hizo que el **sabor** también decidiera plata y no tocó esa protección. El
+reviewer lo midió: borró un sabor, el id quedó libre, se lo quedó otro de +$9.000, y una torta de
+$14.200 se cobró **$23.200 sin un solo error**.
+
+La regla que queda: **cuando una tanda agrega un campo nuevo que mueve el precio, la lista de
+protecciones del precio se revisa entera, no solo la que toca ese campo**. El `grep` que lo
+encuentra es buscar los testigos que ya existen —acá, `_exigir_que_sea_el_que_vio`— y preguntarse si
+lo nuevo cae adentro. Y el síntoma genérico: si el cliente manda un `id` y el servidor va a buscar
+un precio con ese id, **hace falta que el cliente diga también qué vio**, porque el id no es estable
+contra el borrado.
+
+De la misma revisión, dos cosas chicas que valen para cualquier campo de plata nuevo: el formato se
+prueba **con la forma en que lo escribe la persona** (acá "1.500" son mil quinientos y se guardaba
+$1,50), y el campo tiene que **decir lo que va a cobrar mientras se tipea**, no después de guardar.

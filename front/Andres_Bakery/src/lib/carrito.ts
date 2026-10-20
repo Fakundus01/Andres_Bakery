@@ -1,4 +1,5 @@
 import { normalizar } from "./ingredientes";
+import { recargoDeLasOpciones, recargoDeUnSabor } from "./recargos";
 import type { OptionChoice, OptionGroup, Product, ProductVariant, Tag } from "./types";
 
 /** La identidad y el precio de un renglón del carrito (F19a, F58).
@@ -94,12 +95,15 @@ export function mismaConfiguracion(uno: RenglonBase, otro: RenglonBase): boolean
   return claveDelRenglon(uno) === claveDelRenglon(otro);
 }
 
-/** El precio de una unidad del renglón: el de la variante si hay una.
+/** El precio de una unidad del renglón: el tamaño elegido más los recargos
+ *  de los sabores (F61, ADR-036).
  *
- *  Los sabores **no** mueven el precio (ADR-031): sale del tamaño. Esto es
- *  para mostrar; el que se cobra lo decide el servidor. */
+ *  Esto es para mostrar. El que se cobra lo calcula el servidor con los
+ *  mismos números leídos de la base: si acá dijera otra cosa, la sorpresa
+ *  aparecería en el total y no en la ficha. */
 export function precioDelRenglon(renglon: RenglonBase): number {
-  return renglon.variante ? renglon.variante.price : renglon.price;
+  const base = renglon.variante ? renglon.variante.price : renglon.price;
+  return base + recargoDeLasOpciones(renglon.opciones);
 }
 
 export function subtotalDelCarrito(renglones: Array<RenglonBase & { quantity: number }>): number {
@@ -123,10 +127,22 @@ function idsDeOpciones(opciones: OptionChoice[] | undefined): number[] {
  *  tarjeta dice "desde" y el más barato. */
 export function precioDesde(product: Product): number {
   const tamanos = product.variants ?? [];
-  if (!tamanos.length) {
-    return product.price;
-  }
-  return Math.min(...tamanos.map((tamano) => tamano.price));
+  const base = tamanos.length
+    ? Math.min(...tamanos.map((tamano) => tamano.price))
+    : product.price;
+  return base + recargoMinimoObligatorio(product);
+}
+
+/** Lo que **no se puede esquivar**: si un grupo obligatorio no tiene ningún
+ *  sabor sin recargo, su más barato entra en el precio mínimo.
+ *
+ *  Sin esto la tarjeta decía "desde $14.200" sobre una torta que no se podía
+ *  comprar por menos de $14.500, que es la misma sorpresa que el review de
+ *  T18 hizo arreglar cuando el precio base no era comprable. */
+function recargoMinimoObligatorio(product: Product): number {
+  return (product.option_groups ?? [])
+    .filter((grupo) => grupo.required && grupo.options.length)
+    .reduce((suma, grupo) => suma + Math.min(...grupo.options.map(recargoDeUnSabor)), 0);
 }
 
 /** Cómo está el producto del formulario respecto de la etiqueta que habilita

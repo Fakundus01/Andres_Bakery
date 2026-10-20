@@ -1,6 +1,6 @@
 # status.md · Andres Bakery
 
-**Versión:** 0.15.0 · **Última actualización:** 2026-10-19
+**Versión:** 0.16.0 · **Última actualización:** 2026-10-19
 
 ## 1 · Dónde estamos
 
@@ -10,11 +10,11 @@ El repo tiene 4 meses de código y **estuvo 7 meses quieto** hasta el 2026-10-16
 
 | Check | Resultado |
 |---|---|
-| Tests del back | **343 OK** (eran 307 al cerrar T18; 32 salieron de las tres revisiones) · eran 228 al abrir el día |
-| Tests del front | **179 OK** — Vitest, lógica pura (ADR-023). Eran 166 antes de `lib/borrados`; eran 90 al abrir el día |
+| Tests del back | **365 OK** (eran 343 antes del recargo del sabor; 22 nuevos, 9 de ellos de la revisión) · eran 228 al abrir el día |
+| Tests del front | **207 OK** — Vitest, lógica pura (ADR-023). Eran 179 antes del recargo del sabor; eran 90 al abrir el día |
 | Lint del front (eslint + tsc) | limpio |
-| Build del front | verde — **420,71 KB JS · 36,15 KB CSS**. La historia: 381,91 al abrir el día → 411,39 con la pestaña de gustos, la personalización de la ficha y el detalle del renglón → 420,71 con los pop-ups del panel (+9,3 KB) |
-| Migraciones | **`0006`, `0007` y `0008` aplicadas** (el tamaño vendido en el renglón, los grupos de opciones, y la personalización + el registro de fotos), probadas para arriba y para abajo sobre una copia de la base real **con datos sembrados a propósito**, otra vez para arriba, y desde base vacía. Antes, **`0005`** (el ingrediente gana su nombre normalizado con índice único, ADR-030), probada en los dos sentidos sobre una copia con un choque sembrado. Antes, **`0004`** (el mail del cliente pasó a opcional), probada para abajo y para arriba sobre la base real. Antes, **`0003`**. Probada sobre una copia antes que sobre la real, en los dos sentidos y desde base vacía |
+| Build del front | verde — **423,58 KB JS · 36,15 KB CSS**. La historia: 381,91 al abrir el día → 411,39 con la pestaña de gustos, la personalización de la ficha y el detalle del renglón → 420,71 con los pop-ups del panel → 423,58 con el recargo del sabor (+2,9 KB) |
+| Migraciones | **`0009` aplicada** (el recargo del sabor y el que cobró el pedido), probada **para abajo y para arriba sobre una copia de la base de desarrollo con datos**: las filas y las restricciones quedaron iguales. Antes, **`0006`, `0007` y `0008` aplicadas** (el tamaño vendido en el renglón, los grupos de opciones, y la personalización + el registro de fotos), probadas para arriba y para abajo sobre una copia de la base real **con datos sembrados a propósito**, otra vez para arriba, y desde base vacía. Antes, **`0005`** (el ingrediente gana su nombre normalizado con índice único, ADR-030), probada en los dos sentidos sobre una copia con un choque sembrado. Antes, **`0004`** (el mail del cliente pasó a opcional), probada para abajo y para arriba sobre la base real. Antes, **`0003`**. Probada sobre una copia antes que sobre la real, en los dos sentidos y desde base vacía |
 | App corriendo | back en `127.0.0.1:5000`, front en `127.0.0.1:5173`. Probado en navegador: giro por hover, subida de una foto real de punta a punta, panel con gráficos, perfil y `/cv` |
 | Responsive 390px | `/cv`, `/historia`, `/tienda` y `/admin`: cero desbordes, medido con `scrollWidth` vs `clientWidth` |
 | Archivos > 300 líneas | **ninguno**, y costó: `models.py` (396) se partió en paquete, `lib/types.ts` (333) también, `order_service.py` dejó el renglón en su módulo, `usePanelDeAdmin.ts` sacó los valores iniciales y las acciones, y dos archivos de tests se partieron en dos |
@@ -31,7 +31,11 @@ El repo tiene 4 meses de código y **estuvo 7 meses quieto** hasta el 2026-10-16
 | Pop-up en todo el panel (ADR-035) | **medido en 1920px y 390px**: en computadora abren en pop-up la etiqueta, el grupo, el editor del grupo, las tres secciones del perfil y el texto institucional; **a 390px ninguno de formulario** (el editor del grupo se abre dentro de la tarjeta) y el **cartel de borrado sí aparece** (342 px). Desborde 0 en las dos medidas |
 | Borrar sin preguntar | **era real y está cerrado**: "Eliminar" en un producto y "Borrar" en una etiqueta borraban de una, con el botón al lado del de editar. Ahora preguntan, nombrando lo que se pierde |
 | Revisión independiente (T19-F60) | **hecha**: `CHANGES_REQUESTED`, 16 hallazgos (1 ALTA, 7 MEDIA, 8 BAJA). El ALTA **no era de código**: los MDs decían que esto no se había visto en el navegador cuando sí, o sea documentación que manda a repetir trabajo hecho. Lo de fondo: **Escape adentro del editor cerraba el pop-up entero**, **no había forma de abandonar un nombre tipeado** (el `onBlur` lo guardaba al cerrar y la X de cancelar se había perdido en el refactor), **el pop-up se cerraba aunque el guardado fallara**, y **"Cerrar" no cancelaba** en perfil ni historia. Los 7 MEDIA y 5 BAJA corregidos, con 3 tests nuevos. Verificó además 10 sospechas que **estaban bien** |
-| Gustos cargados en la base de desarrollo | **dos grupos, no uno**: «Relleno» (Dulce de leche, Chocolate, **Crema**) y **«Bizcocho» (Chocolate, Vainilla)**, nuevo. Los dos están marcados en «Cheesecake de Frutos Rojos» y la ficha pública pide los dos antes de agregar al carrito. Lo pidió el humano al ver que faltaba el del bizcochuelo; los sabores reales los define la chef |
+| Revisión independiente (T20-F61) | **hecha**: `CHANGES_REQUESTED`, 10 hallazgos (1 ALTA, 4 MEDIA, 5 BAJA), **los diez corregidos**. El ALTA: **el sabor no tenía testigo**, así que borrando uno y dejando que SQLite reusara su id, una torta de $14.200 se cobró **$23.200** (el reviewer lo midió). Es el mismo agujero que ADR-029 ya había cerrado para el tamaño. Además: el *"desde $X"* de la carta podía quedar por debajo del mínimo comprable **y el ADR afirmaba lo contrario**, escribir «1.500» guardaba $1,50, el alta de un sabor que ya existía descartaba el recargo mientras avisaba que lo guardó, y el recargo cobrado no se veía en ninguna pantalla. Verificó además que V4 aguanta (siete inyecciones distintas, el total no se movió) y que el refactor no se llevó ningún texto |
+| Recargo por sabor (F61) | **anda de punta a punta, medido**: con «Relleno: Chocolate +$800» y «Bizcocho: Chocolate +$1.500», la ficha dice $16.500 sobre el tamaño de $14.200 y el pedido se cobró $44.201 por dos de 12 porciones. Un `price_delta` mandado en el pedido **se ignora**; un descuento se rechaza en castellano |
+| Lo que encontró el navegador en F61 | **la ficha mostraba el precio sin los recargos** —$14.200 donde el back iba a cobrar $16.500— con las dos suites en verde. El hook de la ficha le pasaba el tamaño al cálculo y no los sabores: la función estaba bien, lo que estaba mal era lo que se le daba. Corregido pasando la personalización entera |
+| Navegador sin Playwright | el MCP **no conectó** en esta sesión (también `github` y `codegraph`). Los Chromium que dejó instalados estaban en disco, así que se manejó uno de verdad **hablando CDP a mano** (`scratchpad/cdp.py`, WebSocket crudo): navegar, clickear, leer la pantalla y sacar la foto. Es lo que permitió cumplir R07 en vez de dar por buena una pantalla sin mirarla |
+| Gustos cargados en la base de desarrollo | **dos grupos, no uno**: «Relleno» (Dulce de leche, **Chocolate +$800**, Crema) y **«Bizcocho» (Chocolate +$1.500, Vainilla)**, nuevo. Los dos están marcados en «Cheesecake de Frutos Rojos» y la ficha pública pide los dos antes de agregar al carrito. Lo pidió el humano al ver que faltaba el del bizcochuelo; los sabores reales los define la chef |
 | Rama | `dev`, adelantada respecto de `main` |
 
 ## 2 · Avance por feature
@@ -119,17 +123,19 @@ Lo de 0.5.0 sigue igual salvo lo tachado. **D3 se cerró** y entraron tres deuda
 ## 5 · Próximo paso propuesto
 
 **Cerró el 2026-10-19:** `T4-F19a` (el tamaño se cobra), la tanda **T18** entera (F57, F58, F59),
-`T4-F19b` + ADR-034, D27/D28 y ahora **T19-F60** (el pop-up en todas las pestañas + la confirmación
-de borrado, ADR-035). La cola, en orden:
+`T4-F19b` + ADR-034, D27/D28, **T19-F60** (el pop-up en todas las pestañas + la confirmación de
+borrado, ADR-035) y **T20-F61** (el recargo por sabor, ADR-036). Los dos con su navegador y su
+reviewer independiente: la línea que acá pedía mirar T19-F60 quedó vieja y se corrige en este
+commit. La cola, en orden:
 
-1. **Mirar T19-F60 en el navegador y revisarla.** Hace falta que el humano levante el servidor del
-   front; después van las dos cosas que R30 pide y que todavía no están: el navegador (1920px y
-   390px) y el reviewer independiente.
-2. **F41 · Deploy** (ADR-014). Lo que cambió hoy: las fotos ya no son un problema sin resolver —van
-   a Cloudinary con cargar cuatro variables (B8)—, pero **el tope por IP sigue necesitando
-   `ProxyFix`** (D25) y ahora importa más, porque la ruta pública de archivos depende de él.
-4. **F32 · Vista propia de cliente**, separada de la mirada de admin.
-5. **D24 · El nombre de la marca**: el logo dice "ANDRE'S BAKERY" y el sitio "Andres Bakery".
+1. **Ofertas.** Lo pidió el humano al cerrar T20: una etiqueta "oferta", poder etiquetar varios
+   productos de una, tope de **tres etiquetas visibles** por producto con la de oferta siempre
+   visible, y dar vuelta la tarjeta para ver el resto.
+2. **F41 · Deploy** (ADR-014). Las fotos ya no son un problema sin resolver —van a Cloudinary con
+   cargar cuatro variables (B8)—, pero **el tope por IP sigue necesitando `ProxyFix`** (D25) y
+   ahora importa más, porque la ruta pública de archivos depende de él.
+3. **F32 · Vista propia de cliente**, separada de la mirada de admin.
+4. **D24 · El nombre de la marca**: el logo dice "ANDRE'S BAKERY" y el sitio "Andres Bakery".
 
 **Lo que Andrea tiene que hacer para que lo de hoy se vea en su sitio** (y no lo puede hacer el
 código): ponerle la etiqueta **«tortas personalizadas»** a sus tortas a pedido, y cargar los grupos

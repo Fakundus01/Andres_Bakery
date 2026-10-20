@@ -2,6 +2,7 @@ import { Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { textoDeUso } from "../../lib/borrados";
+import { textoDelRecargo } from "../../lib/recargos";
 import type { OptionGroup } from "../../lib/types";
 
 /** Un grupo como se ve antes de tocarlo: nombre, sabores y en qué está.
@@ -67,6 +68,11 @@ export function TarjetaDeGrupo({
               className="border-[3px] border-borde bg-superficie-alt px-3 py-1 text-xs font-bold text-tinta"
             >
               {opcion.name}
+              {textoDelRecargo(opcion) ? (
+                <span className="ml-2 font-normal text-tinta-suave">
+                  {textoDelRecargo(opcion)}
+                </span>
+              ) : null}
             </li>
           ))}
         </ul>

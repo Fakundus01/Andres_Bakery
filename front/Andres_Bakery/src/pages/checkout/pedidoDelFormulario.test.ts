@@ -182,6 +182,32 @@ describe("renglonDelPedido", () => {
     expect(renglonDelPedido(torta).option_ids).toEqual([11, 21]);
   });
 
+  it("manda también el sabor que la pantalla mostró, como testigo", () => {
+    // El id solo no alcanza: los rowid se reusan, así que el id del carrito
+    // puede caer sobre otro sabor con otro precio (review de T20). Es el
+    // mismo testigo que ya manda el tamaño.
+    const conRecargo = {
+      ...torta,
+      opciones: [{ id: 11, name: "Dulce de leche", sort_order: 0, price_delta: 800 }],
+    } as CartItem;
+
+    expect(renglonDelPedido(conRecargo).options_seen).toEqual([
+      { id: 11, name: "Dulce de leche", price_delta: 800 },
+    ]);
+  });
+
+  it("el testigo dice 0 cuando el sabor no tiene recargo", () => {
+    expect(renglonDelPedido(torta).options_seen).toEqual([
+      { id: 11, name: "Dulce de leche", price_delta: 0 },
+      { id: 21, name: "Vainilla", price_delta: 0 },
+    ]);
+  });
+
+  it("sin sabores no manda testigos", () => {
+    const simple = { id: 9, quantity: 6 } as CartItem;
+    expect(Object.keys(renglonDelPedido(simple))).not.toContain("options_seen");
+  });
+
   it("la nota viaja sin el espacio de más y acotada", () => {
     expect(renglonDelPedido(torta).note).toBe("Que diga Feliz cumple Mica");
     expect(renglonDelPedido({ ...torta, nota: "A".repeat(500) } as CartItem).note).toHaveLength(
