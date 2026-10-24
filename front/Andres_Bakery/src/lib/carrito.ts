@@ -50,6 +50,24 @@ export function notaParaElPedido(nota: string | null | undefined): string {
   return /^[·\s]*$/.test(enUnaLinea) ? "" : enUnaLinea;
 }
 
+/** El aviso que aparece al agregar algo al carrito (F64, ADR-037).
+ *
+ *  Dice **qué** entró, que es lo único que el drawer no dice: el drawer
+ *  muestra el carrito entero, no el renglón que acaba de entrar.
+ *
+ *  Y **no lleva link**. La primera versión colgaba un «Ir al carrito», y el
+ *  review de T23 lo midió a 390px: ese link de 71×20 se dibujaba encima de
+ *  los botones del carrito abierto y se llevaba el **29,7% de «Ayuda»** y el
+ *  **10,4% de «Ver el carrito completo»**. Además era redundante, porque
+ *  `addItem` abre el drawer: cuando el aviso aparece, el carrito ya está en
+ *  pantalla.
+ *
+ *  Vive acá y no adentro de `addItem` para que la decisión se pueda probar
+ *  sin montar nada (ADR-023: la lógica pura sale del componente). */
+export function avisoDeAgregado(product: Pick<Product, "name">): { texto: string } {
+  return { texto: `«${product.name}» se agregó al carrito` };
+}
+
 /** Lo que el cliente eligió para ESTE renglón. Todo opcional: un producto sin
  *  variantes ni grupos se pide igual que siempre. */
 export interface Personalizacion {

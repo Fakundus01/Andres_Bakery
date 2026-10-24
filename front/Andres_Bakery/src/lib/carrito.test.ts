@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  avisoDeAgregado,
   claveDelRenglon,
   esPersonalizable,
   estadoDeLaEtiqueta,
@@ -278,5 +279,20 @@ describe("precioDesde", () => {
   it("un grupo obligatorio todavía sin sabores no inventa un recargo", () => {
     const vacio: OptionGroup = { ...bizcochoConRecargo, options: [] };
     expect(precioDesde(conGrupos([vacio]))).toBe(14000);
+  });
+});
+
+describe("avisoDeAgregado", () => {
+  it("dice QUÉ entró y no ofrece un segundo camino al carrito (ADR-037)", () => {
+    // `toEqual` contra el objeto entero a propósito: el día que alguien le
+    // vuelva a colgar un link, este test se pone rojo (ADR-037).
+    expect(avisoDeAgregado({ name: "Brownie Tentacion" })).toEqual({
+      texto: "«Brownie Tentacion» se agregó al carrito",
+    });
+  });
+
+  it("el nombre entra tal como lo escribió Andrea, sin recortar", () => {
+    const largo = "TortaDeChocolateConDulceDeLecheYMerengue";
+    expect(avisoDeAgregado({ name: largo }).texto).toContain(largo);
   });
 });

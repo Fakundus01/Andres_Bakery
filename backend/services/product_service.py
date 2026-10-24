@@ -19,6 +19,9 @@ from . import saneado
 MAX_VARIANTES = 12
 TOPE_NOMBRE_VARIANTE = 120
 
+# El `String(120)` de `Product.name`, hecho cumplir donde se puede medir.
+TOPE_NOMBRE_PRODUCTO = 120
+
 
 class ProductService(ServiceBase):
     TEXT_FIELDS = ("description", "steps", "prep_note", "image_url")
@@ -43,7 +46,7 @@ class ProductService(ServiceBase):
         return Serializer.product(product)
 
     def create(self, data: dict) -> dict:
-        name = (data.get("name") or "").strip()
+        name = self._nombre_de_producto(data.get("name"))
         price = data.get("price")
         if not name or price is None:
             raise ValidationError("name and price are required")
@@ -71,7 +74,7 @@ class ProductService(ServiceBase):
         product = self.require_entity(Product, product_id, "product")
 
         if "name" in data:
-            name = (data.get("name") or "").strip()
+            name = self._nombre_de_producto(data.get("name"))
             if not name:
                 raise ValidationError("name is required")
             product.name = name
@@ -201,6 +204,22 @@ class ProductService(ServiceBase):
         # Lo que no vino en la lista se borra, que es lo que la pantalla
         # espera al sacar un tamano: el `delete-orphan` se encarga.
         return variants
+
+    @staticmethod
+    def _nombre_de_producto(valor: Any) -> str:
+        """Con tope, como el tamano, y por el mismo motivo.
+
+        SQLite no hace cumplir el `String(120)` del modelo, asi que el nombre
+        del producto entraba con el largo que quisiera: `update` solo
+        rechazaba el vacio. Lo encontro el review de T23 desde la pantalla —el
+        nombre sale por el `GET` publico y el front lo pone en el aviso del
+        carrito—, y es el mismo agujero que `_nombre_de_variante` ya habia
+        cerrado para los tamanos.
+
+        Devuelve "" cuando no quedo nada, para que `create` y `update` sigan
+        diciendo cada uno su mensaje.
+        """
+        return saneado.nombre_para_guardar(valor, "nombre", tope=TOPE_NOMBRE_PRODUCTO)
 
     @staticmethod
     def _nombre_de_variante(valor: Any) -> str:

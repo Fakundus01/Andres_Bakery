@@ -94,6 +94,35 @@ class ProductServiceTestCase(BackendServiceTestCase):
         db.session.refresh(product)
         self.assertEqual(product.slug, original)
 
+    def test_update_rejects_a_name_longer_than_the_column(self) -> None:
+        # `Product.name` es `String(120)` y SQLite no lo hace cumplir, asi que
+        # hasta hoy el nombre del producto entraba con el largo que quisiera.
+        # El tamano ya tenia su tope (`_nombre_de_variante`); el producto, no.
+        # Lo encontro el review de T23 por el lado de la pantalla: el nombre
+        # sale por el `GET` publico y el front lo pone en el aviso del
+        # carrito.
+        product = self.create_product(name="Brownie clasico")
+
+        with self.assertRaises(ValidationError):
+            self.service.update(product.id, {"name": "T" * 121})
+
+        db.session.refresh(product)
+        self.assertEqual(product.name, "Brownie clasico")
+
+    def test_create_rejects_a_name_longer_than_the_column(self) -> None:
+        with self.assertRaises(ValidationError):
+            self.service.create({"name": "T" * 121, "price": "2100"})
+
+    def test_a_name_of_exactly_the_cap_still_enters(self) -> None:
+        # El tope no recorta en silencio (ADR-030) y no corre el limite: 120
+        # entra entero, 121 se rechaza.
+        product = self.create_product()
+
+        self.service.update(product.id, {"name": "N" * 120})
+
+        db.session.refresh(product)
+        self.assertEqual(product.name, "N" * 120)
+
     def test_update_replaces_the_variants(self) -> None:
         product = self.create_product(name="Torta")
 

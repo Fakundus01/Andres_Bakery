@@ -57,10 +57,10 @@ export function AdminPage() {
       </div>
 
       {panel.cargando ? <LoadingPanel label="Cargando el panel" /> : null}
+      {/* El error se queda acá, al lado de lo que falló, y no en el cartel
+          flotante: un error de formulario se lee peor abajo de la pantalla. El
+          éxito sí se fue al sistema de avisos (F64). */}
       {panel.error ? <ErrorBanner message={panel.error} /> : null}
-      {panel.aviso ? (
-        <div className="pixel-panel-plano bg-exito-suave px-5 py-4 text-sm text-tinta">{panel.aviso}</div>
-      ) : null}
 
       {pestana === "overview" ? (
         <OverviewTab

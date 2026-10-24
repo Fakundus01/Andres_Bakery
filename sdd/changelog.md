@@ -4,6 +4,119 @@ Semver `MAJOR.MINOR.PATCH` (R13). No se borra nada: lo viejo queda.
 
 ---
 
+## [0.17.0] · 2026-10-22 · El sitio avisa: qué entró al carrito, y el panel que dejaba un cartel viejo en pantalla
+
+**Lo que se pidió:** *"también faltan avisos para el admin y el usuario (mensajes de se agregó al
+carrito, producto subido, etc)"*. Abrir el código dio un diagnóstico más preciso que "faltan": había
+**tres mecanismos distintos de aviso y ninguno servía para el caso más común**. El panel tenía un
+solo `aviso` string compartido por todas sus pestañas —así que dos avisos seguidos se pisaban— y la
+barra verde **no se iba nunca**: un "se guardó" de hace diez minutos seguía en pantalla afirmando
+algo del pasado. El carrito, el caso más usado del sitio, no decía nada.
+
+- **Un solo mecanismo para los avisos flotantes** (`AvisosContext` + `RegionDeAvisos`), panel
+  incluido: una región que **nace vacía** —un `aria-live` que nace con su contenido no se anuncia—,
+  los avisos se apilan hasta tres, y el éxito del panel pasó a salir por ahí. Lo que **no** migró, y
+  es la decisión escrita en **ADR-038**: los cuatro mensajes pegados a un formulario
+  (`OpcionesTab`, `SaboresDelGrupo`, `SelectorDeIngredientes` y el de la ficha del producto) se
+  quedan donde están, porque un error de formulario va **al lado del formulario** y no flotando
+  abajo de la pantalla. Contados, el sitio tiene seis mecanismos de aviso y uno solo es el flotante.
+- **El carrito dice QUÉ se agregó.** Antes abría el drawer y nada más, que muestra el carrito entero
+  y no el renglón que acaba de entrar; ahora el aviso nombra el producto. Vive **adentro de
+  `addItem`**, no en los tres lugares que lo llaman, así que no se puede olvidar en el cuarto.
+- **La barra verde del panel dejó de pisarse y de quedarse para siempre.** El aviso se apila con los
+  demás y se va solo: medido en el navegador, al guardar una etiqueta dice "Etiqueta guardada." y a
+  los 4,8 s ya no está. Y la barra verde de `AdminPage` **ya no existe** (cero nodos
+  `.bg-exito-suave` fuera de la región).
+- **Tres tonos y los lee un lector de pantalla:** éxito, error y aviso, con los tokens que los cuatro
+  temas ya tenían, `aria-live="polite"` en la región y `role="alert"` en el error. **El error no se
+  va solo**, y es la decisión, no una simetría rota por descuido: un error que desaparece es un error
+  perdido. Con una honestidad declarada: el tono `error` **todavía no tiene ningún productor real**
+  —está construido y testeado, y nunca se vio en pantalla— y no se le inventó uno para poder tachar
+  el criterio.
+- **El nombre del producto tiene tope: 120 caracteres**, el del `String(120)` del modelo, en
+  `create` **y** en `update`, como ya lo tenían los tamaños, los ingredientes y las etiquetas. Es un
+  cambio de comportamiento de la API: un nombre de 121 caracteres ahora es **400 en castellano**
+  ("El nombre no puede pasar de 120 caracteres.") y el de 120 exactos **entra entero**, verificado
+  por HTTP contra el back real en los dos verbos.
+- Tests: front **226 OK** (eran 207; 17 nuevos de `lib/avisos.test.ts` y 2 de `avisoDeAgregado`),
+  back **368 OK** (eran 365; 3 del tope del nombre). Lint limpio y build en verde:
+  **`index-CJYWeP5D.js` 426,62 kB · `index-B82F_B2b.css` 36,23 kB**. El JS creció 20 bytes y el CSS
+  quedó **con el mismo hash**: `min-w-0` y `break-words` ya estaban en el bundle porque otras
+  pantallas las usan, así que el arreglo del desborde salió a costo cero de CSS.
+
+**Lo que el navegador encontró, con las dos suites en verde:** a 390 px, con el drawer del carrito
+abierto, **el aviso se dibujaba encima de «Ir al checkout» y se comía el clic del botón de pagar**.
+El cartel ocupaba de 740 a 828 px de alto y quien preguntaba qué recibía el clic en el centro del
+botón de pagar recibía `DIV «Brownie Tentacion» se…`: en celular, agregar algo al carrito bloqueaba
+el camino a pagar **durante cuatro segundos**. Ningún test de lógica pura podía verlo. Se arregló
+sacándole `pointer-events-auto` al cartel y dejándolo solo en el link y en la X.
+
+**La primera revisión independiente encontró 12 cosas, 3 ALTA** (`CHANGES_REQUESTED`, 3 ALTA · 3
+MEDIA · 6 BAJA), y la primera es la que importa:
+
+- **El arreglo de los `pointer-events` estaba incompleto.** La medición del implementador era de **un
+  punto por botón**, el del centro. El reviewer barrió cada botón punto por punto, una muestra cada
+  3 px, con un aviso en pantalla: el aviso **seguía robando clics de tres botones**, y al que más le
+  robaba no era el de pagar sino **«Ayuda», el 26,8 %** (120 puntos de 448), más el 9,6 % de «Ver el
+  carrito completo» y el 1,0 % de «Ir al checkout». El ladrón grande era el link «Ir al carrito».
+- **Un nombre de producto de 40 caracteres sin espacios dejaba el aviso imposible de cerrar.** La X
+  se iba a `x=396` con una pantalla de 390 px de ancho, y como el error no se va solo por diseño, un
+  error con un nombre largo adentro quedaba en pantalla **para siempre**. Alcanzaba un nombre pegado
+  que la base aceptaba hoy, porque `product_service.update` no acotaba el largo.
+- **C1 estaba declarado cumplido sin estarlo, y sin el DRIFT que R25 exige.** La tarjeta pedía migrar
+  los tres mecanismos de aviso del panel; se migró uno, quedaron cuatro, y el handback escribió en su
+  tabla de «Hecho» que ahora había "uno para todo el sitio". La decisión de dejarlos era la correcta;
+  lo que estaba mal es que **se tomó en silencio**.
+
+Esa misma revisión **cerró el hueco que el implementador había declarado sin verificar** (el aviso
+del panel, que él no pudo ver porque la sesión de admin rebotaba), le corrigió un dato que mandaba a
+buscar en el lugar equivocado —el rebote era **403** del chequeo de admin, no el 401 del token—, y
+fue a romper ocho cosas que aguantaron: un `<script>` viajando desde la base hasta el texto del
+aviso **no se ejecuta** (React escapa, cero elementos creados), diez avisos seguidos dejan **tres**
+nodos y cero desborde, y el rojo de R29 que el handback declaraba se repitió idéntico, misma línea y
+mismo mensaje.
+
+**Las tres ALTA se atendieron, y una de ellas cambió lo que el aviso es.** El humano eligió **sacar
+el link** (**ADR-037**, opción A): el aviso se queda diciendo *qué* entró, que es lo único que el
+drawer no dice, y el camino al carrito lo da el drawer que `addItem` abre solo. Medido después:
+«Ayuda» pasó de **29,7 % a 0** y «Ir al checkout» de **1,2 % a 0**. El desborde del aviso se cerró
+con `min-w-0` + `break-words`: con nombres de 40, 120 y 500 caracteres la X vuelve a **x=327** en los
+tres y el aviso **se cierra con un clic real**. Y el DRIFT que faltaba se escribió como **ADR-038**.
+
+**Y el implementador le corrigió el diagnóstico al reviewer, que es la otra cosa que vale de esta
+versión.** El review atribuyó **242 px de desborde de la página** a la región de avisos. No son del
+aviso: `/tienda` desborda los mismos 242 px con **cero avisos en pantalla**, y los nodos que se van
+son los de la tarjeta del producto (`flip-carta`, y el `<h3>` del nombre llega a x=597 con un
+viewport de 390). El segundo reviewer no le creyó y lo midió él, con el nombre largo en la base real:
+**242 px con cero avisos, y ni un nodo de la región de avisos entre los que se van**. Le dio la
+razón por escrito. Sin esa corrección, T23b habría "arreglado" el aviso buscando un desborde que no
+nace ahí. El desborde de la carta queda anotado como **D31**.
+
+**La segunda revisión independiente encontró 6 cosas, 1 ALTA, y la ALTA no pedía código: pedía
+corregir una medición.** El robo de clics que quedaba abierto a propósito se había medido **solo con
+el drawer abierto** —el 1,9 % de «Ver el carrito completo», 30 puntos de 1620—. Con el drawer
+**cerrado**, que es el estado en el que la persona pasa la mayor parte del tiempo, la X le roba el
+**5,3 %** a «Ver carrito» de la barra inferior (36 de 675): los mismos ~33 puntos de la X sobre un
+botón de 132 px en vez de 323. Mismo defecto, mal dimensionado, y **es el mismo patrón que la
+primera revisión le había marcado a T23 un nivel más arriba** ("esa medición es de un punto por
+botón"), reapareciendo un nivel más abajo. ADR-037 y el riesgo del handback ya llevan la tabla con
+los dos estados. Esa revisión además verificó los cuatro rojos de R29 uno por uno, el tope de 120
+por HTTP, y que apilar **dos y tres** avisos no empeora nada: la pila crece hacia arriba y el cartel
+de abajo nunca se mueve.
+
+De lo demás de la segunda vuelta: **D33** (un producto que ya tenga más de 120 caracteres en el
+nombre queda imposible de editar desde el panel, porque el `PUT` manda siempre el `name`; hoy no hay
+datos afectados, el nombre más largo de la base real tiene 26) y **D34** (el tope cuenta *code
+points*: 120 emojis entran, 120 letras acentuadas en NFD dan 400).
+
+**Lo que esta versión NO cierra, dicho claro.** El `done` de R16 **no está**: nada se commiteó
+(R01), falta el **OK humano** y el commit. Queda abierto el **robo de clics de la X** —hasta el
+**5,3 %** con el drawer cerrado—, que se arregla subiendo la región arriba de la barra de botones y
+pide volver a medir **los dos** estados del drawer en **las dos** pantallas, y quedan las deudas
+**D29 a D34** en `status.md`, ninguna tocada. **T23 no está `Complete`.**
+
+---
+
 ## [0.16.0] · 2026-10-19 · El sabor puede costar más
 
 **Lo que se pidió:** *"eso le da un poco más de libertad al chef de decir, ah, bueno, la de

@@ -1,6 +1,6 @@
 # status.md · Andres Bakery
 
-**Versión:** 0.16.0 · **Última actualización:** 2026-10-19
+**Versión:** 0.17.0 · **Última actualización:** 2026-10-22
 
 ## 1 · Dónde estamos
 
@@ -10,10 +10,10 @@ El repo tiene 4 meses de código y **estuvo 7 meses quieto** hasta el 2026-10-16
 
 | Check | Resultado |
 |---|---|
-| Tests del back | **365 OK** (eran 343 antes del recargo del sabor; 22 nuevos, 9 de ellos de la revisión) · eran 228 al abrir el día |
-| Tests del front | **207 OK** — Vitest, lógica pura (ADR-023). Eran 179 antes del recargo del sabor; eran 90 al abrir el día |
+| Tests del back | **368 OK** (eran 365 antes de los avisos; 3 nuevos, los del tope de 120 del nombre del producto) · eran 343 antes del recargo del sabor |
+| Tests del front | **226 OK** — Vitest, lógica pura (ADR-023). Eran 207 antes de los avisos: **+17** de la cola de avisos y **+2** de `avisoDeAgregado`. Eran 90 el 2026-10-17 |
 | Lint del front (eslint + tsc) | limpio |
-| Build del front | verde — **423,58 KB JS · 36,15 KB CSS**. La historia: 381,91 al abrir el día → 411,39 con la pestaña de gustos, la personalización de la ficha y el detalle del renglón → 420,71 con los pop-ups del panel → 423,58 con el recargo del sabor (+2,9 KB) |
+| Build del front | verde — **`index-CJYWeP5D.js` 426,62 kB · `index-B82F_B2b.css` 36,23 kB**. La historia: 381,91 al abrir el 17 → 411,39 con la pestaña de gustos, la personalización de la ficha y el detalle del renglón → 420,71 con los pop-ups del panel → 423,58 con el recargo del sabor → **426,62 con los avisos**. El CSS quedó en el **mismo hash** que antes de T23b: `min-w-0` y `break-words` ya estaban en el bundle, así que el arreglo del desborde del aviso salió a costo cero de CSS |
 | Migraciones | **`0009` aplicada** (el recargo del sabor y el que cobró el pedido), probada **para abajo y para arriba sobre una copia de la base de desarrollo con datos**: las filas y las restricciones quedaron iguales. Antes, **`0006`, `0007` y `0008` aplicadas** (el tamaño vendido en el renglón, los grupos de opciones, y la personalización + el registro de fotos), probadas para arriba y para abajo sobre una copia de la base real **con datos sembrados a propósito**, otra vez para arriba, y desde base vacía. Antes, **`0005`** (el ingrediente gana su nombre normalizado con índice único, ADR-030), probada en los dos sentidos sobre una copia con un choque sembrado. Antes, **`0004`** (el mail del cliente pasó a opcional), probada para abajo y para arriba sobre la base real. Antes, **`0003`**. Probada sobre una copia antes que sobre la real, en los dos sentidos y desde base vacía |
 | App corriendo | back en `127.0.0.1:5000`, front en `127.0.0.1:5173`. Probado en navegador: giro por hover, subida de una foto real de punta a punta, panel con gráficos, perfil y `/cv` |
 | Responsive 390px | `/cv`, `/historia`, `/tienda` y `/admin`: cero desbordes, medido con `scrollWidth` vs `clientWidth` |
@@ -32,6 +32,7 @@ El repo tiene 4 meses de código y **estuvo 7 meses quieto** hasta el 2026-10-16
 | Borrar sin preguntar | **era real y está cerrado**: "Eliminar" en un producto y "Borrar" en una etiqueta borraban de una, con el botón al lado del de editar. Ahora preguntan, nombrando lo que se pierde |
 | Revisión independiente (T19-F60) | **hecha**: `CHANGES_REQUESTED`, 16 hallazgos (1 ALTA, 7 MEDIA, 8 BAJA). El ALTA **no era de código**: los MDs decían que esto no se había visto en el navegador cuando sí, o sea documentación que manda a repetir trabajo hecho. Lo de fondo: **Escape adentro del editor cerraba el pop-up entero**, **no había forma de abandonar un nombre tipeado** (el `onBlur` lo guardaba al cerrar y la X de cancelar se había perdido en el refactor), **el pop-up se cerraba aunque el guardado fallara**, y **"Cerrar" no cancelaba** en perfil ni historia. Los 7 MEDIA y 5 BAJA corregidos, con 3 tests nuevos. Verificó además 10 sospechas que **estaban bien** |
 | Revisión independiente (T20-F61) | **hecha**: `CHANGES_REQUESTED`, 10 hallazgos (1 ALTA, 4 MEDIA, 5 BAJA), **los diez corregidos**. El ALTA: **el sabor no tenía testigo**, así que borrando uno y dejando que SQLite reusara su id, una torta de $14.200 se cobró **$23.200** (el reviewer lo midió). Es el mismo agujero que ADR-029 ya había cerrado para el tamaño. Además: el *"desde $X"* de la carta podía quedar por debajo del mínimo comprable **y el ADR afirmaba lo contrario**, escribir «1.500» guardaba $1,50, el alta de un sabor que ya existía descartaba el recargo mientras avisaba que lo guardó, y el recargo cobrado no se veía en ninguna pantalla. Verificó además que V4 aguanta (siete inyecciones distintas, el total no se movió) y que el refactor no se llevó ningún texto |
+| Revisión independiente (T23-F64, dos vueltas) | **hecha dos veces, por dos reviewers distintos, y ninguno fue quien implementó.** La primera (`review_T23.md`): `CHANGES_REQUESTED`, **12 hallazgos** (3 ALTA, 3 MEDIA, 6 BAJA). Las tres ALTA: **el arreglo de los `pointer-events` estaba incompleto** —el implementador midió **un punto por botón**, el del centro; barriendo punto por punto el aviso seguía robándole el **26,8 % de «Ayuda»**, el 9,6 % de «Ver el carrito completo» y el 1 % del botón de pagar—, **un nombre de producto de 40 caracteres mandaba la X del aviso fuera de pantalla** (x=396 con viewport de 390: un error con un nombre largo adentro no se podía cerrar nunca), y **C1 declarado cumplido sin estarlo y sin el DRIFT de R25**. Cerró además el hueco que el handback había declarado sin verificar (el aviso del panel: se ve, dice «Etiqueta guardada.», se va a los 4,8 s, y la barra verde ya no está), corrigió un **401 que en realidad es 403**, y verificó nueve sospechas que **estaban bien** (el `<script>` en el nombre del producto no se ejecuta, diez avisos seguidos dejan tres nodos, el rojo de R29 se repite idéntico). La segunda (`review_T23b.md`), sobre los arreglos: `CHANGES_REQUESTED`, **6 hallazgos** (1 ALTA, 1 MEDIA, 4 BAJA), y la ALTA **no pedía código, pedía corregir una medición**: el robo que quedaba abierto se había medido **solo con el drawer abierto** (1,9 %) y con el drawer **cerrado** —el estado más común— es el **5,3 %** de «Ver carrito» de la barra inferior. Es el mismo patrón que la primera vuelta había marcado un nivel más arriba. **Ya está corregido** en ADR-037 y en el riesgo 1 del handback, con la tabla de los dos estados. La MEDIA y la primera BAJA quedaron como **D33** y **D34**. Y lo que más vale de la segunda vuelta: **le dio la razón al implementador contra el primer reviewer** midiéndolo (los 242 px de desborde de `/tienda` no son del aviso: están ahí con cero avisos en pantalla, D31) |
 | Recargo por sabor (F61) | **anda de punta a punta, medido**: con «Relleno: Chocolate +$800» y «Bizcocho: Chocolate +$1.500», la ficha dice $16.500 sobre el tamaño de $14.200 y el pedido se cobró $44.201 por dos de 12 porciones. Un `price_delta` mandado en el pedido **se ignora**; un descuento se rechaza en castellano |
 | Lo que encontró el navegador en F61 | **la ficha mostraba el precio sin los recargos** —$14.200 donde el back iba a cobrar $16.500— con las dos suites en verde. El hook de la ficha le pasaba el tamaño al cálculo y no los sabores: la función estaba bien, lo que estaba mal era lo que se le daba. Corregido pasando la personalización entera |
 | Navegador sin Playwright | el MCP **no conectó** en esta sesión (también `github` y `codegraph`). Los Chromium que dejó instalados estaban en disco, así que se manejó uno de verdad **hablando CDP a mano** (`scratchpad/cdp.py`, WebSocket crudo): navegar, clickear, leer la pantalla y sacar la foto. Es lo que permitió cumplir R07 en vez de dar por buena una pantalla sin mirarla |
@@ -118,6 +119,12 @@ Lo de 0.5.0 sigue igual salvo lo tachado. **D3 se cerró** y entraron tres deuda
 | **D24** | **El logo dice "ANDRE'S BAKERY" y el sitio dice "Andres Bakery"** | 2026-10-17 | no se cambió solo: es el nombre de su marca y lo decide ella. Afecta el header, el `<title>`, el footer y los textos |
 | ~~D23-viejo~~ | **16 avisos de seguridad en las dependencias del front, 12 altos.** `react-router-dom` (la mayoría de modo SSR, que no usamos; **dos sí aplican**: open redirect por barra invertida y por ruta `//`), `vite` (tres altos, todos del servidor de desarrollo), `postcss`, `nanoid` y las de `eslint` | 2026-10-17 | medido al instalar Vitest, que **no** los trajo. Actualizar es R19: pide su OK y su verificación. `react-router-dom` se arregla con un salto de versión menor |
 | D10 | ~~`pip-audit` y `npm audit` sin correr~~ (R19) | 2026-10-16 | `npm audit` **corrió el 2026-10-17**: resultado en D23. `pip-audit` sigue pendiente | **ahora importa más**: entró `anthropic` como dependencia nueva |
+| **D29** | **El aviso del carrito junta los dos tamaños de la misma torta.** El texto se arma con `product.name` y nada más, así que agregar 8 y después 12 porciones del mismo Cheesecake da **un** aviso: el dedup se lleva el primero, mientras el carrito muestra los dos renglones | 2026-10-22 | lo midió el review de T23 (hallazgo 6) con la carta de hoy, no con nombres duplicados hipotéticos. La salida es que el aviso nombre la variante cuando hay una; es un dato que `addItem` ya tiene en la mano |
+| **D30** | **El plazo del aviso no se pausa, y al irse se lleva el foco del teclado a `body`.** Quien enfoca la X y espera cuatro segundos pierde su lugar en la página (WCAG 2.2.1 y 2.4.3). Escape tampoco cierra el aviso | 2026-10-22 | review de T23 (hallazgo 7), medido. Se arregla pausando el plazo con `onFocus`/`onMouseEnter`, que es lo que hace cualquier toast |
+| **D31** | **Un nombre de producto largo desborda la carta a 390px, y eso NO es el aviso.** Con un nombre de 40 caracteres sin espacios, `/tienda` desborda **242px** con **cero avisos en pantalla**: los nodos que se van de la pantalla son los de la tarjeta del producto (`flip-carta`, y el `<h3>` del nombre llega a x=597 con viewport de 390) | 2026-10-22 | medido en T23b. El review de T23 (hallazgo 5) atribuyó esos 242px al aviso: del aviso era la X que se iba de la pantalla —arreglada con `min-w-0` + `break-words`, medida en 0— y de la **tarjeta** es el desborde de la página, que ya estaba antes de F64. El tope de 120 del back lo acota pero no lo cierra: el umbral del desborde está en ~40 |
+| **D32** | **Los cuatro BAJA del review de T23, sin tocar**: el `aria-label` de la X repite el texto completo del aviso dentro de un `role="status"` anidado en el `aria-live`; el plazo de 4 s no tiene test (el mutante `4000 -> 3000` queda verde); el dedup reordena la pila y mueve dos carteles 96px; y `avisos` falta en las dependencias del `useMemo` de `CartContext` (anda porque `avisar` es estable) | 2026-10-22 | ninguno rompe nada hoy; los cuatro están medidos en `review_T23.md` (hallazgos 14, 15, 16 y 17) con la línea exacta y el arreglo propuesto |
+| **D33** | **Un producto que ya tenga más de 120 caracteres en el nombre queda imposible de editar desde el panel.** El `PUT` del panel manda siempre `name` (`payloadDelProducto.ts:14`), así que el tope nuevo de `_nombre_de_producto` rechaza con **400** incluso cuando sólo se cambia el precio — y el `GET` público sigue sirviendo el nombre largo, o sea que el desborde de D31 **no se puede arreglar desde la interfaz** | 2026-10-22 | lo encontró el reviewer de T23b (hallazgo 7, MEDIA) sembrando 200 caracteres: `HTTP 400` al editar, y el `GET` devolvió el nombre igual. **Hoy no hay datos afectados** (el nombre más largo de la base real tiene 26). Las dos salidas: validar `name` sólo cuando cambia, o dejarlo como deuda hasta que exista un nombre largo de verdad |
+| **D34** | **El tope de 120 cuenta code points, no caracteres percibidos ni bytes.** 120 emojis (480 bytes) **entran**; 120 letras acentuadas escritas en NFD (240 code points) dan **400** con un mensaje que habla de «120 caracteres». Falta normalizar a NFC antes de medir | 2026-10-22 | reviewer de T23b (hallazgo 8, BAJA), medido. Lo bueno que verificó: las marcas combinantes **no se comen** — `Café Torta` en NFD quedó con su acento. Con teclado normal no pasa; con texto pegado desde iOS o macOS, sí |
 | ~~D11~~, ~~D12~~, ~~D13~~ | | resueltas | ver 0.4.0 y 0.5.0 |
 
 ## 5 · Próximo paso propuesto
@@ -128,14 +135,25 @@ borrado, ADR-035) y **T20-F61** (el recargo por sabor, ADR-036). Los dos con su 
 reviewer independiente: la línea que acá pedía mirar T19-F60 quedó vieja y se corrige en este
 commit. La cola, en orden:
 
-1. **Ofertas.** Lo pidió el humano al cerrar T20: una etiqueta "oferta", poder etiquetar varios
-   productos de una, tope de **tres etiquetas visibles** por producto con la de oferta siempre
-   visible, y dar vuelta la tarjeta para ver el resto.
-2. **F41 · Deploy** (ADR-014). Las fotos ya no son un problema sin resolver —van a Cloudinary con
+1. **T23-F64 · Avisos al admin y a quien compra** (implementada el 2026-10-20, corregida el
+   2026-10-22, **revisada dos veces** — y **no está `Complete`**). Entró primero porque no dependía
+   de nada y es N0: T21 y T22 heredan los avisos en vez de inventar los suyos. **Lo que falta para
+   el `done` de R16, dicho entero:** el **OK humano** y el **commit** (R01: todo sigue sin
+   commitear sobre `4bb20b0`), y queda **abierto el robo de clics de la X del aviso** —hasta el
+   **5,3 %** de «Ver carrito» con el drawer cerrado, 36 puntos de 675—, que se arregla subiendo la
+   región arriba de la barra de botones y **pide volver a medir los dos estados del drawer en las
+   dos pantallas**. Más las deudas **D29, D30, D31, D32, D33 y D34**, ninguna tocada. Los MDs de la
+   tanda (changelog 0.17.0, `testing.md` y esta tabla de salud) quedaron al día el 2026-10-22; el
+   resto no lo cierra un MD.
+2. **T21-F62 · El descuento vive en la etiqueta.** Aprobada. **Toca plata** (N2): porcentaje en la
+   etiqueta, cobrado por el servidor, migración `0010`, y reviewer de seguridad además del
+   funcional.
+3. **T22-F63 · La carta se filtra y las ofertas tienen su vista.** Aprobada, depende de T21.
+4. **F41 · Deploy** (ADR-014). Las fotos ya no son un problema sin resolver —van a Cloudinary con
    cargar cuatro variables (B8)—, pero **el tope por IP sigue necesitando `ProxyFix`** (D25) y
    ahora importa más, porque la ruta pública de archivos depende de él.
-3. **F32 · Vista propia de cliente**, separada de la mirada de admin.
-4. **D24 · El nombre de la marca**: el logo dice "ANDRE'S BAKERY" y el sitio "Andres Bakery".
+5. **F32 · Vista propia de cliente**, separada de la mirada de admin.
+6. **D24 · El nombre de la marca**: el logo dice "ANDRE'S BAKERY" y el sitio "Andres Bakery".
 
 **Lo que Andrea tiene que hacer para que lo de hoy se vea en su sitio** (y no lo puede hacer el
 código): ponerle la etiqueta **«tortas personalizadas»** a sus tortas a pedido, y cargar los grupos

@@ -1,6 +1,6 @@
 # features.md · Andres Bakery
 
-**Versión:** 0.2.0 · **Última actualización:** 2026-10-17
+**Versión:** 0.2.0 · **Última actualización:** 2026-10-22
 
 Estados (§5 del master): Specified 20% → Planned 40% → Tasked 60% → In Progress 80% → Complete 100%.
 
@@ -121,6 +121,57 @@ en la tanda anterior: los sabores se podían cargar, pero ninguno podía costar 
 **Lo que revierte, dicho:** ADR-031 había contestado que no, que el precio salía del tamaño. Esto
 cambia esa respuesta y **solo esa**: los grupos siguen siendo globales, la lista la sigue armando
 ella, y el pedido sigue guardando nombres y no ids.
+
+## Pedido el 2026-10-20 · ofertas, encontrar en la carta, y avisos
+
+Textual: *"dejalo como para editar como los demás, solo que este de ofertas tenga un plus de
+descuento. Estaría bueno un filter del catálogo y una nueva view con los productos en oferta.
+También faltan avisos para el admin y el usuario (mensajes de se agregó al carrito, producto
+subido, etc)"*.
+
+| ID | Feature | Estado | Tarea | ADR |
+|---|---|---|---|---|
+| F62 | **El descuento vive en la etiqueta**: porcentaje que el servidor cobra y el pedido guarda | **Aprobada, sin implementar** (2026-10-20) | T21 | el ADR se escribe al implementar, y **ya no puede ser el 037** (ver abajo) |
+| F63 | **La carta se filtra por etiqueta**, `/ofertas` tiene su vista, la tarjeta muestra tres etiquetas y el resto al dorso, y se etiqueta de a varios | **Aprobada, sin implementar** (2026-10-20) | T22 | — |
+| F64 | **Avisos al admin y a quien compra**: **un solo mecanismo para los avisos flotantes** (panel incluido), tres tonos, y el error **no** se va solo | **Implementada, medida en navegador y revisada dos veces** (2026-10-22) · **sin commitear y NO `Complete`** | T23 · T23b | ADR-037, ADR-038 |
+
+**Corregido el 2026-10-22, y qué decía antes.** Tres cosas de esta tabla no sobrevivieron a las dos
+vueltas de revisión:
+
+- **F64 decía "un solo mecanismo"**, a secas, y eso **no es lo que terminó siendo verdad**. El
+  mecanismo nuevo (`AvisosContext` + `RegionDeAvisos`) es uno solo para los avisos **flotantes** —lo
+  que confirma una acción y se va solo, en cualquier pantalla—, pero los **cuatro mensajes pegados a
+  un formulario** se quedaron donde estaban a propósito (`OpcionesTab.tsx:59`,
+  `SaboresDelGrupo.tsx:34`, `SelectorDeIngredientes.tsx:37` y el de `ProductPage.tsx`, que no se
+  tocó): un error de formulario va al lado del formulario. Contados, el sitio tiene **seis**
+  mecanismos de aviso. Lo encontró el primer reviewer con un `grep` de diez segundos, después de que
+  el handback escribiera que había "uno para todo el sitio"; la decisión era la correcta y estaba
+  **sin escribir**, que es lo que R25 prohíbe. Quedó como **ADR-038**, y C1 de la tarjeta reescrito.
+- **F64 estaba en "Aprobada, sin implementar"** y ya está implementada: el carrito dice **qué** se
+  agregó, el éxito del panel dejó de pisarse y de quedarse para siempre, y los tres tonos tienen su
+  `aria-live`. Lo que **no** está es el `done` de R16: falta el **OK humano** y el **commit**, queda
+  abierto el **robo de clics de la X** (5,3 % de «Ver carrito» con el drawer cerrado) y quedan
+  **D29–D34**. Por eso no dice `Complete`. Dos salvedades medidas: el aviso del carrito **no lleva
+  link** —entró, el review midió que se llevaba el 29,7 % de «Ayuda» a 390 px, y el humano eligió
+  sacarlo (**ADR-037**)—, y el tono **error** está construido y testeado pero **todavía no tiene
+  ningún productor**, así que nunca se vio en pantalla (C6 quedó a medias, y está declarado).
+- **F62 decía "ADR-037 (al implementar)"**, y ese número **ya se usó**: ADR-037 es la decisión de
+  sacarle el link al aviso del carrito, y ADR-038 el DRIFT de los mecanismos de aviso. Los dos
+  nacieron el 2026-10-22 en T23b. El descuento de la etiqueta escribe **el ADR que esté libre** el
+  día que se implemente.
+
+**Lo que revierte, dicho:** en esta misma sesión se preguntó si la oferta movía el precio y la
+respuesta fue "solo etiqueta". Al pedir el descuento, cambió. Vale la segunda, y queda escrito acá
+para que no parezca un olvido.
+
+**Lo que decidió el humano antes de escribir código:** el descuento es **porcentaje** (acotado
+0–100, así no hay total negativo), **cualquier** etiqueta puede tenerlo —tener descuento *es* estar
+en oferta, así que no hay etiqueta privilegiada ni constante en el código (ADR-006)—, y si un
+producto tiene dos etiquetas con descuento paga **el mayor, nunca la suma**. La de personalización
+**compite** por las tres visibles como cualquier otra.
+
+**Lo que NO entra, dicho antes:** ofertas con fecha de vencimiento, precio de oferta por tamaño,
+reordenar la carta para poner las ofertas primero, y filtrar por precio o por texto libre.
 
 **Lo que el navegador encontró y los tests no podían ver:** la ficha mostraba el precio **sin** los
 recargos —$14.200 donde el back iba a cobrar $16.500— porque el hook que arma el precio recibía el

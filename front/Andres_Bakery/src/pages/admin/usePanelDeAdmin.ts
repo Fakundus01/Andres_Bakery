@@ -1,6 +1,7 @@
 import { startTransition, useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { useAuth } from "../../contexts/AuthContext";
+import { useAvisos } from "../../contexts/AvisosContext";
 import {
   ingredientsApi,
   metricsApi,
@@ -43,7 +44,18 @@ export function usePanelDeAdmin() {
   const [cargando, setCargando] = useState(true);
   const [cargandoMetricas, setCargandoMetricas] = useState(false);
   const [error, setError] = useState("");
-  const [aviso, setAviso] = useState("");
+  const avisos = useAvisos();
+
+  /** El éxito del panel se fue al sistema de avisos (F64). Antes era un string
+   *  compartido por todas las pestañas —el segundo "se guardó" borraba el
+   *  primero— y la barra verde quedaba en pantalla hasta que otra acción la
+   *  limpiara, afirmando algo de hace diez minutos. El `""` de los llamadores
+   *  ahora no hace nada: un aviso que se va solo no necesita que lo borren. */
+  const setAviso = (mensaje: string) => {
+    if (mensaje.trim()) {
+      avisos.exito(mensaje);
+    }
+  };
 
   const [productos, setProductos] = useState<Product[]>([]);
   const [etiquetas, setEtiquetas] = useState<Tag[]>([]);
@@ -230,7 +242,6 @@ export function usePanelDeAdmin() {
     cargando,
     cargandoMetricas,
     error,
-    aviso,
     productos,
     etiquetas,
     ...ingredientes,

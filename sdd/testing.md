@@ -1,16 +1,16 @@
 # testing.md · Andres Bakery
 
-**Versión:** 0.4.0 · **Última actualización:** 2026-10-19
+**Versión:** 0.5.0 · **Última actualización:** 2026-10-22
 
 ## 1 · Cómo se corre (comandos reales, verificados el 2026-10-16)
 
 Los mismos que `harness.config.json`. **Siempre desde la raíz del repo**: los imports del back son `backend.*`.
 
 ```bash
-# Back: 339 tests, unittest (NO pytest: el venv no lo tiene)
+# Back: 368 tests, unittest (NO pytest: el venv no lo tiene)
 backend/.venv/Scripts/python.exe -m unittest discover -s backend/tests -t . -q
 
-# Front: 90 tests de logica pura, Vitest (ADR-023)
+# Front: 226 tests de logica pura, Vitest (ADR-023)
 npm --prefix front/Andres_Bakery run test
 
 # Front: eslint + tsc (los dos proyectos de TS)
@@ -27,7 +27,7 @@ Estado medido el 2026-10-17 tras T16: **151 tests del back + 48 del front OK**, 
 | Archivo | Qué cubre |
 |---|---|
 | `test_api.py` | endpoints de punta a punta sobre una app de test con SQLite temporal |
-| `test_product_service.py` | alta/edición/borrado de productos, slug, unidades, etiquetas y variantes |
+| `test_product_service.py` | alta/edición/borrado de productos, slug, unidades, etiquetas y variantes, y el **tope de 120 del nombre** —el del `String(120)` del modelo— en `create` **y** en `update`, con un tercer test que fija que **el nombre de 120 exactos entra entero** para que el tope no se vuelva un recorte en silencio (ADR-030, T23b) |
 | `test_ingredient_service.py` | unicidad normalizada (acentos, mayúsculas, espacios; la ñ **no** se conflacta), topes de largo, tipos raros y el `PUT` (ADR-030) |
 | `test_tag_service.py` | etiquetas: slug, color válido, orden y borrado sin tocar los productos |
 | `test_quantity.py` | la regla de `min_qty`/`qty_step` ("se venden de a 6") |
@@ -63,6 +63,40 @@ Estado medido el 2026-10-17 tras T16: **151 tests del back + 48 del front OK**, 
 
 **Las migraciones también se prueban**: `0002` se corrió sobre una **copia** de la base real antes que sobre la real, en los dos sentidos (`upgrade` y `downgrade`) y desde una base vacía. Una migración que nunca se ejecutó no está probada.
 
+**Lo que se verificó en navegador el 2026-10-20 y el 2026-10-22** (R07), para F64 — y es lo único
+que sostiene los arreglos de layout de esta tanda, porque no hay tests de componente (D7):
+
+- **La región nace vacía** (`[aria-live="polite"]` presente sin avisos en una carga limpia) y sigue
+  existiendo cuando el último aviso se va. Un `aria-live` que nace con su contenido no se anuncia.
+- **A 1920 px:** el aviso del carrito dice «"Brownie Tentacion" se agregó al carrito» con
+  `role="status"`; a los 400 ms está y a los 4.600 ms ya no; dos productos distintos **se apilan** y
+  el mismo repetido **no suma un tercero**; desborde 0 y 0 de 1.995 puntos robados al botón de pagar.
+- **A 390 px, barriendo cada botón punto por punto (una muestra cada 3 px)** y preguntando con
+  `elementFromPoint` quién recibe el clic: con el link, el aviso le robaba el **29,7 %** de «Ayuda»,
+  el **10,4 %** de «Ver el carrito completo» y el **1,2 %** de «Ir al checkout»; **sin el link**
+  (ADR-037), «Ayuda» y «Ir al checkout» quedan en **0** y la X sola se lleva el **1,9 %** de «Ver el
+  carrito completo» con el drawer abierto y el **5,3 %** de «Ver carrito» de la barra inferior con el
+  drawer **cerrado** (36 de 675). Apilar **dos y tres** avisos no mueve esos números: la pila crece
+  hacia arriba y el cartel de abajo es el único que toca la barra de botones.
+- **Nombres largos, contra la base real:** con 40, 120 y 500 caracteres sin espacios, la X del aviso
+  queda en **x=327** en los tres (antes se iba a 396, 498 y 2620 con una pantalla de 390), el texto
+  entra en el cartel (255 de 255 px) y el aviso de 500 caracteres mide 384 px **adentro** de la
+  pantalla. Y **se cierra con un clic real** de Playwright sobre el píxel de la X, no con un
+  `.click()` de JS.
+- **El panel:** al guardar una etiqueta aparece «Etiqueta guardada.» con `role="status"`, a los
+  4.800 ms ya no está, y **no quedó ninguna barra verde** fuera de la región (cero nodos
+  `.bg-exito-suave`). Para entrar al panel, la sesión tiene que estar en `localStorage` **antes** de
+  que el provider monte: puesta después, la app rebota a `#/ingresar`.
+- **Seguridad, de punta a punta:** un `<script>` y un `<img onerror>` escritos en `product.name` en
+  la base llegan al texto del aviso y al `aria-label` de la X **escapados** —cero elementos creados,
+  cero errores de página—, porque el texto entra por JSX y React escapa. Y el tope de 120 del back,
+  probado por HTTP contra el back real: 400 con 121 caracteres en `POST` y en `PUT`, 200 con 120
+  exactos, y la fila queda con 120.
+- **Lo que este navegador NO pudo ver:** el tono **error** en pantalla. No hay forma de dispararlo
+  desde la interfaz porque todavía no tiene ningún productor, así que el camino
+  `role="alert"` + "no se va solo" **nunca se vio**. El día que aparezca su primer productor hay que
+  mirarlo.
+
 **Lo que se verificó en navegador el 2026-10-18** (R07), para F20: que el selector liste y marque; que crear un ingrediente no borre lo escrito en el formulario; que escribir `azucar` **reuse** «Azúcar» (medido: 1 solo `POST /api/ingredients` en toda la sesión); que editar y guardar sin tocar ingredientes no se los lleve; que **Enter en el campo de ingrediente no guarde el producto** (medido: `0 POST /api/products`); y 375px y 390px con `scrollWidth - clientWidth = 0`.
 
 **Lo que se verificó en navegador el 2026-10-17** (R07), no con tests: el giro por hover y que el dorso tenga su "Agregar"; la subida de una foto real de punta a punta (archivo elegido → guardado → servido → mostrado en el formulario y en la carta); el panel con sus gráficos; `/historia` con las redes; `/cv`; y 390px sin desbordes en cuatro rutas.
@@ -88,7 +122,8 @@ Estado medido el 2026-10-17 tras T16: **151 tests del back + 48 del front OK**, 
 | `preferencias/sanear.test.ts` | lo que viene de `localStorage` no puede romper la pantalla |
 | `pages/admin/altaDeIngrediente.test.ts` | el alta con una API falsa: el nombre que manda, el rescate cuando el alta falla, y que se quede con el nombre que devuelve el servidor |
 | `lib/ingredientes.test.ts` | comparar nombres de ingredientes sin acentos ni mayúsculas, **conservando la ñ**, para no duplicar lo que ya existe (F20) |
-| `lib/carrito.test.ts` | la identidad del renglón: dos tamaños son dos renglones, el orden de los sabores no, una coma en la nota sí, y **el precio del renglón sale de la variante** (F19a, F58) |
+| `lib/carrito.test.ts` | la identidad del renglón: dos tamaños son dos renglones, el orden de los sabores no, una coma en la nota sí, y **el precio del renglón sale de la variante** (F19a, F58). Y `avisoDeAgregado`: que el aviso del carrito **diga qué entró y no ofrezca un segundo camino al carrito** —el `toEqual` compara el objeto entero, así que el día que alguien le vuelva a colgar un link se pone rojo (ADR-037)— y que el nombre entre tal como lo escribió Andrea, sin recortar |
+| `lib/avisos.test.ts` | la cola de avisos, 17 tests sin pantalla (F64): que cada aviso nazca con **su propio id** (dos iguales no se confunden), que un texto vacío no sea un aviso, que el link siga siendo una capacidad del modelo aunque hoy no lo use ningún productor; que **el éxito y el aviso se vayan solos y el error no** (C3), y que el plazo del éxito alcance para leerlo; que el segundo aviso **no borre el primero** (C4), que la cola **no pase del tope de visibles**, que el que se va sea el más viejo pero que **el tope se lleve primero un éxito viejo antes que un error viejo** —y que si son todos errores se vaya el más viejo igual, para que la cola no crezca sin límite—, que un aviso nulo no rompa nada y que el mismo texto repetido no se apile dos veces; y que descartar saque el que se cierra y deje los demás |
 | `lib/variantes.test.ts` | los tamaños del panel: qué falta para poder guardar, el payload con los **ids** de los que ya estaban, el orden que sale de la pantalla y el aviso de lo que se borra (F19b) |
 | `pages/admin/payloadDelProducto.test.ts` | la vuelta completa producto → formulario → payload, que es donde el texto de un `<input>` se vuelve plata |
 | `lib/personalizacion.test.ts` | la puerta de la etiqueta (ADR-033), qué falta elegir, el espejo de la nota con el back, el precio "desde" de la tarjeta y la etiqueta que se llama igual pero no habilita |
@@ -100,6 +135,34 @@ Estado medido el 2026-10-17 tras T16: **151 tests del back + 48 del front OK**, 
 **Lo que todavía NO se prueba acá:** componentes, hooks y todo lo que necesita un DOM. Eso sigue siendo navegador.
 
 **Hueco que queda:** los **componentes** del front. La lógica pura ya está cubierta; lo que sigue sin red es que un componente renderice lo que debe. Entra con `jsdom` + Testing Library cuando haga falta, con su línea en `decisions.md` (R28).
+
+**Y lo que los 17 tests de `avisos.test.ts` NO cubren, dicho antes de que alguien los cuente como
+cobertura (F64, 2026-10-22).** Los tests sostienen la **cola**: qué entra, qué se va, en qué orden y
+con qué plazo. No sostienen **nada de lo que pasó en pantalla en esta tanda**, porque pantalla no
+hay (D7, ADR-023):
+
+- **El aviso que se comía el clic del botón de pagar** a 390 px no lo podía ver ningún test de esta
+  casa: es colisión de layout con las dos suites en verde. Lo encontró el navegador, y el arreglo
+  —`pointer-events` solo en el link y en la X— tampoco tiene test de regresión.
+- **"Se va solo" no se prueba acá.** Lo que está probado es `seVaSolo` y `msParaIrse`, que son
+  decisiones sobre un tono; que el nodo efectivamente desaparezca de la pantalla a los 4 s lo dijo el
+  navegador. De paso, el plazo mismo no está clavado: el mutante `4000 → 3000` deja la suite verde
+  (D32).
+- **El arreglo del desborde son dos clases de Tailwind** (`min-w-0` + `break-words`): un test que
+  compare strings de `className` sería una tautología, así que no se escribió.
+
+Lo que protege esas tres cosas es **la medición de navegador de §2, que no se repite sola**. La
+regla que queda: cuando un arreglo es de layout, el handback dice **qué medición lo sostiene** y el
+que revise **la vuelve a medir**; si nadie la repite, la protección se venció sin que nada se ponga
+rojo. Los dos defectos de layout que entraron en esta tanda —el robo de clics y el nombre largo que
+mandaba la X fuera de pantalla— pasaron los dos por suites verdes.
+
+**Y dos veces en la misma tanda, un número medido en un solo estado se presentó como el número.**
+Primero fue **un punto por botón** (el centro del botón de pagar, que estaba bien; los bordes, no) y
+después **un estado por botón** (el drawer abierto, 1,9 %; cerrado, 5,3 %). Las dos las encontró un
+reviewer que volvió a medir, barriendo y cambiando el estado. La regla: una medición de pantalla se
+declara **con el estado en el que se tomó**, y si el componente tiene dos estados comunes, se miden
+los dos.
 
 ## 3 · Estrategia
 
@@ -138,7 +201,7 @@ Estado medido el 2026-10-17 tras T16: **151 tests del back + 48 del front OK**, 
 ## 5 · Cobertura mínima para dar algo por `done`
 
 1. Servicio nuevo o tocado del back ⇒ su test, verde.
-2. Los **213** del back y los **72** del front, verdes (V9). Un test que había pasado y ahora no, bloquea.
+2. Los **368** del back y los **226** del front, verdes (V9). Un test que había pasado y ahora no, bloquea.
 3. `npm run lint` y `npm run build`, limpios (V1).
 4. Si se tocó algo visible ⇒ revisado en navegador, en celular y en escritorio, y dicho en el handback.
 5. Si el cambio toca precios, mínimos o totales ⇒ el rojo se vio primero (R29).

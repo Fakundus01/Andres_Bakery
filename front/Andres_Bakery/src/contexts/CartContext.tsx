@@ -7,7 +7,9 @@ import {
 } from "react";
 
 import { acomodarCantidad, bajarCantidad, cantidadInicial, subirCantidad } from "../lib/cantidades";
+import { useAvisos } from "./AvisosContext";
 import {
+  avisoDeAgregado,
   claveDelRenglon,
   subtotalDelCarrito,
   type Personalizacion,
@@ -103,6 +105,7 @@ function leerCarritoGuardado(): CartItem[] {
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>(leerCarritoGuardado);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const avisos = useAvisos();
 
   const persist = (next: CartItem[]) => {
     guardarCarrito(next);
@@ -116,6 +119,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
       quantity: cantidad ? acomodarCantidad(product, cantidad) : cantidadInicial(product),
     };
     const clave = claveDelRenglon(nuevo);
+
+    // El aviso dice QUE se agregó, que es lo que el drawer no dice: muestra el
+    // carrito entero, no el renglón que entró recién. El texto se arma afuera
+    // (`avisoDeAgregado`) para que la decisión de no colgarle un link tenga
+    // test propio: ADR-037.
+    avisos.exito(avisoDeAgregado(product).texto);
 
     const existente = items.find((item) => claveDelRenglon(item) === clave);
     if (existente) {

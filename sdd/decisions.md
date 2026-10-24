@@ -957,3 +957,129 @@ frontera de que ella arma la lista, los nombres y no las FK en el pedido— y es
   tamaño, es otra tarjeta y otro ADR, y probablemente otra columna.
 - **Nada sobre el mínimo, el salto ni el envío.** El recargo entra en el precio de **una** unidad y
   se multiplica por la cantidad, como el precio de siempre.
+
+---
+
+## ADR-037 · El aviso del carrito dice QUÉ entró, y no ofrece un camino al carrito
+
+**Fecha:** 2026-10-22 · **Estado:** Vigente · **Features:** F64 · **Corrige a:** C7 de `T23-F64`
+
+**Qué dice la tarjeta (C7):** *"El aviso del carrito dice qué hacer después. Agregar algo al carrito
+y que el sitio no ofrezca ir al carrito es el momento exacto en que se pierde una venta: el aviso
+lleva un link."*
+
+**Qué se encontró.** El link entró, y el review de T23 lo midió a 390 × 844 barriendo cada botón
+punto por punto (una muestra cada 3 px) con un aviso en pantalla. El cartel no recibe clics
+(`pointer-events-none`), pero el link sí, y vive encima de la fila de botones del carrito abierto:
+
+```
+victima                   robados   de      %      quien lo roba
+Ir al checkout                 20   1620    1.2    la X de cerrar
+Ver el carrito completo       168   1620   10.4    el link «Ir al carrito»
+Ayuda                         147    495   29.7    el link «Ir al carrito»
+```
+
+El link mide 71 × 20 en `60-131 × 796-816` y cae **entero** adentro de «Ver el carrito completo»
+(28-351 × 776-820) y de «Ayuda» (24-122 × 776-820). Y era **redundante**: `addItem` abre el
+`CartDrawer`, así que cuando el aviso aparece el carrito ya está en pantalla, y el link mandaba a
+`#/carrito`, una tercera puerta al mismo lugar.
+
+**Opciones que se pusieron sobre la mesa (handback de T23):**
+
+- **A · Sacar el link.** El aviso se queda diciendo **qué** se agregó, que es lo único que el drawer
+  no dice (muestra el carrito entero, no el renglón que entró). Tres líneas menos.
+- **B · Dejarlo.** Tres caminos al carrito, y el ruido arriba de los botones del drawer.
+- **C · Que `addItem` no abra el drawer**, con lo que el aviso pasa a ser *la* confirmación y el link
+  se justifica. Es un cambio de comportamiento que nadie pidió.
+
+**Decisión: A.** La eligió el humano el 2026-10-22. `addItem` **no cambia** (sigue abriendo el
+drawer): lo único que se saca es el link.
+
+**Por qué:** lo que C7 quería evitar —que el sitio no ofrezca ir al carrito— no pasa, porque el
+drawer se abre solo y tiene su propio «Ver el carrito completo». El link no agregaba un camino, lo
+tapaba. Medido después del cambio, con dos avisos apilados: **«Ir al checkout» 0/1620** (era 1,2%),
+**«Ayuda» 0/495** (era 29,7%), y el centro del botón de pagar vuelve a recibir su propio clic.
+
+**Lo que queda abierto, medido — y medido en los dos estados, que es la corrección que importa:**
+la X de cerrar sigue siendo clickeable y, con el cartel más bajo (64 px en vez de 88), cae ahora
+sobre «Ver el carrito completo». Cuánto roba **depende de si el drawer está abierto o cerrado**, y
+la primera versión de este párrafo declaraba solo el caso abierto:
+
+| Estado del drawer | Víctima | Robo |
+|---|---|---|
+| Abierto | «Ver el carrito completo» (botón de 323 px) | 30/1620 = **1,9 %** |
+| **Cerrado** | «Ver carrito» de la barra inferior (132 px) | 36/675 = **5,3 %** |
+
+Son los mismos ~33 puntos de la X, pero sobre un botón de la cuarta parte del ancho, así que pesan
+casi el triple — **y el drawer cerrado es el estado más común**. Lo encontró el reviewer de T23b
+(hallazgo 4, ALTA): el 1,9 % no estaba mal medido, estaba medido en un solo estado y presentado como
+si fuera el número. Es el mismo defecto que el review de T23 había clasificado ALTA un nivel más
+arriba —«esa medición es de un punto por botón»— reapareciendo un nivel más abajo.
+
+Cerrarlo del todo pide subir la región arriba de la barra de botones (`bottom-28`), que es un cambio
+de diseño de toda la región y no entra en esta corrección. **Cuando se mueva, se mide con el drawer
+abierto Y cerrado**, no en uno de los dos.
+
+**La capacidad de link no se borró.** `nuevoAviso` la sigue aceptando y `RegionDeAvisos` la sigue
+dibujando, con su test; lo que no queda es **ningún productor** que la use. Quien vuelva a pasar un
+link tiene que volver a medir el robo de clics a 390 px: está escrito en el comentario del
+componente.
+
+---
+
+## ADR-038 · Un mecanismo para los avisos **flotantes**; el error de formulario se queda al lado del formulario
+
+**Fecha:** 2026-10-22 · **Estado:** Vigente · **Features:** F64 · **Corrige a:** C1 y C9 de
+`T23-F64` · **DRIFT de R25, escrito a destiempo**
+
+**Qué dice la tarjeta (C1):** *"Un solo mecanismo para todo el sitio, panel incluido: un
+`AvisosContext` con su región de pantalla, y los tres mecanismos de hoy **migrados a él**. Esta
+tarjeta no deja un cuarto."* Y C9 afirmaba que `ProductPage.tsx` *"también baja"* de líneas porque
+su aviso migraba.
+
+**Qué se encontró.** El handback de T23 escribió en su tabla de «Hecho» que ahora hay *"**uno**
+(`AvisosContext` + `RegionDeAvisos`) para todo el sitio"*, y no es verdad. Lo midió el review:
+
+```
+$ grep -rn "setAviso" front/Andres_Bakery/src/pages/
+pages/admin/OpcionesTab.tsx:59:           const [aviso, setAviso] = useState("");
+pages/admin/SaboresDelGrupo.tsx:34:       const [aviso, setAviso] = useState("");
+pages/admin/SelectorDeIngredientes.tsx:37: const [aviso, setAviso] = useState("");
+pages/admin/usePanelDeAdmin.ts:54:        const setAviso = (mensaje: string) => {   <- el único migrado
+```
+
+Los tres primeros son carteles en pantalla, cada uno con su estilo. Y `ProductPage.tsx` **no se
+tocó**: sigue en 274 líneas con su propio aviso pegado al botón, aunque la tarjeta lo listaba en su
+zona de archivos. Contados, después de T23 el sitio tiene **seis** mecanismos de aviso: el nuevo,
+`ErrorBanner`, los tres del panel y el de la ficha.
+
+**Opciones:**
+
+- **A · Migrar los cuatro al mecanismo nuevo** y cumplir C1 a la letra. Un error de formulario
+  pasaría a aparecer flotando abajo de la pantalla, lejos del campo que lo causó.
+- **B · Dejarlos donde están y corregir el criterio**, que es lo que el código ya hacía sin decirlo.
+- **C · Migrar solo los del panel** y dejar el de la ficha, sin ninguna regla que explique por qué.
+
+**Decisión: B.** C1 queda reescrito así: **un solo mecanismo para los avisos flotantes** —lo que
+confirma una acción y se va solo, en cualquier pantalla, panel incluido—, y **los mensajes pegados a
+un formulario se quedan pegados al formulario a propósito**.
+
+**Por qué:** es el razonamiento de C2b, que la propia tarjeta ya había escrito para el
+`ErrorBanner`: *un error de formulario va al lado del formulario, no flotando abajo de la pantalla;
+migrarlo sería consistencia a costa de que el error se lea peor*. «Ya tenés un grupo que se llama
+«X»», «No se pudo agregar «Y»» y el «Falta elegir: Relleno» de la ficha son exactamente eso:
+respuestas a un campo, a 20 px del campo. C1 no pedía una regla distinta, pedía la misma regla mal
+escrita. Lo que sí migró es **el éxito compartido del panel**, que era el que se pisaba entre
+pestañas y el que no se iba nunca.
+
+**Lo que esta decisión NO tapa:** la decisión estaba tomada en el código y **no estaba escrita**, y
+el MD afirmaba lo contrario de lo que el código hacía. R25 lo prohíbe explícitamente: *"spec
+mal/incompleta a mitad del código ⇒ PROHIBIDO arreglarla en silencio ⇒ DRIFT ⇒ OK"*. Lo encontró el
+reviewer, no el implementador, y es el mismo defecto que el review de T19 ya había marcado —un MD
+que manda a trabajar sobre algo que no es así—, esta vez con el signo invertido: un MD que declara
+terminado lo que no está. Este ADR es ese DRIFT, escrito a destiempo; la tarjeta y el handback de
+T23 quedaron corregidos en el mismo commit.
+
+**Para la próxima:** un criterio que dice "los tres mecanismos de hoy migrados a él" se cumple o se
+discute **antes** de escribir en «Hecho» que se cumplió. Contar `grep -rn "setAviso" src/` cuesta
+diez segundos.

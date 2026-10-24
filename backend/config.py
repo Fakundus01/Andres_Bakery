@@ -91,7 +91,7 @@ class Config:
     CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "")
     CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY", "")
     CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "")
-    CLOUDINARY_FOLDER = os.getenv("CLOUDINARY_FOLDER", "andres-bakery")
+    CLOUDINARY_FOLDER = os.getenv("CLOUDINARY_FOLDER", "Andres_Bakery")
 
     # Foto de referencia del cliente (F59). Mas chica que la del panel a
     # proposito: la sube un anonimo. 0 en la cuota = sin tope (no recomendado
