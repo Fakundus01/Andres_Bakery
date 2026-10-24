@@ -1024,8 +1024,24 @@ cambia qué significa:** cuando este párrafo se escribió, «Ver carrito» **no
 a `bottom-28` habría devuelto 36 puntos de 675 con el botón igual de muerto — y la medición
 post-arreglo habría dicho «0 % robado» sin que se pudiera tocar. Eso se arregló aparte, en
 **ADR-039** (T24, D35): hoy el botón recibe su centro en los seis anchos medidos, y **el 5,3 % de la
-X pasó a ser lo único que queda robándole** (51/675 = 7,6 % contando los 15 puntos del borde del
-layout, que ya estaban a 1920 px antes de todo esto).
+X pasó a ser lo único que queda robándole** (**36/660 = 5,45 %**; hasta el review de T24 decía «51/675 = 7,6 % contando los 15 puntos del borde del
+layout, que ya estaban a 1920 px antes de todo esto». Esos 15 **no son el borde**: son un
+artefacto de la grilla del barrido —una sola columna en `x = rect.right`, que ya no está sobre el
+botón— así que los puntos reales del botón son **660** y el residual post-arreglo es **0 %**).
+
+**Dos límites del guard que este ADR no declaraba, y que encontró el reviewer de T24 rompiéndolo
+de formas que al implementador no se le ocurrieron:**
+
+1. **La lista de etiquetas es blanca usada como negra.** El guard mira diez etiquetas HTML, así que
+   un `<span>`, un `<label>` o **cualquier componente de React** puede llevar la fuga entera y
+   pasar. Demostrado inyectando una capa aprobada: **675/675, centro muerto.**
+2. **Declaración no es geometría, y el caso ya existe.** `RegionDeAvisos` **pasa el guard** y su
+   hijo con `pointer-events-auto` sigue robando 36/675. Un archivo en verde puede tener la fuga
+   adentro.
+
+Lo que el guard sí garantiza, y no es poco: **no puede dejar de mirar en silencio** — si el glob
+se rompe, un `expect(capas.length).toBeGreaterThan(0)` lo pone en rojo. Esa es la parte que de
+verdad sobrevive al tiempo.
 
 Cerrarlo del todo pide subir la región arriba de la barra de botones (`bottom-28`), que es un cambio
 de diseño de toda la región y no entra en esta corrección. **Cuando se mueva, se mide con el drawer

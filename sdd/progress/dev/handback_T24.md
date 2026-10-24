@@ -535,7 +535,43 @@ propio, es una línea y la escribo.
   causa**, y que hoy, con el botón andando, es lo único que le queda robando — así que mover la
   región sí se va a notar. **Queda para tu OK** si eso entra como tarjeta propia o sigue en la cola.
 - **No se cerró el 5,3 %.** Sigue abierto, con su número y su estado, y ahora medido sobre un botón
-  que anda: **51/675 = 7,6 %**, de los que 36 son la X y 15 el borde del layout.
+  que anda: **36/660 = 5,45 %** (ver la corrección de abajo).
+
+---
+
+## Correcciones del review de T24 (2026-10-24)
+
+El reviewer independiente volvió `CHANGES_REQUESTED` con 3 ALTA, **ninguna pidiendo tocar código**:
+el arreglo está bien y lo re-ejecutó entero, confirmando los seis anchos al píxel, los tres
+`sha256`, los tres `wc -l` y los cuatro comandos.
+
+**ALTA 1 · El DRIFT 2 de este handback acusaba en falso al reviewer anterior.** Decía que
+`review_T23c.md` declaraba 570/675 a 430 px y 330/675 a 480, y que midiendo daban 540 y 300.
+**Los dos juegos de números son correctos:** 540/300 son *sin avisos en pantalla* y 570/330 son
+*con un aviso*. El reviewer reprodujo las **nueve filas** de T23c exactas con un aviso; la
+diferencia es un +30 constante que es la X del aviso, y desaparece a 768 px porque el cartel es
+`max-w-md` centrado y deja de caer sobre el botón. **El DRIFT 2 queda retirado.** La lección es
+del tipo más incómodo: *dos mediciones que no coinciden no prueban que una esté mal — pueden estar
+midiendo estados distintos, y el estado es parte del número.*
+
+**ALTA 2 · Los `15/675` no eran «el borde del layout».** Son un artefacto de la grilla: 15 puntos
+en **una sola columna**, en `x = rect.right`, que ya no está sobre el botón
+(`elementFromPoint(350,798)` da el botón; `(351,798)` da el panel de al lado). Los puntos reales
+del botón son **660**, el residual post-arreglo es **0 %** y el número de referencia para la
+próxima tarjeta es **36/660 = 5,45 %**, no 7,6 %. Corregido en los cuatro lugares donde vivía.
+**Y el detalle que más enseña:** la frase equivocada se había propagado **correctamente** a los
+cuatro. Es el reverso exacto del defecto que esta casa viene persiguiendo — acá el barrido
+funcionó, y lo que se propagó estaba mal.
+
+**ALTA 3 · `current.md` se commiteó diciendo que nada estaba commiteado**, apuntando al commit
+anterior y citando un «DRIFT 3» que ya no existía — **en el mismo archivo donde se acababa de
+escribir que `current.md` se actualiza al commitear «porque si no, miente justo cuando más se lo
+necesita»**. Lo escribió el leader, no el implementador. Corregido.
+
+**MEDIA 4 y 5 · Los dos límites del guard** quedaron declarados en ADR-039: la lista de etiquetas
+es blanca usada como negra (un componente de React pasa con la fuga entera, demostrado con
+675/675), y un archivo verde puede tener la fuga en un hijo (`RegionDeAvisos` pasa y su hijo roba
+36/675).
 
 ### DRIFT 2 · Dos números del review anterior no me dan, y el mío es el que cierra con la geometría
 
