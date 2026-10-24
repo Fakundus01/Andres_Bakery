@@ -10,7 +10,7 @@ Los mismos que `harness.config.json`. **Siempre desde la raíz del repo**: los i
 # Back: 368 tests, unittest (NO pytest: el venv no lo tiene)
 backend/.venv/Scripts/python.exe -m unittest discover -s backend/tests -t . -q
 
-# Front: 226 tests de logica pura, Vitest (ADR-023)
+# Front: 234 tests de logica pura, Vitest (ADR-023)
 npm --prefix front/Andres_Bakery run test
 
 # Front: eslint + tsc (los dos proyectos de TS)
@@ -201,7 +201,7 @@ los dos.
 ## 5 · Cobertura mínima para dar algo por `done`
 
 1. Servicio nuevo o tocado del back ⇒ su test, verde.
-2. Los **368** del back y los **226** del front, verdes (V9). Un test que había pasado y ahora no, bloquea.
+2. Los **368** del back y los **234** del front, verdes (V9). Un test que había pasado y ahora no, bloquea.
 3. `npm run lint` y `npm run build`, limpios (V1).
 4. Si se tocó algo visible ⇒ revisado en navegador, en celular y en escritorio, y dicho en el handback.
 5. Si el cambio toca precios, mínimos o totales ⇒ el rojo se vio primero (R29).

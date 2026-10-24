@@ -1016,6 +1016,17 @@ casi el triple — **y el drawer cerrado es el estado más común**. Lo encontr�
 si fuera el número. Es el mismo defecto que el review de T23 había clasificado ALTA un nivel más
 arriba —«esa medición es de un punto por botón»— reapareciendo un nivel más abajo.
 
+**Y ese 5,3 % hay que leerlo con lo que encontró el reviewer de T23c (hallazgo 4, ALTA), porque
+cambia qué significa:** cuando este párrafo se escribió, «Ver carrito» **no recibía ninguno** de sus
+675 puntos a 390 px, ni con cero avisos en pantalla. Lo tapaba entero el contenedor de
+`AyudaPanel.tsx`, y un clic real en el centro del botón no hacía nada de 320 a 430 px. O sea: el
+5,3 % era exacto, pero se lo robaba a un botón que ya estaba muerto por otra causa, y mover la región
+a `bottom-28` habría devuelto 36 puntos de 675 con el botón igual de muerto — y la medición
+post-arreglo habría dicho «0 % robado» sin que se pudiera tocar. Eso se arregló aparte, en
+**ADR-039** (T24, D35): hoy el botón recibe su centro en los seis anchos medidos, y **el 5,3 % de la
+X pasó a ser lo único que queda robándole** (51/675 = 7,6 % contando los 15 puntos del borde del
+layout, que ya estaban a 1920 px antes de todo esto).
+
 Cerrarlo del todo pide subir la región arriba de la barra de botones (`bottom-28`), que es un cambio
 de diseño de toda la región y no entra en esta corrección. **Cuando se mueva, se mide con el drawer
 abierto Y cerrado**, no en uno de los dos.
@@ -1083,3 +1094,77 @@ T23 quedaron corregidos en el mismo commit.
 **Para la próxima:** un criterio que dice "los tres mecanismos de hoy migrados a él" se cumple o se
 discute **antes** de escribir en «Hecho» que se cumplió. Contar `grep -rn "setAviso" src/` cuesta
 diez segundos.
+
+---
+
+## ADR-039 · El contenedor de una capa flotante no recibe punteros
+
+**Fecha:** 2026-10-24 · **Estado:** Vigente · **Features:** F64 · **Tarjeta:** T24 · **Deuda:** D35
+**Nace de:** hallazgo 4 (ALTA) de `review_T23c.md`
+
+**Qué se encontró, medido antes de tocar nada.** A 390 × 844, con **cero avisos en pantalla** y el
+drawer cerrado, «Ver carrito» de la barra inferior **no recibía ni uno de sus 675 puntos**:
+
+```
+=== 390 px (clientWidth 375) · avisos=0 · drawer=false
+  «Ver carrito» rect 219-351 x 776-820   robados 675/675
+     ladrones: DIV · fixed bottom-6 left-6 z-40 w-[min(340px,calc(100vw-48px))] x675
+     centro (285,798) lo recibe: ese mismo DIV   esElBoton=false
+```
+
+Y el clic de verdad no hacía nada — ni el de mouse ni el de Playwright, que **se niega** a hacerlo:
+
+```
+$ page.mouse.click(285, 798)
+   antes: drawer=false   ->   despues: drawer=false
+
+$ page.locator('button.btn-primary.fixed.bottom-6.right-6').click()
+TimeoutError: <div class="fixed bottom-6 left-6 z-40 w-[min(340px,calc(100vw-48px))]">
+              intercepts pointer events
+```
+
+El ladrón era el contenedor de `AyudaPanel.tsx`. Mide 340 px de ancho (24 → 364 a 390 px) y 44 px de
+alto con el panel cerrado, y el botón del carrito vive en 219 → 351: **queda adentro**. Los dos son
+`z-40`, así que gana el que pinta último, que es Ayuda. El contenedor **no dibujaba nada** en el
+área donde se come el clic, pero lo recibía igual.
+
+**Las opciones que había:**
+
+- **A · `pointer-events-none` en el contenedor y `pointer-events-auto` en lo que se toca** (el panel
+  y el botón «Ayuda»). Tres clases.
+- **B · Reubicar.** Mover el botón de Ayuda o el del carrito para que no se solapen, o bajarle el
+  `z-index` a la capa de Ayuda.
+- **C · Que el contenedor no tenga ancho propio** (`w-fit`) y que el panel abierto se lo dé.
+
+**Decisión: A.** Y las razones, porque es lo que pide quedar escrito:
+
+1. **Es el patrón que la casa ya eligió y ya midió.** `RegionDeAvisos.tsx` tiene exactamente esto
+   desde T23: contenedor `pointer-events-none`, y `pointer-events-auto` sólo en el link y en la X.
+   Dos componentes resolviendo el mismo problema de dos formas distintas es la deuda que no se ve.
+2. **B no arregla la clase de defecto, arregla una instancia.** Reubicar hace que estos dos botones
+   dejen de solaparse hoy; el próximo elemento clickeable que caiga en esos 340 × 44 px vuelve a
+   quedar muerto, y nadie se va a enterar porque **no hay nada en pantalla que avise**. Bajar el
+   `z-index` tampoco: el contenedor seguiría comiéndose los clics de todo lo que esté más abajo en el
+   apilado.
+3. **C es frágil y cambia el dibujo.** Con `w-fit` el panel abierto define el ancho del contenedor y
+   el `w-[min(340px,calc(100vw-48px))]` —que es lo que lo mantiene adentro de la pantalla a 320 px—
+   habría que mudarlo al panel, con riesgo de desborde horizontal a cambio de nada.
+4. **A no toca el dibujo en absoluto.** El panel se ve y se usa igual; lo único que cambia es quién
+   recibe el puntero en el área vacía.
+
+**Lo que se comprobó de Ayuda, que es lo que podía romperse:** el panel abre con un clic **real** de
+mouse en (73, 798), las cuatro preguntas frecuentes abren con un clic real, el formulario de mail se
+despliega y acepta texto de verdad en los dos campos, el panel **sigue siendo scrolleable**
+(`scrollHeight > clientHeight`), y la X lo cierra. Con el panel **abierto** a 390 px ocupa
+24 → 364 × 224 → 764 y «Ver carrito» está en 776 → 820: no se solapan, y el botón recibe su centro.
+
+**La regla, hecha función para que un test la pueda romper:** `src/lib/capasFijas.ts`. Un contenedor
+`fixed` que no declara `pointer-events-none` es una **fuga**, salvo dos excepciones legítimas: el
+velo de un modal (`inset-0`, que existe para comerse el clic y cerrar — `CartDrawer` y `NavDrawer`) y
+el elemento interactivo que es él mismo la capa (el botón flotante del carrito). El guard de
+`capasFijas.test.ts` corre esa regla sobre **todos** los `.tsx` del proyecto, así que la próxima capa
+nueva sin `pointer-events-none` pone rojo sin que nadie se acuerde de medirla.
+
+**Y lo que el guard NO prueba, dicho de frente:** prueba la **declaración**, no la geometría. Que un
+botón reciba el clic en el píxel que sea sólo se prueba en el navegador (R07), y así se midió esto,
+antes y después, en 320 / 360 / 390 / 430 / 480 / 1920 px y en los dos estados del drawer.

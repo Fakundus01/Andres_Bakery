@@ -4,6 +4,64 @@ Semver `MAJOR.MINOR.PATCH` (R13). No se borra nada: lo viejo queda.
 
 ---
 
+## [0.17.1] · 2026-10-24 · El botón del carrito no se podía tocar en celular, y dos frases de MD que la medición desmintió
+
+**De dónde salió:** el hallazgo 4 (ALTA) de `review_T23c.md`, el primer review que re-ejecutó T23
+**después** del commit `7271583`. No pedía cambiar nada de T23: encontró un defecto que estaba
+desde antes y que nadie había mirado porque nadie había barrido ese botón.
+
+- **«Ver carrito» de la barra inferior no recibía ningún clic en celular, y no había nada en
+  pantalla que lo avisara.** El contenedor fijo de `AyudaPanel.tsx` mide 340 px de ancho
+  (24 → 364 a 390 px) y el botón del carrito vive en 219 → 351: queda **adentro**. Los dos son
+  `z-40`, gana el que pinta último, y el contenedor —que con el panel cerrado no dibuja nada ahí—
+  se comía **los 675 puntos de los 675**. Un clic de mouse real en el centro no hacía nada, y
+  Playwright se negaba a hacerlo (`intercepts pointer events`). Muerto de **320 a 430 px**, sano
+  desde 480. Arreglado con `pointer-events-none` en el contenedor y `pointer-events-auto` en el
+  panel y en el botón «Ayuda»: **ADR-039**, **D35**, y es el mismo patrón que `RegionDeAvisos.tsx`
+  ya usaba desde T23. Re-medido en 320 / 360 / 390 / 430 / 480 / 1920 px y en los **dos** estados
+  del drawer: **675/675 → 15/675** sin avisos, con el centro llegando al botón en los seis anchos.
+  Y Ayuda sigue andando, probado con clics reales: abre, las cuatro preguntas abren, el formulario
+  de mail acepta texto, el panel scrollea y la X lo cierra.
+- **Una regla, hecha función para que un test la pueda romper** (`src/lib/capasFijas.ts`): un
+  contenedor `fixed` que no declara `pointer-events-none` es una fuga, salvo el velo de un modal
+  (`inset-0`) y el elemento interactivo que es él mismo la capa. El guard de `capasFijas.test.ts`
+  la corre sobre **todos** los `.tsx` del proyecto, así que la próxima capa nueva sin
+  `pointer-events-none` pone rojo. Visto en rojo dos veces a propósito (R29): sacándole la clase al
+  contenedor —`components/AyudaPanel.tsx:70 <div> "fixed bottom-6 left-6 z-40 …" — contenedor fixed
+  sin pointer-events-none`— y debilitando la regla a un `includes`, que deja pasar
+  `md:pointer-events-none`.
+- **Dos frases de MD corregidas, porque la medición las desmintió** (hallazgos 6 y 7 de
+  `review_T23c.md`):
+  - **D33 decía que el desborde de D31 «no se puede arreglar desde la interfaz», y es falso.** El
+    formulario del panel se prellena con el nombre de la fila y **no tiene `maxLength`**, así que
+    acortar el nombre y guardar **entra** (medido: `OK: name='Torta corta' price=9999.00`). Lo que
+    no se puede es cambiar el precio **dejando** el nombre largo.
+  - **El tope de 120 hace más de lo que 0.17.0 declaró.** No agregó un `if len(...)`: pasó el
+    nombre por `nombre_para_guardar`, el saneador compartido, que además **colapsa los espacios
+    interiores y los saltos de línea** (`'Torta   de     chocolate'` → `'Torta de chocolate'`),
+    **saca los caracteres invisibles** (un zero-width pega las palabras) y **acepta un `name`
+    numérico** donde antes era un 500 por `AttributeError`. Las tres cosas son razonables y las dos
+    primeras son lo que ya les pasa a ingredientes, tamaños y etiquetas — pero el nombre sale por el
+    `GET` público y la doctrina de ADR-030 es «no modifiques en silencio», así que queda escrito.
+  - Y una línea al pie de **D34**: el tope se mide **antes** de colapsar los espacios, así que un
+    nombre que se guardaría en 120 puede rechazarse por 125.
+- **El 5,3 % de la X quedó matizado donde estaba declarado** (ADR-037 y el renglón 1 de la cola):
+  era exacto, pero se lo robaba a un botón que ya estaba muerto, así que mover la región a
+  `bottom-28` habría devuelto 36 puntos de 675 **con el botón igual de muerto** — y la medición
+  post-arreglo habría dicho «0 % robado». Hoy el botón anda y la X es lo único que le queda
+  robando: ahí sí mover la región se nota.
+- Tests: front **234 OK** en 19 archivos (eran 226 en 18; **+8** de `capasFijas.test.ts`), back
+  **368 OK** sin cambios. Lint limpio y build en verde: **`index-DFNjbxcP.js` 426,68 kB ·
+  `index-DywBBMqZ.css` 36,28 kB** (1868 módulos, los mismos). Los dos hashes cambiaron, el CSS
+  porque entró `pointer-events-auto`.
+
+**Lo que esta vuelta deja dicho, más allá del botón:** las tres rondas de T23 midieron el robo de
+clics contando **sólo al aviso como ladrón**. La columna «quién más lo roba» estuvo siempre en la
+salida del barrido y nadie la leyó hasta la tercera. El guard de `capasFijas` existe para que esa
+pregunta no dependa de que alguien se acuerde de hacerla.
+
+---
+
 ## [0.17.0] · 2026-10-22 · El sitio avisa: qué entró al carrito, y el panel que dejaba un cartel viejo en pantalla
 
 **Lo que se pidió:** *"también faltan avisos para el admin y el usuario (mensajes de se agregó al
@@ -37,7 +95,9 @@ algo del pasado. El carrito, el caso más usado del sitio, no decía nada.
   `create` **y** en `update`, como ya lo tenían los tamaños, los ingredientes y las etiquetas. Es un
   cambio de comportamiento de la API: un nombre de 121 caracteres ahora es **400 en castellano**
   ("El nombre no puede pasar de 120 caracteres.") y el de 120 exactos **entra entero**, verificado
-  por HTTP contra el back real en los dos verbos.
+  por HTTP contra el back real en los dos verbos. **Esta descripción quedó corta y se completa en
+  0.17.1**: el cambio no fue un `if len(...)`, fue pasar el nombre por el saneador compartido de la
+  casa, que además **lo reescribe**.
 - Tests: front **226 OK** (eran 207; 17 nuevos de `lib/avisos.test.ts` y 2 de `avisoDeAgregado`),
   back **368 OK** (eran 365; 3 del tope del nombre). Lint limpio y build en verde:
   **`index-CJYWeP5D.js` 426,62 kB · `index-B82F_B2b.css` 36,23 kB**. El JS creció 20 bytes y el CSS

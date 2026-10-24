@@ -61,9 +61,15 @@ export function AyudaPanel() {
   const whatsapp = linkWhatsApp(config?.whatsapp_phone, "¡Hola Andrea! Te escribo desde la web.");
 
   return (
-    <div className="fixed bottom-6 left-6 z-40 w-[min(340px,calc(100vw-48px))]">
+    /* `pointer-events-none` en el contenedor y `pointer-events-auto` en lo que
+       se toca, el mismo patron que `RegionDeAvisos.tsx`. El contenedor mide 340px
+       de ancho (24 -> 364 a 390px) y con el panel cerrado no dibuja nada en casi
+       toda esa area, pero recibia los clics igual: se comia los 675 puntos de
+       «Ver carrito» (219 -> 351) de 320 a 430px, con cero avisos en pantalla, y el
+       boton del carrito no respondia en celular. Medido en D35. */
+    <div className="pointer-events-none fixed bottom-6 left-6 z-40 w-[min(340px,calc(100vw-48px))]">
       {abierto ? (
-        <div className="pixel-panel mb-3 max-h-[min(70vh,540px)] overflow-y-auto p-0">
+        <div className="pixel-panel pointer-events-auto mb-3 max-h-[min(70vh,540px)] overflow-y-auto p-0">
           <div className="flex items-center justify-between border-b-[3px] border-borde bg-superficie-alt px-4 py-3">
             <p className="font-display text-xl font-bold text-tinta">Ayuda</p>
             <button type="button" className="btn-secondary p-2" onClick={() => setAbierto(false)} aria-label="Cerrar ayuda">
@@ -139,7 +145,7 @@ export function AyudaPanel() {
         </div>
       ) : null}
 
-      <button type="button" className="btn-secondary" onClick={() => setAbierto((valor) => !valor)}>
+      <button type="button" className="btn-secondary pointer-events-auto" onClick={() => setAbierto((valor) => !valor)}>
         <HelpCircle className="h-4 w-4 text-acento" />
         Ayuda
       </button>
