@@ -123,8 +123,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // El aviso dice QUE se agregó, que es lo que el drawer no dice: muestra el
     // carrito entero, no el renglón que entró recién. El texto se arma afuera
     // (`avisoDeAgregado`) para que la decisión de no colgarle un link tenga
-    // test propio: ADR-037.
-    avisos.exito(avisoDeAgregado(product).texto);
+    // test propio: ADR-037. Va con la variante porque sin ella los dos tamaños
+    // de la misma torta daban el mismo texto y el dedup se llevaba el primero
+    // (D29).
+    avisos.exito(avisoDeAgregado(product, nuevo.variante).texto);
 
     const existente = items.find((item) => claveDelRenglon(item) === clave);
     if (existente) {
@@ -201,7 +203,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
       itemCount,
       subtotal,
     };
-  }, [isCartOpen, items]);
+    // `avisos` está acá porque `addItem` cierra sobre él (D32): sin la
+    // dependencia, el `addItem` publicado sigue apuntando al objeto del render
+    // anterior. Hoy anda igual porque `avisar` es un `useCallback` estable
+    // para toda la vida del provider, o sea anda por una propiedad de
+    // `AvisosContext` que este archivo no declara y no puede ver. El día que
+    // `exito` necesite leer el estado de los avisos, el síntoma sería
+    // intermitente (review de T23, hallazgo 17).
+  }, [isCartOpen, items, avisos]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

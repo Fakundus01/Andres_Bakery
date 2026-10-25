@@ -1,6 +1,6 @@
 # testing.md · Andres Bakery
 
-**Versión:** 0.5.0 · **Última actualización:** 2026-10-22
+**Versión:** 0.5.1 · **Última actualización:** 2026-10-25
 
 ## 1 · Cómo se corre (comandos reales, verificados el 2026-10-16)
 
@@ -10,7 +10,7 @@ Los mismos que `harness.config.json`. **Siempre desde la raíz del repo**: los i
 # Back: 368 tests, unittest (NO pytest: el venv no lo tiene)
 backend/.venv/Scripts/python.exe -m unittest discover -s backend/tests -t . -q
 
-# Front: 234 tests de logica pura, Vitest (ADR-023)
+# Front: 256 tests de logica pura, Vitest (ADR-023)
 npm --prefix front/Andres_Bakery run test
 
 # Front: eslint + tsc (los dos proyectos de TS)
@@ -114,6 +114,7 @@ que sostiene los arreglos de layout de esta tanda, porque no hay tests de compon
 
 | Archivo | Qué cubre |
 |---|---|
+| `lib/carrito.aviso.test.ts` | el aviso nombra la variante cuando hay una, así que dos tamaños del mismo producto dan dos avisos y no uno (D29) |
 | `lib/iniciales.test.ts` | las iniciales del círculo de la cuenta, incluidos los emojis que antes se partían al medio |
 | `lib/imagenes.test.ts` | cuándo una foto lleva adelante el host del back y cuándo no |
 | `lib/cantidades.test.ts` | la regla de "se venden de a 6", espejo de `quantity.py`, con la propiedad de que lo que acomoda siempre es válido |
@@ -164,6 +165,15 @@ reviewer que volvió a medir, barriendo y cambiando el estado. La regla: una med
 declara **con el estado en el que se tomó**, y si el componente tiene dos estados comunes, se miden
 los dos.
 
+**Y el 2026-10-25 el hueco dejó de ser una frase y pasó a tener precio.** Hasta esa fecha
+«Vitest cubre lógica pura y no componentes» (ADR-023) era una limitación declarada en abstracto. La
+tanda de D29/D30 la midió: **borrarle el `onFocus` al `<div>` de la región de avisos deja las 256
+en verde** — o sea que la pausa del plazo, que es el centro de D30, no la cuida ningún test que se
+vuelva a correr solo. Lo cuida un pase de navegador fechado. Está anotado como **D37** en vez de
+taparse con un test que no existe, y el mutante que lo demuestra quedó escrito (M10 del handback):
+**una limitación que se puede mutar es una limitación medida; una que sólo está escrita es una
+esperanza.**
+
 ## 3 · Estrategia
 
 - **Back ⇒ tests automatizados** (R07). Todo servicio nuevo o modificado trae su test en el mismo ciclo.
@@ -201,7 +211,7 @@ los dos.
 ## 5 · Cobertura mínima para dar algo por `done`
 
 1. Servicio nuevo o tocado del back ⇒ su test, verde.
-2. Los **368** del back y los **234** del front, verdes (V9). Un test que había pasado y ahora no, bloquea.
+2. Los **368** del back y los **256** del front, verdes (V9). Un test que había pasado y ahora no, bloquea.
 3. `npm run lint` y `npm run build`, limpios (V1).
 4. Si se tocó algo visible ⇒ revisado en navegador, en celular y en escritorio, y dicho en el handback.
 5. Si el cambio toca precios, mínimos o totales ⇒ el rojo se vio primero (R29).

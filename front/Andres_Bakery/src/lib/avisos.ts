@@ -61,6 +61,79 @@ export function msParaIrse(tono: TonoDeAviso): number | null {
   return seVaSolo(tono) ? MS_PARA_IRSE_SOLO : null;
 }
 
+/** Por qué está pausado el plazo. Son **dos motivos independientes** y
+ *  alcanza con uno: sin esto, sacar el mouse de la X mientras el teclado la
+ *  tiene enfocada reanudaba el plazo, que es el mismo robo de foco por una
+ *  puerta más chica. */
+export type MotivoDeRetencion = "foco" | "mouse";
+
+export function agregarRetencion(
+  motivos: readonly MotivoDeRetencion[],
+  motivo: MotivoDeRetencion,
+): MotivoDeRetencion[] {
+  return motivos.includes(motivo) ? [...motivos] : [...motivos, motivo];
+}
+
+export function quitarRetencion(
+  motivos: readonly MotivoDeRetencion[],
+  motivo: MotivoDeRetencion,
+): MotivoDeRetencion[] {
+  return motivos.filter((candidato) => candidato !== motivo);
+}
+
+/** ¿Tiene que estar corriendo el plazo de este aviso ahora mismo? (D30)
+ *
+ *  Antes el plazo no se pausaba nunca: quien enfocaba la X y esperaba los
+ *  cuatro segundos **perdía su lugar en la página**, porque React desmontaba
+ *  el nodo que tenía el foco y el foco caía a `body` (review de T23,
+ *  hallazgo 7). WCAG 2.2.1 pide poder pausar lo que se va solo y 2.4.3 pide
+ *  no perder el orden del foco; pausar es lo que hace cualquier toast. */
+export function elPlazoCorre(aviso: Aviso, motivos: readonly MotivoDeRetencion[]): boolean {
+  return motivos.length === 0 && seVaSolo(aviso.tono);
+}
+
+/** Qué queda en pantalla cuando alguien aprieta Escape (D30).
+ *
+ *  Con el foco adentro de un aviso cierra **ése**, sea error o no: es un
+ *  pedido explícito de quien lo está leyendo.
+ *
+ *  Con el foco afuera —el Escape global, el mismo que cierra los modales, el
+ *  menú de cuenta y el panel de ayuda— se van los que se iban a ir solos y
+ *  **el error se queda**: si se lo llevara, cerrar un modal borraría un error
+ *  que nadie leyó, que es justo lo que `seVaSolo` evita (C3). */
+export function cerrarConEscape(cola: Aviso[], idEnfocado: string | null): Aviso[] {
+  if (idEnfocado) {
+    return descartarAviso(cola, idEnfocado);
+  }
+  return cola.filter((aviso) => !seVaSolo(aviso.tono));
+}
+
+/** Lo mínimo que hace falta saber de un elemento para decidir el foco.
+ *  `HTMLElement` lo cumple; en los tests entra un objeto a mano, que es la
+ *  gracia de sacar la decisión del componente (ADR-023). */
+export interface Enfocable {
+  isConnected: boolean;
+}
+
+/** A dónde vuelve el foco cuando se cierra el aviso que lo tenía, o `null` si
+ *  no hay ningún destino que sirva (D30, WCAG 2.4.3).
+ *
+ *  Tres cosas descartan un destino: que no haya (el foco entró al aviso sin
+ *  venir de ningún lado), que ya no esté en la página (la ficha del producto
+ *  puede desmontarse mientras su aviso sigue en pantalla) y que sea el
+ *  `body`, que no es un lugar: dejar el foco en el body es **el síntoma** que
+ *  esto viene a arreglar, porque el próximo Tab arranca desde el principio de
+ *  la página. */
+export function aDondeVuelveElFoco<T extends Enfocable>(
+  previo: T | null | undefined,
+  body: Enfocable | null | undefined,
+): T | null {
+  if (!previo || !previo.isConnected || previo === body) {
+    return null;
+  }
+  return previo;
+}
+
 /** Apila el aviso nuevo al final, sin borrar los que ya estaban. */
 export function agregarAviso(cola: Aviso[], aviso: Aviso | null): Aviso[] {
   if (!aviso) {

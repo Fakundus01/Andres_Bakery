@@ -62,10 +62,25 @@ export function notaParaElPedido(nota: string | null | undefined): string {
  *  `addItem` abre el drawer: cuando el aviso aparece, el carrito ya está en
  *  pantalla.
  *
+ *  **Nombra el tamaño cuando hay uno** (D29). Sin eso el texto se armaba con
+ *  `product.name` y nada más, así que agregar 8 porciones y después 12 del
+ *  mismo Cheesecake daba UN aviso —el dedup de `agregarAviso` se llevaba el
+ *  primero— mientras el carrito mostraba correctamente los dos renglones. Lo
+ *  midió el review de T23 (hallazgo 6) con la carta real, y el dato ya lo
+ *  tiene `addItem` en la mano.
+ *
  *  Vive acá y no adentro de `addItem` para que la decisión se pueda probar
  *  sin montar nada (ADR-023: la lógica pura sale del componente). */
-export function avisoDeAgregado(product: Pick<Product, "name">): { texto: string } {
-  return { texto: `«${product.name}» se agregó al carrito` };
+export function avisoDeAgregado(
+  product: Pick<Product, "name">,
+  variante?: ProductVariant | null,
+): { texto: string } {
+  // El nombre del tamaño lo escribe Andrea en el panel: puede llegar en
+  // blanco, y «Cheesecake ()» es peor que no decir el tamaño.
+  const tamano = (variante?.name ?? "").trim();
+  return {
+    texto: `«${product.name}»${tamano ? ` (${tamano})` : ""} se agregó al carrito`,
+  };
 }
 
 /** Lo que el cliente eligió para ESTE renglón. Todo opcional: un producto sin

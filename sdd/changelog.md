@@ -4,6 +4,61 @@ Semver `MAJOR.MINOR.PATCH` (R13). No se borra nada: lo viejo queda.
 
 ---
 
+## [0.17.2] · 2026-10-25 · El aviso nombra el tamaño, el plazo se pausa, y el hueco de React pasó a tener precio
+
+**De dónde salió:** las deudas **D29**, **D30** y la mitad de **D32** que el review de T23 dejó
+anotadas el 2026-10-22 y que nadie había tocado. Sin feature nueva: es PATCH.
+
+**D29 — el aviso nombra la variante.** El texto se armaba con `product.name` y nada más, así que
+agregar 8 y después 12 porciones del mismo Cheesecake daba **un** aviso mientras el carrito mostraba
+los dos renglones correctamente. `avisoDeAgregado(product, variante)` nombra el tamaño. Medido en el
+navegador a 390 px con la carta real: **2 avisos**, carrito en $34.000.
+
+**D30 — el plazo se pausa, Escape cierra y el foco vuelve.** El plazo se retiene por el foco **o**
+por el mouse, con los dos motivos independientes; al cerrarse, el foco **vuelve a donde estaba** y
+nunca a `body` (WCAG 2.2.1 y 2.4.3). Medido con teclas y mouse reales: pausa confirmada a 4300 ms
+con la X enfocada, Escape devolviendo el foco a «Ir al checkout», y el auto-cierre intacto cuando
+nadie lo retiene. **Escape quedó partido en dos a propósito:** con el foco adentro del aviso cierra
+*ese* aviso; con el foco afuera se lleva los que se iban a ir solos y **deja el error en pantalla**,
+porque el listener es del documento y en este sitio Escape ya cierra cuatro cosas más — un Escape
+que se llevara todo borraría un error que nadie leyó.
+
+**D32, la mitad:** el plazo quedó clavado en 4000 con su test (el mutante `4000 -> 3000` ahora
+muere) y `avisos` entró en las dependencias del `useMemo` de `CartContext`. El `aria-label` de la X
+y el reordenamiento del dedup siguen abiertos.
+
+**Evidencia:** **18 failed / 238 passed** contra la base `d9fd66b` con producción intacta
+(`git diff --stat` vacío) y las salidas literales pegadas en el handback; front **234 → 256**, back
+**368 OK** sin tocar, lint y build limpios; **9 mutantes, 9 muertos**, restaurados por hash y sin
+un solo `git restore`. El navegador fue el MCP de Playwright, que **sí** conectó esta vez (los que
+fallaron fueron `github` y `codegraph`), así que no hizo falta hablar CDP a mano como el 2026-10-24.
+
+**Lo que esta versión agrega a la cola en vez de esconder:**
+
+- **D36** — dos rellenos *distintos* del mismo tamaño siguen dando un solo aviso. Es la mitad de D29
+  que D29 no nombraba, y la línea estaba en el hallazgo 6 del review desde el principio. DRIFT de
+  R25 declarado por quien implementó, con la salida recomendada: arreglarlo por el **dedup** y no
+  alargando el texto, porque los sabores suman 34 caracteres y ahí el cartel pasa de 64 a 104 px y
+  la X se para sobre otra parte del botón de abajo — arreglaríamos un aviso perdido **creando** el
+  robo de clics que T23 y T24 tardaron dos tarjetas en sacar.
+- **D37** — **borrarle el `onFocus` a la región deja las 256 en verde.** El hueco de ADR-023
+  (Vitest en `node`, sin jsdom) dejó de ser una limitación escrita y pasó a tener un mutante que lo
+  demuestra. Taparlo pide revisar ADR-023, que es una decisión y no una tarea.
+- **Un DRIFT de R25 corregido en `status.md`:** la celda de D30 citaba el hallazgo **7** del review
+  de T23 como fuente del Escape, y ahí no está — es la mitad viva del **hallazgo 8**, que además se
+  declaraba obsoleto si se tomaba la opción A de ADR-037, que es la que se tomó. Lo encontró el
+  implementer **verificando la cita antes de actuar sobre ella**.
+- **Y otro, de la cola misma:** la sección 5 decía que T23 «sigue sin commitear sobre `4bb20b0`».
+  Era falso desde el 2026-10-24: T23 está en `7271583` y T24 en `0758e55` + `d9fd66b`. La frase
+  quedó vieja al cerrar T24 y nadie la volvió a leer.
+
+**Lo que NO está cerrado:** por R30 esta tanda la implementó un subagente y **necesita su propia
+vuelta de reviewer** — lo que más conviene que re-ejecute son los 9 mutantes, el barrido de la
+geometría **con sus propios anchos y no sólo 390**, y el Escape con el foco afuera, que es la
+decisión que más fácil se discute.
+
+---
+
 ## [0.17.1] · 2026-10-24 · El botón del carrito no se podía tocar en celular, y dos frases de MD que la medición desmintió
 
 **De dónde salió:** el hallazgo 4 (ALTA) de `review_T23c.md`, el primer review que re-ejecutó T23
