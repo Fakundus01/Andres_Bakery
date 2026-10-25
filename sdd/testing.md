@@ -1,6 +1,6 @@
 # testing.md · Andres Bakery
 
-**Versión:** 0.5.1 · **Última actualización:** 2026-10-25
+**Versión:** 0.5.2 · **Última actualización:** 2026-10-25
 
 ## 1 · Cómo se corre (comandos reales, verificados el 2026-10-16)
 
@@ -167,12 +167,31 @@ los dos.
 
 **Y el 2026-10-25 el hueco dejó de ser una frase y pasó a tener precio.** Hasta esa fecha
 «Vitest cubre lógica pura y no componentes» (ADR-023) era una limitación declarada en abstracto. La
-tanda de D29/D30 la midió: **borrarle el `onFocus` al `<div>` de la región de avisos deja las 256
-en verde** — o sea que la pausa del plazo, que es el centro de D30, no la cuida ningún test que se
-vuelva a correr solo. Lo cuida un pase de navegador fechado. Está anotado como **D37** en vez de
-taparse con un test que no existe, y el mutante que lo demuestra quedó escrito (M10 del handback):
-**una limitación que se puede mutar es una limitación medida; una que sólo está escrita es una
-esperanza.**
+tanda de D29/D30 la midió con un mutante: **borrarle el `onFocus` al `<div>` de la región de avisos
+deja las 256 en verde.** El reviewer independiente lo confirmó **y midió el tamaño real del hueco**,
+que es mucho mayor: **ningún test importa ninguno de los tres archivos de React**, y de **10
+mutantes propios sobreviven 7** — los siete que tocan React. Los dos de control, sobre lógica pura,
+murieron. Las dos líneas que hay que acordarse:
+
+> **Se puede hacer que la región de avisos no dibuje nada y las 256 siguen en verde.**
+> **Se puede deshacer D29 en producción sin que un solo test se entere.**
+
+Está anotado como **D37** en vez de taparse con un test que no existe. Dos cosas que deja esto
+escritas. La primera: **una limitación que se puede mutar es una limitación medida; una que sólo
+está escrita es una esperanza.** La segunda, que es la que más se transfiere: **el handback midió un
+mutante y escribió la deuda del tamaño de ese mutante.** El reviewer corrió nueve más y la deuda era
+el triple. Una medición correcta puede dimensionar mal lo que midió — no por estar mal hecha, sino
+por ser una sola.
+
+**Y el eje del ancho, que es la tercera vez que este repo paga la misma lección.** El handback midió
+el alto del cartel con los tres textos reales **a un solo ancho** (390 px: 64 px los tres) y
+concluyó que D29 no movía la geometría. A **320 px** los textos con variante dan **84**. No hubo
+daño —el cartel más alto sube la X arriba de la barra de botones y el robo cae a 0 %— pero la
+conclusión valía de 360 a 430 y estaba escrita como «con la carta de hoy». Primero fue **un punto
+por botón**, después **un estado por botón**, ahora **un ancho**. La regla que queda, en una línea:
+**una medición de pantalla se declara con el punto, el estado y el ancho en los que se tomó**, y si
+el resultado depende de alguno de los tres, se barren los tres. El `4,41 %` de `status.md` viaja
+desde hoy con los suyos: *drawer cerrado, 360–430 px*.
 
 ## 3 · Estrategia
 

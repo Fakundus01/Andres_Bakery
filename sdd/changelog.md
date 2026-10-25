@@ -4,6 +4,60 @@ Semver `MAJOR.MINOR.PATCH` (R13). No se borra nada: lo viejo queda.
 
 ---
 
+## [0.17.3] · 2026-10-25 · El reviewer independiente confirmó la tanda y corrigió cuatro frases del registro
+
+**Sin cambios de código. Ni una línea de producción.** Esta versión existe porque R30 cerró el loop
+de 0.17.2 y lo que encontró fue que **lo medible se sostiene y el registro estaba mal escrito** —
+que es exactamente el tipo de hallazgo que esta casa decidió no barrer abajo de la alfombra.
+
+**Lo que se re-ejecutó y aguantó:** los 18 failed / 238 passed reconstruidos contra `d9fd66b` con el
+mismo reparto; 256/256 en 20 archivos; back 368 OK; lint y build con el mismo hash de bundle; **los
+9 mutantes del handback mueren con los nombres exactos declarados**; el test que «no podía ser rojo
+contra la base» es honesto (la constante ya valía 4000 ahí); **D36 reproducida en el navegador** (dos
+renglones, $40.400, un aviso); y el barrido de geometría confirmado con los anchos del reviewer —
+4,41 % y 256 puntos a «Ver carrito», cartel 0 %, «Ayuda» 0 en todas partes. **Y midió C3 en el
+navegador, que el handback había declarado imposible de medir:** el error sobrevive al Escape global.
+Dato de geometría que simplifica la cola: **con el drawer abierto «Ver carrito» ni se monta**, así
+que no hay dos estados que medir — hay uno.
+
+**Las cuatro frases corregidas:**
+
+- **D37 estaba escrita más chica que su tamaño** (ALTA). Nombraba sólo cosas de D30. La causa real es
+  estructural: **ningún test importa ninguno de los tres archivos de React**. El reviewer corrió 10
+  mutantes propios y **sobreviven 7**. Las dos líneas que lo dicen todo: se puede hacer que la región
+  de avisos **no dibuje nada** y las 256 siguen verdes; y se puede **deshacer D29** en producción sin
+  que un test se entere. O sea que D29 —la deuda que 0.17.2 da por cerrada— está igual de descubierta
+  que D30. Los dos mutantes de control, sobre lógica pura, murieron: la suite cuida lo que dice
+  cuidar, y esto mide dónde termina.
+- **«D29 no mueve un píxel de la geometría con la carta de hoy» es falso a 320 px** (ALTA). Medido a
+  un solo ancho. A 320 px los textos con variante dan **84 px** y el de antes de D29 daba 64. La
+  conclusión vale de **360 a 430**. **No hay daño y es hasta favorable** —el cartel más alto sube la X
+  arriba de la barra de botones y el robo de «Ver carrito» cae a 0 %— pero el riesgo 2 decía que el
+  mecanismo «cartel más alto ⇒ la X se para sobre otra parte de la pantalla» no ocurría hoy, y
+  **ocurre**, en el ancho más angosto, con la carta real. Tercera vez que este repo paga la misma
+  lección en un eje nuevo: primero un punto por botón, después un estado por botón, ahora un ancho.
+- **«La base de desarrollo no se tocó, ni una escritura» es falso** (MEDIA). Cada carga de página
+  hace `POST /api/metrics/view`, que inserta o incrementa una fila `PageView` con su `commit`. No es
+  dato sensible (ADR-019: sin cookie y sin IP) y no afecta a D29/D30, pero la frase es falsa como
+  está escrita, y **la consigna «no escribas en la base de desarrollo» no se puede cumplir** mientras
+  se cargue el sitio en un navegador. Lo honesto es «sin escrituras **de dominio**: ni productos, ni
+  pedidos, ni migraciones». El reviewer declaró sus propias ~66 filas en vez de repetir la frase.
+- **«El único productor de errores es el panel de admin» es falso: hoy no hay ninguno** (MEDIA) →
+  **D38**. Los dos únicos llamadores de `useAvisos` llaman los dos a `exito`. La rama del aviso de
+  error —y con ella C3, `seVaSolo`, el `role="alert"` y el mutante M7— cuida un camino que **ningún
+  código puede producir hoy**. La invariante sigue siendo la correcta; lo que estaba mal es la frase,
+  que le hacía creer a quien leyera `testing.md` que el error era alcanzable y sólo incómodo de
+  disparar.
+
+**Lo que el reviewer no pudo verificar, y queda dicho:** que los pop-ups del panel de admin sigan
+cerrando con Escape — eso pedía loguearse y no se abrió `backend/.env`. NavDrawer, menú de cuenta y
+panel de Ayuda sí se verificaron.
+
+**Un detalle de oficio que vale guardar:** el hijo de `npm run dev` sobrevive al padre. El reviewer
+tuvo que bajarlo por PID y verificar con `curl` y `netstat` que los dos puertos quedaran caídos.
+
+---
+
 ## [0.17.2] · 2026-10-25 · El aviso nombra el tamaño, el plazo se pausa, y el hueco de React pasó a tener precio
 
 **De dónde salió:** las deudas **D29**, **D30** y la mitad de **D32** que el review de T23 dejó
