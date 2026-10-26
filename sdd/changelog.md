@@ -4,6 +4,57 @@ Semver `MAJOR.MINOR.PATCH` (R13). No se borra nada: lo viejo queda.
 
 ---
 
+## [0.17.4] · 2026-10-25 · El sitio dice lo que dice el logo, y el aviso ya distingue dos rellenos
+
+**D24 — la marca.** El humano decidió seguir el nombre del logo: la grafía es **`Andre's Bakery`**,
+apóstrofo **recto** y caja normal. Las tres decisiones están **medidas**, no elegidas a ojo: recto
+porque en el código propio **no hay un solo apóstrofo tipográfico** y porque es el que sale del
+teclado cuando Andrea edita desde el panel — y porque **se lo vio sobrevivir a una consola donde
+los acentos sí se perdieron**; caja normal porque esta casa ya separa grafía de estilo, y
+«Dónde encontrarnos» está escrito en minúsculas y lo grita el CSS en 20 archivos.
+
+**La deuda nombraba cuatro lugares y había trece**, en ocho archivos — entre ellos dos que nadie
+había mirado: **dos asuntos de mail y su cuerpo**, y **la descripción del envío que viaja a Mercado
+Pago**. Centralizada en `src/lib/marca.ts` y `backend/marca.py`, con el costo dicho (dos fuentes
+porque son dos runtimes, más el `index.html` estático que cuida un barrido). **Negativo
+verificado:** el mensaje de WhatsApp **no** lleva la marca, así que el apóstrofo nunca viaja por una
+URL.
+
+**D36 — el aviso, por el dedup y no por el texto.** El aviso gana un `asunto` opcional, el dedup
+compara tono + asunto y cae al texto cuando no hay, así el panel no cambia (con test), y el carrito
+le pasa la clave del renglón **que ya tenía calculada**. **`avisoDeAgregado` no se tocó: el texto no
+creció un carácter**, que era justamente el motivo de no arreglarlo alargándolo. Medido en el
+navegador: dos carteles con el mismo texto, dos renglones, **$40.400**.
+
+**Evidencia:** back **368 → 376 OK**, front **256 en 20 archivos → 267 en 22**, lint y build
+limpios con el **CSS en el mismo hash**; rojo medido contra `6f549a4` con `git diff --stat` vacío
+(4 rojos en el front, 1 FAIL + 5 ERROR en el back, y el barrido listó exactamente los seis archivos
+culpables); **15 mutantes, 14 muertos con el test nombrado**, restaurados **por hash** — el `sha256`
+del diff del árbol volvió idéntico tres veces.
+
+**Lo que esta tanda aporta a D37, y es lo mejor que trae:** el mutante que sobrevive **es D37 tal
+cual** — sacarle a `CartContext` el asunto **deshace D36 con 267/267 en verde**. Van tres deudas
+seguidas (D29, D30, D36) que se pueden deshacer sin que un test se entere. **Pero apareció la
+salida barata:** el barrido de fuentes de D24 **mata los mutantes de `SiteHeader` y `SiteFooter` sin
+`jsdom` y sin tocar ADR-023**. No cubre comportamiento; cubre que el texto esté donde tiene que
+estar, y para eso alcanza.
+
+**Dos números de `status.md` que la medición contradice y que no los trae esta tanda** — se anotan
+en vez de elegir el que convenga:
+
+- **El bundle de JS da 428,10 kB *sin* esta tanda** y 428,17 con, medido dando vuelta los cambios a
+  mano. O sea que lo nuevo cuesta **0,07 kB** y los **1,42 kB** que faltaban contra los 426,68
+  escritos **son del `vite 7.3.7` instalado**, no de código nuestro. Es el molde de siempre: un
+  número correcto con la causa equivocada atribuida.
+- **El robo de «Ver carrito» mide 4,68 %** donde D32 anota 4,41 %, con el mismo método.
+
+**Lo que queda abierto:** **B9** — `PICKUP_ADDRESS` está puesto en `backend/.env` con la grafía
+vieja, así que el carrito y el checkout **todavía dicen «Andres Bakery»**. Es una línea en un
+archivo que ningún agente abre; el default del código ya tiene la grafía nueva, así que borrar la
+variable también lo arregla. Más los dos BAJA de D32, y el reviewer de R30.
+
+---
+
 ## [0.17.3] · 2026-10-25 · El reviewer independiente confirmó la tanda y corrigió cuatro frases del registro
 
 **Sin cambios de código. Ni una línea de producción.** Esta versión existe porque R30 cerró el loop

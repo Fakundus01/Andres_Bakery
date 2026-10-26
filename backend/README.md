@@ -1,4 +1,4 @@
-# Backend Andres Bakery (Flask)
+# Backend Andre's Bakery (Flask)
 
 Backend API para la pagina de reposteria. Incluye autenticacion JWT, catalogo de productos, ordenes con datos de entrega, envio de correos y checkout con Mercado Pago.
 

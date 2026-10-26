@@ -17,6 +17,14 @@ export type Aviso = {
   tono: TonoDeAviso;
   texto: string;
   link?: LinkDelAviso;
+  /** De qué habla este aviso, para el dedup (D36). Opcional: casi todo lo que
+   *  avisa el sitio es una acción que no se repite —«Etiqueta guardada.»— y
+   *  ahí el texto alcanza como identidad. Lo necesita quien puede producir dos
+   *  avisos **con el mismo texto** que no son el mismo aviso: el carrito, que
+   *  dice lo mismo por dos Cheesecakes de 12 porciones con relleno distinto.
+   *
+   *  No se dibuja nunca: no es texto, es identidad. */
+  asunto?: string;
 };
 
 /** Cuántos se ven juntos. Más que esto tapa la pantalla en celular, que es
@@ -36,6 +44,7 @@ export function nuevoAviso(datos: {
   tono: TonoDeAviso;
   texto: string;
   link?: LinkDelAviso;
+  asunto?: string;
 }): Aviso | null {
   const texto = datos.texto.trim();
   if (!texto) {
@@ -47,7 +56,15 @@ export function nuevoAviso(datos: {
     tono: datos.tono,
     texto,
     ...(datos.link ? { link: datos.link } : {}),
+    ...(datos.asunto ? { asunto: datos.asunto } : {}),
   };
+}
+
+/** Con qué se compara este aviso contra otro: su asunto si lo trae, y si no su
+ *  texto (D36). Sin asunto el comportamiento es el de siempre, que es lo que
+ *  quiere el panel: «Etiqueta guardada.» dos veces sigue siendo un cartel. */
+export function asuntoDelAviso(aviso: Aviso): string {
+  return aviso.asunto ?? aviso.texto;
 }
 
 /** El error **no** se va solo: un error que desaparece es un error perdido.
@@ -142,8 +159,16 @@ export function agregarAviso(cola: Aviso[], aviso: Aviso | null): Aviso[] {
   // El repetido se reemplaza en vez de apilarse: dos veces "se guardó" no es
   // información nueva, pero el id nuevo hace que su plazo vuelva a empezar, y
   // eso sí importa cuando alguien agrega el mismo producto dos veces.
+  //
+  // Repetido se decide por el ASUNTO y no por el texto (D36). Con el texto,
+  // dos Cheesecakes de 12 porciones con relleno distinto —dos renglones del
+  // carrito, $40.400— daban UN aviso: el texto nombra el tamaño pero no el
+  // relleno, así que el segundo se llevaba al primero. El arreglo va acá y no
+  // en el texto a propósito: nombrar los sabores suma 34 caracteres, el cartel
+  // pasa de 64 a 104 px y la X vuelve a pararse encima del botón de abajo, que
+  // es el robo de clics que T23 y T24 tardaron dos tarjetas en sacar.
   const sinElRepetido = cola.filter(
-    (previo) => !(previo.tono === aviso.tono && previo.texto === aviso.texto),
+    (previo) => !(previo.tono === aviso.tono && asuntoDelAviso(previo) === asuntoDelAviso(aviso)),
   );
   return acotar([...sinElRepetido, aviso]);
 }

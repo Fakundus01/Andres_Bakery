@@ -4,6 +4,7 @@ import secrets
 from pathlib import Path
 
 from .env_file import load_env_file
+from .marca import PUNTO_DE_RETIRO_POR_DEFECTO
 
 
 # Primero el archivo, despues todo lo demas: `Config` resuelve sus `os.getenv`
@@ -62,7 +63,7 @@ class Config:
     SUPPORT_EMAIL = os.getenv("SUPPORT_EMAIL", "support@bakery.local")
     DELIVERY_ZONE_NAME = os.getenv("DELIVERY_ZONE_NAME", "Villa Maipú")
     DELIVERY_FEE = os.getenv("DELIVERY_FEE", "2500")
-    PICKUP_ADDRESS = os.getenv("PICKUP_ADDRESS", "Andres Bakery, Villa Maipú, General San Martín")
+    PICKUP_ADDRESS = os.getenv("PICKUP_ADDRESS", PUNTO_DE_RETIRO_POR_DEFECTO)
 
     # Solo digitos con pais. Si queda vacio, la UI dice que falta en vez de
     # armar un wa.me roto.

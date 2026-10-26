@@ -4,6 +4,7 @@ from flask import current_app
 from flask_mail import Message  # type: ignore
 
 from ..extensions import mail
+from ..marca import MARCA
 from ..models import Order
 
 
@@ -48,7 +49,7 @@ class NotificationService:
 
         customer_body = (
             f"Hola {customer_name},\n\n"
-            f"Recibimos tu pedido #{order.id} en Andres Bakery.\n\n"
+            f"Recibimos tu pedido #{order.id} en {MARCA}.\n\n"
             f"Resumen:\n{order_lines}\n"
             f"Env\u00edo: ${shipping_amount:,.2f}\n"
             f"Total: ${float(order.total_amount):,.2f}\n"
@@ -74,7 +75,7 @@ class NotificationService:
             result["customer"] = "skipped: pedido sin cuenta"
         elif customer_email:
             result["customer"] = self._send_email(
-                subject=f"Andres Bakery | Confirmaci\u00f3n de pedido #{order.id}",
+                subject=f"{MARCA} | Confirmaci\u00f3n de pedido #{order.id}",
                 recipients=[customer_email],
                 body=customer_body,
             )
@@ -84,7 +85,7 @@ class NotificationService:
             result["customer"] = "skipped: el pedido no dejo mail"
         if admin_email:
             result["admin"] = self._send_email(
-                subject=f"Andres Bakery | Nuevo pedido #{order.id}",
+                subject=f"{MARCA} | Nuevo pedido #{order.id}",
                 recipients=[admin_email],
                 body=admin_body,
             )

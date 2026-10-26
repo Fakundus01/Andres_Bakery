@@ -14,9 +14,21 @@ import {
   type MotivoDeRetencion,
 } from "../lib/avisos";
 
+/** Lo que un aviso puede traer además del texto.
+ *
+ *  `asunto` es con qué se compara el aviso contra los que ya están en pantalla
+ *  (D36): lo manda quien puede producir dos avisos con el mismo texto que no
+ *  son el mismo aviso. Va en un objeto y no como tercer parámetro posicional
+ *  para que el único que lo usa hoy no tenga que escribir un `undefined` en el
+ *  medio: el `link` existe desde F64 y ningún llamador lo usa (ADR-037). */
+export interface ExtrasDelAviso {
+  asunto?: string;
+  link?: LinkDelAviso;
+}
+
 interface AvisosContextValue {
   avisos: Aviso[];
-  exito: (texto: string, link?: LinkDelAviso) => void;
+  exito: (texto: string, extras?: ExtrasDelAviso) => void;
   error: (texto: string) => void;
   aviso: (texto: string) => void;
   descartar: (id: string) => void;
@@ -66,8 +78,8 @@ export function AvisosProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const avisar = useCallback(
-    (tono: Aviso["tono"], texto: string, link?: LinkDelAviso) => {
-      setAvisos((cola) => agregarAviso(cola, nuevoAviso({ tono, texto, link })));
+    (tono: Aviso["tono"], texto: string, extras?: ExtrasDelAviso) => {
+      setAvisos((cola) => agregarAviso(cola, nuevoAviso({ tono, texto, ...extras })));
     },
     [],
   );
@@ -127,7 +139,7 @@ export function AvisosProvider({ children }: { children: ReactNode }) {
   const valor = useMemo<AvisosContextValue>(
     () => ({
       avisos,
-      exito: (texto, link) => avisar("exito", texto, link),
+      exito: (texto, extras) => avisar("exito", texto, extras),
       error: (texto) => avisar("error", texto),
       aviso: (texto) => avisar("aviso", texto),
       descartar,

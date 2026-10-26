@@ -4,6 +4,7 @@ from decimal import Decimal
 from typing import Mapping
 
 from ..extensions import db
+from ..marca import MARCA
 from ..models import Product, SiteContent, User
 
 
@@ -70,7 +71,7 @@ class BootstrapService:
                 SiteContent(
                     key="about",
                     content=(
-                        "Andres Bakery crea dulces artesanales, cajas para regalar y recetas "
+                        f"{MARCA} crea dulces artesanales, cajas para regalar y recetas "
                         "caseras con una identidad visual cálida, cercana y muy de barrio."
                     ),
                 )

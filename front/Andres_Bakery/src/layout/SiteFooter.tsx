@@ -3,6 +3,7 @@ import { MapPin, MessageCircle, Truck } from "lucide-react";
 
 import { useSiteConfig } from "../contexts/SiteConfigContext";
 import { linkWhatsApp, PEDIDOS_YA_URL } from "../lib/contacto";
+import { MARCA } from "../lib/marca";
 
 export function SiteFooter() {
   const { config } = useSiteConfig();
@@ -12,7 +13,7 @@ export function SiteFooter() {
     <footer className="border-t-[4px] border-borde bg-superficie">
       <div className="mx-auto grid max-w-7xl xl:max-w-[88rem] 2xl:max-w-[104rem] gap-8 px-4 py-10 sm:px-6 lg:grid-cols-3 lg:px-8">
         <div>
-          <p className="font-display text-2xl font-bold text-tinta">Andres Bakery</p>
+          <p className="font-display text-2xl font-bold text-tinta">{MARCA}</p>
           <p className="mt-2 text-sm leading-6 text-tinta-suave">
             Dulces artesanales hechos por Andrea, con entrega en Villa Maipú y retiro coordinado.
           </p>

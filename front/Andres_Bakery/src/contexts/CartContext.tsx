@@ -126,7 +126,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // test propio: ADR-037. Va con la variante porque sin ella los dos tamaños
     // de la misma torta daban el mismo texto y el dedup se llevaba el primero
     // (D29).
-    avisos.exito(avisoDeAgregado(product, nuevo.variante).texto);
+    //
+    // El asunto es la clave del renglón, la misma con la que el carrito decide
+    // si dos cosas son el mismo renglón (D36). Sin él el dedup comparaba el
+    // texto, y el texto no nombra el relleno: dos Cheesecakes de 12 porciones
+    // con rellenos distintos son dos renglones y daban un solo aviso. Se
+    // arregla por acá y no alargando el texto, que crecería el cartel 40 px y
+    // le devolvería a la X el robo de clics que T23 y T24 sacaron.
+    avisos.exito(avisoDeAgregado(product, nuevo.variante).texto, { asunto: clave });
 
     const existente = items.find((item) => claveDelRenglon(item) === clave);
     if (existente) {

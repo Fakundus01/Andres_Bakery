@@ -4,6 +4,7 @@ import { Menu, ShoppingBag } from "lucide-react";
 
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
+import { MARCA } from "../lib/marca";
 import { usePreferences } from "../preferencias/usePreferences";
 import { ENLACES_ADMIN, ENLACES_DESTACADOS, ENLACES_TODOS } from "./enlaces";
 import { MenuDeCuenta } from "./MenuDeCuenta";
@@ -48,13 +49,13 @@ export function SiteHeader() {
           <Link to="/" className="flex items-center gap-3">
             <img
               src="/logo-andres-bakery.png"
-              alt="Andres Bakery"
+              alt={MARCA}
               className="h-11 w-auto shrink-0"
               width={75}
               height={44}
             />
             <div className="hidden sm:block">
-              <p className="font-display text-lg font-bold leading-tight tracking-tight text-tinta">Andres Bakery</p>
+              <p className="font-display text-lg font-bold leading-tight tracking-tight text-tinta">{MARCA}</p>
               <p className="text-[10px] uppercase tracking-[0.25em] text-tinta-tenue">Dulces de autor</p>
             </div>
           </Link>

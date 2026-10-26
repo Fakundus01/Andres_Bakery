@@ -8,6 +8,7 @@ import uuid
 from flask import current_app
 
 from ..extensions import db
+from ..marca import MARCA
 from ..models import Order, Payment
 from .base import ServiceBase
 from .exceptions import AuthorizationError, ConfigurationError, ExternalServiceError, ValidationError
@@ -50,7 +51,7 @@ class MercadoPagoClient:
                 {
                     "id": f"delivery-{order.id}",
                     "title": f"Env\u00edo {current_app.config['DELIVERY_ZONE_NAME']}",
-                    "description": "Log\u00edstica local de Andres Bakery",
+                    "description": f"Log\u00edstica local de {MARCA}",
                     "quantity": 1,
                     "currency_id": current_app.config.get("PAYMENT_CURRENCY", "ars").upper(),
                     "unit_price": float(order.delivery.shipping_amount),
